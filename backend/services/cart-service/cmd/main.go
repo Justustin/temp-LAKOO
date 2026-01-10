@@ -30,7 +30,7 @@ func main() {
 	cartRepository := repository.NewCartRepository(database)
 	cartService := service.NewCartService(cartRepository)
 	cartHandler := controller.NewCartHandler(cartService)
-	api.RegisterRoutes(cartHandler.RegisterRoutes)
+	apiServer.RegisterRoutes(cartHandler.RegisterRoutes)
 
 	if err := apiServer.Start(); err != nil {
 		log.Fatal("Failed to start server: ", err)
