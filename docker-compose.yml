@@ -1,0 +1,9 @@
+services:
+  frontend:
+  build:
+    context: ./frontend
+    dockerfile: ./Dockerfile
+  container_name: LAKOO-frontend
+  volumes :
+    - ./frontend:/app
+    - /app/node_modules
