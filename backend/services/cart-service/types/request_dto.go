@@ -1,5 +1,5 @@
 package types
 
 type CartFilterPayload struct {
-	userId string `schema:"userId`
+	UserId string `schema:"userId"`
 }
