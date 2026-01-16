@@ -22,7 +22,7 @@ datasource db {
 model Payment {
   id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   paymentNumber        String        @unique @db.VarChar(50) // PAY-20260115-XXXXX
-  orderId              String?       @db.Uuid // Reference to Order Service
+  orderId              String        @db.Uuid // Reference to Order Service
   userId               String        @db.Uuid // Reference to Auth Service
   // Amounts
   amount               Decimal       @db.Decimal(15, 2)
@@ -34,27 +34,17 @@ model Payment {
   paymentMethodDetail  String?       @db.VarChar(100) // e.g., "BCA Virtual Account"
   // Gateway info (Xendit)
   paymentGateway       String        @default("xendit") @db.VarChar(50)
-  gatewayTransactionId String?       @unique @db.VarChar(255)
+  gatewayTransactionId String?       @db.VarChar(255)
   gatewayReferenceId   String?       @db.VarChar(255)
   gatewayInvoiceUrl    String?
-  gatewayResponse      Json?
   // Virtual account / payment details
   virtualAccountNumber String?       @db.VarChar(50)
   qrCodeUrl            String?
   paymentCode          String?       @db.VarChar(50)
-  paymentUrl           String?
   // Status
   status               PaymentStatus @default(pending)
   failureReason        String?       @db.VarChar(500)
   failureCode          String?       @db.VarChar(100)
-  // Escrow/Group buying
-  isInEscrow           Boolean       @default(false)
-  groupSessionId       String?       @db.Uuid
-  participantId        String?       @db.Uuid
-  escrowReleasedAt     DateTime?     @db.Timestamptz(6)
-  // Refund tracking
-  refundReason         String?       @db.VarChar(500)
-  refundedAt           DateTime?     @db.Timestamptz(6)
   // Timestamps
   expiresAt            DateTime?     @db.Timestamptz(6)
   paidAt               DateTime?     @db.Timestamptz(6)
@@ -63,7 +53,7 @@ model Payment {
   walletId             String?       @db.Uuid
   walletTransactionId  String?       @db.Uuid
   // Idempotency
-  idempotencyKey       String?       @unique @db.VarChar(100)
+  idempotencyKey       String        @unique @db.VarChar(100)
   // Metadata
   metadata             Json?
   createdAt            DateTime      @default(now()) @db.Timestamptz(6)
@@ -77,9 +67,8 @@ model Payment {
   @@index([userId])
   @@index([gatewayTransactionId])
   @@index([status])
-  @@index([groupSessionId])
   @@index([createdAt])
-  @@map("payments")
+  @@map("payment")
 }
 
 // =============================================================================
@@ -87,28 +76,28 @@ model Payment {
 // =============================================================================
 
 model PaymentGatewayLog {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId       String?  @db.Uuid
-  refundId        String?  @db.Uuid
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId     String?  @db.Uuid
+  refundId      String?  @db.Uuid
   // Request details
-  action          String   @db.VarChar(100) // "create_invoice", "get_payment", etc.
-  requestMethod   String   @db.VarChar(10)
-  requestUrl      String   @db.VarChar(500)
-  requestBody     Json?
-  requestHeaders  Json?
+  action        String   @db.VarChar(100) // "create_invoice", "get_payment", etc.
+  requestMethod String   @db.VarChar(10)
+  requestUrl    String   @db.VarChar(500)
+  requestBody   Json?
+  requestHeaders Json?
   // Response details
-  responseStatus  Int?
-  responseBody    Json?
+  responseStatus Int?
+  responseBody   Json?
   responseHeaders Json?
   // Timing
-  durationMs      Int?
+  durationMs    Int?
   // Error tracking
-  errorMessage    String?
-  errorCode       String?  @db.VarChar(100)
+  errorMessage  String?
+  errorCode     String?  @db.VarChar(100)
   // Webhook info (if applicable)
-  isWebhook       Boolean  @default(false)
-  webhookType     String?  @db.VarChar(100)
-  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  isWebhook     Boolean  @default(false)
+  webhookType   String?  @db.VarChar(100)
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
 
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   refund  Refund?  @relation(fields: [refundId], references: [id], onDelete: SetNull)
@@ -116,7 +105,7 @@ model PaymentGatewayLog {
   @@index([paymentId])
   @@index([refundId])
   @@index([createdAt])
-  @@map("payment_gateway_logs")
+  @@map("payment_gateway_log")
 }
 
 // =============================================================================
@@ -124,38 +113,38 @@ model PaymentGatewayLog {
 // =============================================================================
 
 model Refund {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  refundNumber    String       @unique @db.VarChar(50) // REF-20260115-XXXXX
-  paymentId       String       @db.Uuid
-  orderId         String?      @db.Uuid // Reference to Order Service
-  returnId        String?      @db.Uuid // Reference to Order Service Return
-  userId          String       @db.Uuid
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  refundNumber         String       @unique @db.VarChar(50) // REF-20260115-XXXXX
+  paymentId            String       @db.Uuid
+  orderId              String       @db.Uuid // Reference to Order Service
+  returnId             String?      @db.Uuid // Reference to Order Service Return
+  userId               String       @db.Uuid
   // Amounts
-  amount          Decimal      @db.Decimal(15, 2)
-  currency        String       @default("IDR") @db.VarChar(3)
+  amount               Decimal      @db.Decimal(15, 2)
+  currency             String       @default("IDR") @db.VarChar(3)
   // Refund method
-  refundMethod    RefundMethod
+  refundMethod         RefundMethod
   // Gateway info
-  gatewayRefundId String?      @db.VarChar(255)
+  gatewayRefundId      String?      @db.VarChar(255)
   // Status
-  status          RefundStatus @default(pending)
-  failureReason   String?      @db.VarChar(500)
+  status               RefundStatus @default(pending)
+  failureReason        String?      @db.VarChar(500)
   // Details
-  reason          String?      @db.VarChar(500)
-  notes           String?
+  reason               String?      @db.VarChar(500)
+  notes                String?
   // Timestamps
-  approvedAt      DateTime?    @db.Timestamptz(6)
-  approvedBy      String?      @db.Uuid
-  processedAt     DateTime?    @db.Timestamptz(6)
-  completedAt     DateTime?    @db.Timestamptz(6)
-  rejectedAt      DateTime?    @db.Timestamptz(6)
-  rejectedBy      String?      @db.Uuid
-  rejectionReason String?      @db.VarChar(500)
+  approvedAt           DateTime?    @db.Timestamptz(6)
+  approvedBy           String?      @db.Uuid
+  processedAt          DateTime?    @db.Timestamptz(6)
+  completedAt          DateTime?    @db.Timestamptz(6)
+  rejectedAt           DateTime?    @db.Timestamptz(6)
+  rejectedBy           String?      @db.Uuid
+  rejectionReason      String?      @db.VarChar(500)
   // Idempotency
-  idempotencyKey  String       @unique @db.VarChar(100)
-  createdBy       String?      @db.Uuid
-  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
+  idempotencyKey       String       @unique @db.VarChar(100)
+  createdBy            String?      @db.Uuid
+  createdAt            DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt            DateTime     @updatedAt @db.Timestamptz(6)
 
   payment     Payment             @relation(fields: [paymentId], references: [id])
   gatewayLogs PaymentGatewayLog[]
@@ -165,7 +154,7 @@ model Refund {
   @@index([orderId])
   @@index([userId])
   @@index([status])
-  @@map("refunds")
+  @@map("refund")
 }
 
 // =============================================================================
@@ -173,75 +162,36 @@ model Refund {
 // =============================================================================
 
 model SavedPaymentMethod {
-  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId           String        @db.Uuid
-  paymentMethod    PaymentMethod
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String        @db.Uuid
+  paymentMethod     PaymentMethod
   // Card details (tokenized)
-  cardType         String?       @db.VarChar(20) // visa, mastercard
-  cardLast4        String?       @db.VarChar(4)
-  cardExpMonth     Int?
-  cardExpYear      Int?
-  cardholderName   String?       @db.VarChar(255)
-  gatewayTokenId   String?       @db.VarChar(255) // Xendit card token
+  cardType          String?       @db.VarChar(20) // visa, mastercard
+  cardLast4         String?       @db.VarChar(4)
+  cardExpMonth      Int?
+  cardExpYear       Int?
+  cardholderName    String?       @db.VarChar(255)
+  gatewayTokenId    String?       @db.VarChar(255) // Xendit card token
   // Bank account details
-  bankCode         String?       @db.VarChar(20)
-  bankAccountLast4 String?       @db.VarChar(4)
+  bankCode          String?       @db.VarChar(20)
+  bankAccountLast4  String?       @db.VarChar(4)
   // Ewallet
-  ewalletType      String?       @db.VarChar(50) // ovo, gopay, dana
-  ewalletPhone     String?       @db.VarChar(20)
+  ewalletType       String?       @db.VarChar(50) // ovo, gopay, dana
+  ewalletPhone      String?       @db.VarChar(20)
   // Display
-  displayName      String?       @db.VarChar(100)
-  isDefault        Boolean       @default(false)
+  displayName       String?       @db.VarChar(100)
+  isDefault         Boolean       @default(false)
   // Status
-  isActive         Boolean       @default(true)
-  lastUsedAt       DateTime?     @db.Timestamptz(6)
-  createdAt        DateTime      @default(now()) @db.Timestamptz(6)
-  updatedAt        DateTime      @updatedAt @db.Timestamptz(6)
-  deletedAt        DateTime?     @db.Timestamptz(6)
+  isActive          Boolean       @default(true)
+  lastUsedAt        DateTime?     @db.Timestamptz(6)
+  createdAt         DateTime      @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime      @updatedAt @db.Timestamptz(6)
+  deletedAt         DateTime?     @db.Timestamptz(6)
 
   @@index([userId])
   @@index([isActive])
   @@index([deletedAt])
-  @@map("saved_payment_methods")
-}
-
-// =============================================================================
-// TRANSACTION LEDGER (Financial records)
-// =============================================================================
-
-model TransactionLedger {
-  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId       String?         @db.Uuid
-  orderId         String?         @db.Uuid
-  factoryId       String?         @db.Uuid
-  // Transaction details
-  transactionType TransactionType
-  amount          Decimal         @db.Decimal(15, 2)
-  currency        String          @default("IDR") @db.VarChar(3)
-  // Reference
-  referenceNumber String?         @db.VarChar(100)
-  orderNumber     String?         @db.VarChar(50)
-  // Fees and breakdown
-  gatewayFee      Decimal?        @db.Decimal(15, 2)
-  platformFee     Decimal?        @db.Decimal(15, 2)
-  netAmount       Decimal?        @db.Decimal(15, 2)
-  // Status
-  status          LedgerStatus    @default(pending)
-  // Metadata
-  description     String?         @db.VarChar(500)
-  metadata        Json?
-  // Settlement
-  settlementId    String?         @db.Uuid
-  settledAt       DateTime?       @db.Timestamptz(6)
-  createdAt       DateTime        @default(now()) @db.Timestamptz(6)
-
-  @@index([paymentId])
-  @@index([orderId])
-  @@index([factoryId])
-  @@index([transactionType])
-  @@index([status])
-  @@index([createdAt])
-  @@map("transaction_ledger")
+  @@map("saved_payment_method")
 }
 
 // =============================================================================
@@ -249,31 +199,31 @@ model TransactionLedger {
 // =============================================================================
 
 model SettlementRecord {
-  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  settlementDate DateTime  @db.Date
-  paymentGateway String    @db.VarChar(50)
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  settlementDate  DateTime @db.Date
+  paymentGateway  String   @db.VarChar(50)
   // Totals
-  totalPayments  Int
-  totalAmount    Decimal   @db.Decimal(15, 2)
-  totalFees      Decimal   @db.Decimal(15, 2)
-  netAmount      Decimal   @db.Decimal(15, 2)
+  totalPayments   Int
+  totalAmount     Decimal  @db.Decimal(15, 2)
+  totalFees       Decimal  @db.Decimal(15, 2)
+  netAmount       Decimal  @db.Decimal(15, 2)
   // Refunds
-  totalRefunds   Int
-  refundAmount   Decimal   @db.Decimal(15, 2)
+  totalRefunds    Int
+  refundAmount    Decimal  @db.Decimal(15, 2)
   // Status
-  isReconciled   Boolean   @default(false)
-  reconciledAt   DateTime? @db.Timestamptz(6)
-  reconciledBy   String?   @db.Uuid
-  notes          String?
-  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  isReconciled    Boolean  @default(false)
+  reconciledAt    DateTime? @db.Timestamptz(6)
+  reconciledBy    String?  @db.Uuid
+  notes           String?
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
 
   @@unique([settlementDate, paymentGateway])
   @@index([settlementDate])
-  @@map("settlement_records")
+  @@map("settlement_record")
 }
 
 // =============================================================================
-// SERVICE OUTBOX (For Kafka/Event messaging)
+// SERVICE OUTBOX (For Kafka event messaging)
 // =============================================================================
 
 model ServiceOutbox {
@@ -310,8 +260,7 @@ enum PaymentMethod {
   ewallet_shopeepay
   qris
   retail_outlet
-  wallet
-  platform_bot
+  wallet // LAKOO wallet
 }
 
 enum PaymentStatus {
@@ -326,9 +275,9 @@ enum PaymentStatus {
 }
 
 enum RefundMethod {
-  original_payment
-  wallet
-  bank_transfer
+  original_payment // Refund to original payment method
+  wallet           // Refund to LAKOO wallet
+  bank_transfer    // Manual bank transfer
 }
 
 enum RefundStatus {
@@ -338,21 +287,4 @@ enum RefundStatus {
   completed
   failed
   rejected
-}
-
-enum TransactionType {
-  payment_received
-  escrow_hold
-  escrow_release
-  refund_issued
-  settlement_payout
-  platform_fee
-  gateway_fee
-}
-
-enum LedgerStatus {
-  pending
-  completed
-  failed
-  reversed
 }
