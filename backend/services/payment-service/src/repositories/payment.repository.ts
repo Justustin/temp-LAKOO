@@ -1,182 +1,197 @@
 import { prisma } from '../lib/prisma';
-import { CreatePaymentDTO, CreateEscrowPaymentDTO } from '../types';
-import { CryptoUtils } from '../utils/crypto.utils';
+import { CreatePaymentDTO } from '../types';
 
 export class PaymentRepository {
-  async create(data: CreatePaymentDTO, invoiceUrl: string, invoiceId: string) {
-    const paymentCode = CryptoUtils.generatePaymentCode();
+  private generatePaymentNumber(): string {
+    const date = new Date();
+    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
+    const random = Math.random().toString(36).substring(2, 7).toUpperCase();
+    return `PAY-${dateStr}-${random}`;
+  }
 
-    return prisma.payments.create({
+  async create(data: CreatePaymentDTO, invoiceUrl: string, invoiceId: string) {
+    const paymentNumber = this.generatePaymentNumber();
+
+    return prisma.payment.create({
       data: {
-        order_id: data.orderId,
-        user_id: data.userId,
-        payment_method: data.paymentMethod || 'bank_transfer',
-        payment_status: 'pending',
-        order_amount: data.amount,
-        payment_gateway_fee: 0,
-        total_amount: data.amount,
+        paymentNumber,
+        orderId: data.orderId,
+        userId: data.userId,
+        amount: data.amount,
+        netAmount: data.amount, // Will be updated after payment with actual fee
+        gatewayFee: 0,
         currency: 'IDR',
-        payment_gateway: 'xendit',
-        gateway_transaction_id: invoiceId,
-        payment_code: paymentCode,
-        payment_url: invoiceUrl,
-        is_in_escrow: data.isEscrow || false,
-        expires_at: data.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000)
+        paymentMethod: data.paymentMethod || 'bank_transfer',
+        status: 'pending',
+        paymentGateway: 'xendit',
+        gatewayTransactionId: invoiceId,
+        gatewayInvoiceUrl: invoiceUrl,
+        idempotencyKey: data.idempotencyKey,
+        expiresAt: data.expiresAt ? new Date(data.expiresAt) : new Date(Date.now() + 24 * 60 * 60 * 1000),
+        metadata: data.metadata
       }
     });
   }
 
-async createEscrow(data: CreateEscrowPaymentDTO, invoiceUrl: string, invoiceId: string) {
-  const paymentCode = CryptoUtils.generatePaymentCode();
-
-  return prisma.payments.create({
-    data: {
-      user_id: data.userId,
-      group_session_id: data.groupSessionId,
-      participant_id: data.participantId,
-      payment_method: 'bank_transfer',
-      payment_status: 'pending',
-      order_amount: data.amount,
-      payment_gateway_fee: 0, // Changed from gateway_fee
-      total_amount: data.amount,
-      currency: 'IDR',
-      payment_gateway: 'xendit',
-      gateway_transaction_id: invoiceId,
-      payment_code: paymentCode,
-      payment_url: invoiceUrl,
-      is_in_escrow: true,
-      metadata: {
-        factoryId: data.factoryId,
-        type: 'group_buying_escrow'
-      },
-      expires_at: data.expiresAt || new Date(Date.now() + 24 * 60 * 60 * 1000)
-    }
-  });
-}
   async findById(id: string) {
-    return prisma.payments.findUnique({
+    return prisma.payment.findUnique({
       where: { id },
       include: {
-        orders: true,
-        users: true
+        refunds: true
       }
+    });
+  }
+
+  async findByPaymentNumber(paymentNumber: string) {
+    return prisma.payment.findUnique({
+      where: { paymentNumber }
     });
   }
 
   async findByGatewayTransactionId(transactionId: string) {
-    return prisma.payments.findUnique({
-      where: { gateway_transaction_id: transactionId },
-      include: {
-        orders: true
-      }
+    return prisma.payment.findFirst({
+      where: { gatewayTransactionId: transactionId }
     });
   }
 
   async findByOrderId(orderId: string) {
-    return prisma.payments.findFirst({
-      where: { order_id: orderId },
-      orderBy: { created_at: 'desc' }
+    return prisma.payment.findFirst({
+      where: { orderId },
+      orderBy: { createdAt: 'desc' }
     });
   }
 
-  async markPaid(
-    id: string,
-    gatewayFee: number,
-    gatewayResponse: any,
-    isEscrow: boolean
-  ) {
-    return prisma.payments.update({
+  async findByUserId(userId: string, options?: { limit?: number; offset?: number }) {
+    return prisma.payment.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      take: options?.limit || 20,
+      skip: options?.offset || 0
+    });
+  }
+
+  async markPaid(id: string, gatewayFee: number, gatewayResponse: any) {
+    const payment = await prisma.payment.findUnique({ where: { id } });
+    if (!payment) throw new Error('Payment not found');
+
+    const netAmount = Number(payment.amount) - gatewayFee;
+
+    return prisma.payment.update({
       where: { id },
       data: {
-        payment_status: 'paid',
-        payment_gateway_fee: gatewayFee,
-        is_in_escrow: isEscrow,
-        paid_at: new Date(),
-        gateway_response: gatewayResponse,
-        updated_at: new Date()
+        status: 'paid',
+        gatewayFee,
+        netAmount,
+        paidAt: new Date(),
+        metadata: {
+          ...(payment.metadata as object || {}),
+          gatewayResponse
+        }
       }
     });
   }
 
   async markExpired(id: string) {
-    return prisma.payments.update({
+    return prisma.payment.update({
       where: { id },
       data: {
-        payment_status: 'expired',
-        updated_at: new Date()
+        status: 'expired'
       }
     });
   }
 
-  async markRefunded(id: string, reason: string) {
-    return prisma.payments.update({
+  async markFailed(id: string, reason: string, code?: string) {
+    return prisma.payment.update({
       where: { id },
       data: {
-        payment_status: 'refunded',
-        refund_reason: reason,
-        refunded_at: new Date(),
-        updated_at: new Date()
+        status: 'failed',
+        failureReason: reason,
+        failureCode: code
       }
     });
   }
 
-  async releaseEscrow(paymentIds: string[]) {
-    return prisma.payments.updateMany({
-      where: { id: { in: paymentIds } },
+  async markCancelled(id: string) {
+    return prisma.payment.update({
+      where: { id },
       data: {
-        is_in_escrow: false,
-        escrow_released_at: new Date(),
-        updated_at: new Date()
+        status: 'cancelled',
+        cancelledAt: new Date()
       }
     });
   }
 
-  async findByGroupSession(groupSessionId: string) {
-    return prisma.payments.findMany({
-      where: {
-        group_session_id: groupSessionId
-      },
-      include: {
-        orders: true,
-        users: true
+  async markRefunded(id: string) {
+    return prisma.payment.update({
+      where: { id },
+      data: {
+        status: 'refunded'
       }
     });
   }
 
   async expirePendingPayments() {
-    return prisma.payments.updateMany({
+    return prisma.payment.updateMany({
       where: {
-        payment_status: 'pending',
-        expires_at: { lt: new Date() }
+        status: 'pending',
+        expiresAt: { lt: new Date() }
       },
       data: {
-        payment_status: 'expired',
-        updated_at: new Date()
+        status: 'expired'
       }
     });
   }
 
   async findEligibleForSettlement(periodStart: Date, periodEnd: Date) {
-    return prisma.payments.findMany({
+    return prisma.payment.findMany({
       where: {
-        payment_status: 'paid',
-        is_in_escrow: false,
-        paid_at: {
+        status: 'paid',
+        paidAt: {
           gte: periodStart,
           lt: periodEnd
         }
       },
-      include: {
-        orders: {
-          include: {
-            order_items: {
-              select: {
-                factory_id: true
-              }
-            }
-          }
-        }
-      }
+      orderBy: { paidAt: 'asc' }
     });
+  }
+
+  async getPaymentStats(startDate: Date, endDate: Date) {
+    const [payments, totals] = await Promise.all([
+      prisma.payment.groupBy({
+        by: ['status'],
+        where: {
+          createdAt: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        _count: true
+      }),
+      prisma.payment.aggregate({
+        where: {
+          status: 'paid',
+          paidAt: {
+            gte: startDate,
+            lte: endDate
+          }
+        },
+        _sum: {
+          amount: true,
+          gatewayFee: true,
+          netAmount: true
+        },
+        _count: true
+      })
+    ]);
+
+    return {
+      byStatus: payments,
+      paid: {
+        count: totals._count,
+        totalAmount: totals._sum.amount || 0,
+        totalFees: totals._sum.gatewayFee || 0,
+        netAmount: totals._sum.netAmount || 0
+      }
+    };
   }
 }

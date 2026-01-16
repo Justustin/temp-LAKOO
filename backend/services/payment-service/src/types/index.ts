@@ -2,19 +2,10 @@ export interface CreatePaymentDTO {
   orderId: string;
   userId: string;
   amount: number;
-  paymentMethod?: 'bank_transfer' | 'ewallet_ovo' | 'ewallet_gopay' | 'ewallet_dana';
+  paymentMethod?: 'bank_transfer' | 'virtual_account' | 'credit_card' | 'ewallet_ovo' | 'ewallet_gopay' | 'ewallet_dana' | 'qris';
   expiresAt?: Date | string;
-  isEscrow?: boolean;
-  factoryId?: string;
-}
-
-export interface CreateEscrowPaymentDTO {
-  userId: string;
-  groupSessionId: string;
-  participantId: string;
-  amount: number;
-  expiresAt?: Date | string;
-  factoryId: string;
+  idempotencyKey: string;
+  metadata?: Record<string, any>;
 }
 
 export interface XenditInvoiceCallback {
@@ -35,9 +26,16 @@ export interface XenditInvoiceCallback {
 
 export interface CreateRefundDTO {
   paymentId: string;
-  orderId: string | null;  // Allow null for escrow payments without orders
+  orderId: string;
   userId: string;
-  reason: 'group_failed_moq' | 'order_cancelled' | 'customer_request';
+  reason: 'order_cancelled' | 'customer_request' | 'item_defective' | 'wrong_item';
   amount?: number;
-  description?: string;
+  notes?: string;
+  idempotencyKey: string;
+}
+
+export interface PaymentResponse {
+  payment: any;
+  paymentUrl?: string;
+  invoiceId?: string;
 }
