@@ -1,4 +1,4 @@
-import { prisma } from '@repo/database';
+import { prisma } from '../lib/prisma';
 import { CreatePaymentDTO, CreateEscrowPaymentDTO } from '../types';
 import { CryptoUtils } from '../utils/crypto.utils';
 

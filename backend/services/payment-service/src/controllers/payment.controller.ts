@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PaymentService } from '../services/payment.service';
 import { RefundService } from '../services/refund.service';
+import { prisma } from '../lib/prisma';
 
 export class PaymentController {
   private paymentService: PaymentService;
@@ -102,8 +103,6 @@ export class PaymentController {
   createBotPayment = async (req: Request, res: Response) => {
     try {
       const { userId, groupSessionId, participantId, paymentReference } = req.body;
-
-      const { prisma } = await import('@repo/database');
 
       const payment = await prisma.payments.create({
         data: {

@@ -1,4 +1,4 @@
-import { prisma } from '@repo/database';
+import { prisma } from '../lib/prisma';
 import { RefundRepository } from '../repositories/refund.repository';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { TransactionLedgerService } from './transaction-ledger.service';

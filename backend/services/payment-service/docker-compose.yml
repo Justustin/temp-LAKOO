@@ -1,0 +1,107 @@
+# ========================================
+# PAYMENT SERVICE DOCKER COMPOSE
+# Development Environment
+# ========================================
+
+version: '3.8'
+
+services:
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-service
+    restart: unless-stopped
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=development
+      - PORT=3007
+      - DATABASE_URL=postgresql://postgres:postgres@payment-db:5432/payment_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKERS=kafka:9092
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - ORDER_SERVICE_URL=http://order-service:3005
+      - WAREHOUSE_SERVICE_URL=http://warehouse-service:3011
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3009
+      - XENDIT_SECRET_KEY=${XENDIT_SECRET_KEY}
+      - XENDIT_WEBHOOK_TOKEN=${XENDIT_WEBHOOK_TOKEN}
+      - INTERNAL_SERVICE_KEY=${INTERNAL_SERVICE_KEY}
+    depends_on:
+      payment-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - payment-network
+      - shared-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3007/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  payment-db:
+    image: postgres:15-alpine
+    container_name: payment-db
+    restart: unless-stopped
+    ports:
+      - "5437:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=payment_db
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: payment-redis
+    restart: unless-stopped
+    ports:
+      - "6387:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - payment-redis-data:/data
+    networks:
+      - payment-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Database migration service (runs once)
+  payment-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: payment-migrate
+    command: npx prisma migrate deploy
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@payment-db:5432/payment_db?schema=public
+    depends_on:
+      payment-db:
+        condition: service_healthy
+    networks:
+      - payment-network
+    restart: "no"
+
+volumes:
+  payment-db-data:
+  payment-redis-data:
+
+networks:
+  payment-network:
+    driver: bridge
+  shared-network:
+    external: true
+    name: microservices-network

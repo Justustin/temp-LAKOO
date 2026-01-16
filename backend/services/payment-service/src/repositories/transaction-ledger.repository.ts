@@ -1,5 +1,5 @@
-import { prisma } from '@repo/database';
-import { Prisma } from '@repo/database';
+import { prisma } from '../lib/prisma';
+import { Prisma } from '../generated/prisma';
 import { CryptoUtils } from '../utils/crypto.utils';
 
 export interface CreateTransactionLedgerDTO {
