@@ -1,11 +1,30 @@
 import axios from 'axios';
-import { notification_type } from '@repo/database';
+
+// Notification type enum (mirrors notification-service schema)
+type NotificationType =
+  | 'order_created'
+  | 'order_confirmed'
+  | 'order_shipped'
+  | 'order_delivered'
+  | 'order_cancelled'
+  | 'payment_success'
+  | 'payment_failed'
+  | 'payment_pending'
+  | 'refund_initiated'
+  | 'refund_completed'
+  | 'product_review'
+  | 'price_drop'
+  | 'back_in_stock'
+  | 'promo_available'
+  | 'message_received'
+  | 'account_security'
+  | 'system_announcement';
 
 const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3007';
 
 export interface CreateNotificationPayload {
   userId: string;
-  type: notification_type;
+  type: NotificationType;
   title: string;
   message: string;
   actionUrl?: string | null;

@@ -34,7 +34,7 @@ export async function dailyReconciliationJob(options?: {
   endOfDay.setHours(23, 59, 59, 999);
 
   try {
-    // Get all payments for the day
+    // Get all payments for the day with their gateway logs
     const payments = await prisma.payment.findMany({
       where: {
         paidAt: {
@@ -49,7 +49,12 @@ export async function dailyReconciliationJob(options?: {
         gatewayFee: true,
         status: true,
         gatewayTransactionId: true,
-        gatewayResponse: true
+        metadata: true,
+        gatewayLogs: {
+          where: { isWebhook: true },
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
       }
     });
 
@@ -74,7 +79,9 @@ export async function dailyReconciliationJob(options?: {
 
     // Check each payment for discrepancies
     for (const payment of payments) {
-      const gatewayData = payment.gatewayResponse as any;
+      // Get gateway data from webhook log or metadata
+      const webhookLog = payment.gatewayLogs[0];
+      const gatewayData = webhookLog?.responseBody as any || (payment.metadata as any)?.gatewayResponse;
 
       // Check if gateway amount matches local amount
       if (gatewayData?.amount && Number(gatewayData.amount) !== Number(payment.amount)) {

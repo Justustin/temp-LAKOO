@@ -110,31 +110,10 @@ router.post('/refunds/:id/process', [
   body('notes').optional()
 ], controller.processRefund);
 
-// Escrow Management
-/**
- * @swagger
- * /api/admin/escrow:
- *   get:
- *     summary: Get payments in escrow (Admin)
- *     tags: [Admin - Escrow]
- */
-router.get('/escrow', controller.getEscrowPayments);
-
-/**
- * @swagger
- * /api/admin/escrow/{id}/release:
- *   post:
- *     summary: Release escrow payment (Admin)
- *     tags: [Admin - Escrow]
- */
-router.post('/escrow/:id/release', [
-  param('id').isUUID().withMessage('Invalid payment ID')
-], controller.releaseEscrow);
-
 // Analytics
 /**
  * @swagger
- * /api/admin/payments/analytics:
+ * /api/admin/analytics:
  *   get:
  *     summary: Get payment analytics (Admin)
  *     tags: [Admin - Analytics]
@@ -144,20 +123,37 @@ router.get('/analytics', [
   query('endDate').optional().isISO8601()
 ], controller.getPaymentAnalytics);
 
-// Transaction Ledger
+// Settlement Records
 /**
  * @swagger
- * /api/admin/ledger:
+ * /api/admin/settlements:
  *   get:
- *     summary: Get transaction ledger (Admin)
- *     tags: [Admin - Ledger]
+ *     summary: Get settlement records (Admin)
+ *     tags: [Admin - Settlements]
  */
-router.get('/ledger', [
+router.get('/settlements', [
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
-  query('type').optional(),
+  query('isReconciled').optional().isBoolean(),
   query('startDate').optional().isISO8601(),
   query('endDate').optional().isISO8601()
-], controller.getTransactionLedger);
+], controller.getSettlementRecords);
+
+// Gateway Logs
+/**
+ * @swagger
+ * /api/admin/gateway-logs:
+ *   get:
+ *     summary: Get payment gateway logs (Admin)
+ *     tags: [Admin - Gateway Logs]
+ */
+router.get('/gateway-logs', [
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('paymentId').optional().isUUID(),
+  query('action').optional(),
+  query('startDate').optional().isISO8601(),
+  query('endDate').optional().isISO8601()
+], controller.getGatewayLogs);
 
 export default router;

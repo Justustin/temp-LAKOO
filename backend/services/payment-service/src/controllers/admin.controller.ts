@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
-import { PrismaClient } from '@repo/database';
-
-const prisma = new PrismaClient();
+import { prisma } from '../lib/prisma';
 
 export class AdminController {
   // Payment Management
@@ -14,25 +12,25 @@ export class AdminController {
       const skip = (page - 1) * limit;
 
       const where: any = {};
-      if (status) where.payment_status = status;
-      if (userId) where.user_id = userId;
-      if (paymentMethod) where.payment_method = paymentMethod;
+      if (status) where.status = status;
+      if (userId) where.userId = userId;
+      if (paymentMethod) where.paymentMethod = paymentMethod;
       if (startDate || endDate) {
-        where.created_at = {};
-        if (startDate) where.created_at.gte = new Date(startDate as string);
-        if (endDate) where.created_at.lte = new Date(endDate as string);
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate as string);
+        if (endDate) where.createdAt.lte = new Date(endDate as string);
       }
 
       const [total, payments] = await Promise.all([
-        prisma.payments.count({ where }),
-        prisma.payments.findMany({
+        prisma.payment.count({ where }),
+        prisma.payment.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { created_at: 'desc' },
+          orderBy: { createdAt: 'desc' },
           include: {
-            orders: { select: { id: true, order_number: true, status: true } },
-            users: { select: { id: true, first_name: true, last_name: true, email: true } }
+            refunds: true,
+            gatewayLogs: { take: 5, orderBy: { createdAt: 'desc' } }
           }
         })
       ]);
@@ -50,12 +48,11 @@ export class AdminController {
     try {
       const { id } = req.params;
 
-      const payment = await prisma.payments.findUnique({
+      const payment = await prisma.payment.findUnique({
         where: { id },
         include: {
-          orders: true,
-          users: { select: { id: true, first_name: true, last_name: true, email: true, phone_number: true } },
-          refunds: true
+          refunds: true,
+          gatewayLogs: { orderBy: { createdAt: 'desc' } }
         }
       });
 
@@ -79,17 +76,17 @@ export class AdminController {
 
       const where: any = {};
       if (status) where.status = status;
-      if (userId) where.user_id = userId;
+      if (userId) where.userId = userId;
 
       const [total, refunds] = await Promise.all([
-        prisma.refunds.count({ where }),
-        prisma.refunds.findMany({
+        prisma.refund.count({ where }),
+        prisma.refund.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { created_at: 'desc' },
+          orderBy: { createdAt: 'desc' },
           include: {
-            payments: { select: { id: true, payment_code: true, total_amount: true } }
+            payment: { select: { id: true, paymentNumber: true, amount: true } }
           }
         })
       ]);
@@ -112,89 +109,50 @@ export class AdminController {
 
       const { id } = req.params;
       const { action, notes } = req.body;
+      const adminUserId = (req as any).user?.id;
 
-      const refund = await prisma.refunds.findUnique({ where: { id } });
+      const refund = await prisma.refund.findUnique({ where: { id } });
       if (!refund) {
         return res.status(404).json({ error: 'Refund not found' });
       }
 
-      const newStatus = action === 'approve' ? 'approved' : 'rejected';
-
-      const updated = await prisma.refunds.update({
-        where: { id },
-        data: {
-          refund_status: newStatus as any, // Cast to enum type if needed
-          updated_at: new Date()
-        }
-      });
-
-      // If approved, update payment status
-      if (action === 'approve' && refund.payment_id) {
-        await prisma.payments.update({
-          where: { id: refund.payment_id },
+      if (action === 'approve') {
+        const updated = await prisma.refund.update({
+          where: { id },
           data: {
-            payment_status: 'refunded',
-            refunded_at: new Date()
+            status: 'approved',
+            approvedAt: new Date(),
+            approvedBy: adminUserId,
+            notes: notes || refund.notes
           }
         });
+
+        // Update payment status
+        await prisma.payment.update({
+          where: { id: refund.paymentId },
+          data: { status: 'refunded' }
+        });
+
+        res.json({
+          message: 'Refund approved successfully',
+          data: updated
+        });
+      } else {
+        const updated = await prisma.refund.update({
+          where: { id },
+          data: {
+            status: 'rejected',
+            rejectedAt: new Date(),
+            rejectedBy: adminUserId,
+            rejectionReason: notes
+          }
+        });
+
+        res.json({
+          message: 'Refund rejected',
+          data: updated
+        });
       }
-
-      res.json({
-        message: `Refund ${action}d successfully`,
-        data: updated
-      });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  };
-
-  // Escrow Management
-  getEscrowPayments = async (req: Request, res: Response) => {
-    try {
-      const payments = await prisma.payments.findMany({
-        where: {
-          is_in_escrow: true,
-          payment_status: 'paid'
-        },
-        include: {
-          orders: { select: { id: true, order_number: true } },
-          users: { select: { id: true, first_name: true, last_name: true } }
-        },
-        orderBy: { created_at: 'desc' }
-      });
-
-      res.json({ data: payments });
-    } catch (error: any) {
-      res.status(500).json({ error: error.message });
-    }
-  };
-
-  releaseEscrow = async (req: Request, res: Response) => {
-    try {
-      const { id } = req.params;
-
-      const payment = await prisma.payments.findUnique({ where: { id } });
-      if (!payment) {
-        return res.status(404).json({ error: 'Payment not found' });
-      }
-
-      if (!payment.is_in_escrow) {
-        return res.status(400).json({ error: 'Payment is not in escrow' });
-      }
-
-      const updated = await prisma.payments.update({
-        where: { id },
-        data: {
-          is_in_escrow: false,
-          escrow_released_at: new Date(),
-          updated_at: new Date()
-        }
-      });
-
-      res.json({
-        message: 'Escrow released successfully',
-        data: updated
-      });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
@@ -211,7 +169,7 @@ export class AdminController {
 
       const whereClause: any = {};
       if (Object.keys(dateFilter).length > 0) {
-        whereClause.created_at = dateFilter;
+        whereClause.createdAt = dateFilter;
       }
 
       const [
@@ -220,21 +178,21 @@ export class AdminController {
         methodCounts,
         revenueData
       ] = await Promise.all([
-        prisma.payments.count({ where: whereClause }),
-        prisma.payments.groupBy({
-          by: ['payment_status'],
+        prisma.payment.count({ where: whereClause }),
+        prisma.payment.groupBy({
+          by: ['status'],
           where: whereClause,
           _count: true
         }),
-        prisma.payments.groupBy({
-          by: ['payment_method'],
+        prisma.payment.groupBy({
+          by: ['paymentMethod'],
           where: whereClause,
           _count: true
         }),
-        prisma.payments.aggregate({
-          where: { ...whereClause, payment_status: 'paid' },
-          _sum: { total_amount: true },
-          _avg: { total_amount: true }
+        prisma.payment.aggregate({
+          where: { ...whereClause, status: 'paid' },
+          _sum: { amount: true },
+          _avg: { amount: true }
         })
       ]);
 
@@ -242,16 +200,16 @@ export class AdminController {
         data: {
           totalPayments,
           byStatus: statusCounts.reduce((acc: any, item) => {
-            acc[item.payment_status] = item._count;
+            acc[item.status] = item._count;
             return acc;
           }, {}),
           byMethod: methodCounts.reduce((acc: any, item) => {
-            acc[item.payment_method] = item._count;
+            acc[item.paymentMethod] = item._count;
             return acc;
           }, {}),
           revenue: {
-            total: revenueData._sum.total_amount || 0,
-            average: revenueData._avg.total_amount || 0
+            total: revenueData._sum.amount || 0,
+            average: revenueData._avg.amount || 0
           }
         }
       });
@@ -260,34 +218,70 @@ export class AdminController {
     }
   };
 
-  // Transaction Ledger
-  getTransactionLedger = async (req: Request, res: Response) => {
+  // Settlement Records
+  getSettlementRecords = async (req: Request, res: Response) => {
     try {
-      const { type, startDate, endDate } = req.query;
+      const { startDate, endDate, isReconciled } = req.query;
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 50;
       const skip = (page - 1) * limit;
 
       const where: any = {};
-      if (type) where.transaction_type = type;
+      if (isReconciled !== undefined) where.isReconciled = isReconciled === 'true';
       if (startDate || endDate) {
-        where.created_at = {};
-        if (startDate) where.created_at.gte = new Date(startDate as string);
-        if (endDate) where.created_at.lte = new Date(endDate as string);
+        where.settlementDate = {};
+        if (startDate) where.settlementDate.gte = new Date(startDate as string);
+        if (endDate) where.settlementDate.lte = new Date(endDate as string);
       }
 
-      const [total, transactions] = await Promise.all([
-        prisma.transaction_ledger.count({ where }),
-        prisma.transaction_ledger.findMany({
+      const [total, settlements] = await Promise.all([
+        prisma.settlementRecord.count({ where }),
+        prisma.settlementRecord.findMany({
           where,
           skip,
           take: limit,
-          orderBy: { created_at: 'desc' }
+          orderBy: { settlementDate: 'desc' }
         })
       ]);
 
       res.json({
-        data: transactions,
+        data: settlements,
+        pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  };
+
+  // Gateway Logs
+  getGatewayLogs = async (req: Request, res: Response) => {
+    try {
+      const { paymentId, action, startDate, endDate } = req.query;
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = parseInt(req.query.limit as string) || 50;
+      const skip = (page - 1) * limit;
+
+      const where: any = {};
+      if (paymentId) where.paymentId = paymentId;
+      if (action) where.action = action;
+      if (startDate || endDate) {
+        where.createdAt = {};
+        if (startDate) where.createdAt.gte = new Date(startDate as string);
+        if (endDate) where.createdAt.lte = new Date(endDate as string);
+      }
+
+      const [total, logs] = await Promise.all([
+        prisma.paymentGatewayLog.count({ where }),
+        prisma.paymentGatewayLog.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: 'desc' }
+        })
+      ]);
+
+      res.json({
+        data: logs,
         pagination: { page, limit, total, totalPages: Math.ceil(total / limit) }
       });
     } catch (error: any) {

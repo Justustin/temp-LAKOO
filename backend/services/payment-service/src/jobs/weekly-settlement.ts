@@ -31,11 +31,10 @@ export async function weeklySettlementJob(options?: {
   const periodStart = options?.periodStart || new Date(periodEnd.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   try {
-    // Find all paid, non-escrowed payments that haven't been settled
+    // Find all paid payments that haven't been settled
     const eligiblePayments = await prisma.payment.findMany({
       where: {
         status: 'paid',
-        isInEscrow: false,
         paidAt: {
           gte: periodStart,
           lt: periodEnd
@@ -103,17 +102,20 @@ export async function weeklySettlementJob(options?: {
           }
         });
 
-        // Record in transaction ledger
-        await prisma.transactionLedger.create({
+        // Publish settlement event to outbox for other services
+        await prisma.serviceOutbox.create({
           data: {
-            transactionType: 'settlement_payout',
-            factoryId,
-            amount: netAmount,
-            status: 'completed',
-            description: `Weekly settlement payout for ${payments.length} payments`,
-            metadata: {
+            aggregateType: 'Settlement',
+            aggregateId: factoryId,
+            eventType: 'settlement.completed',
+            payload: {
+              factoryId,
               periodStart: periodStart.toISOString(),
               periodEnd: periodEnd.toISOString(),
+              totalPayments: payments.length,
+              totalAmount,
+              totalFees,
+              netAmount,
               paymentIds: payments.map(p => p.id)
             }
           }

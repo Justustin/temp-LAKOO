@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { prisma } from '@repo/database';
+import { prisma } from '../lib/prisma';
 import { PaymentService } from '../services/payment.service';
 import { CryptoUtils } from '../utils/crypto.utils';
 
@@ -17,79 +17,80 @@ export class WebhookController {
       const receivedSignature = req.headers['x-callback-token'] as string;
 
       // Get raw body for signature verification
-      // Note: Express must be configured with express.raw() or express.text() middleware
-      // to preserve the raw body for signature verification
       const rawBody = JSON.stringify(req.body);
 
-      // Verify webhook signature using HMAC-SHA256
+      // Verify webhook signature using callback token comparison
       if (!CryptoUtils.verifyXenditWebhook(rawBody, receivedSignature, webhookVerificationToken)) {
         console.warn('Invalid webhook signature received');
-        console.warn('Signature verification failed for webhook');
         return res.status(403).json({ error: 'Invalid webhook signature' });
       }
 
       const callbackData = req.body;
       const eventId = callbackData.id || callbackData.external_id;
+      const webhookType = callbackData.status || 'unknown';
 
-      const existingEvent = await prisma.$queryRaw`
-        SELECT * FROM webhook_events WHERE event_id = ${eventId}
-      `;
+      // Check if webhook already processed using PaymentGatewayLog
+      const existingLog = await prisma.paymentGatewayLog.findFirst({
+        where: {
+          isWebhook: true,
+          webhookType: webhookType,
+          requestBody: {
+            path: ['id'],
+            equals: eventId
+          }
+        }
+      });
 
-      if (Array.isArray(existingEvent) && existingEvent.length > 0) {
+      if (existingLog) {
         console.log(`Webhook event ${eventId} already processed - ignoring`);
         return res.json({ received: true, message: 'Already processed' });
       }
 
-      await prisma.$executeRaw`
-        INSERT INTO webhook_events (event_id, event_type, payload, processed)
-        VALUES (${eventId}, ${callbackData.status || 'unknown'}, ${JSON.stringify(callbackData)}::jsonb, false)
-      `;
+      // Find payment by gateway transaction ID
+      const payment = await prisma.payment.findFirst({
+        where: { gatewayTransactionId: callbackData.id }
+      });
+
+      // Log the webhook
+      await prisma.paymentGatewayLog.create({
+        data: {
+          paymentId: payment?.id,
+          action: `webhook_${webhookType.toLowerCase()}`,
+          requestMethod: 'POST',
+          requestUrl: '/api/webhooks/xendit',
+          requestBody: callbackData,
+          responseStatus: 200,
+          isWebhook: true,
+          webhookType: webhookType
+        }
+      });
 
       if (callbackData.status === 'PAID') {
-        // CRITICAL FIX: Make webhook processing atomic with transaction
-        await prisma.$transaction(async (tx) => {
-          await this.paymentService.handlePaidCallback(callbackData);
-
-          await tx.$executeRaw`
-            UPDATE webhook_events
-            SET processed = true, processed_at = NOW()
-            WHERE event_id = ${eventId}
-          `;
-        });
+        await this.paymentService.handlePaidCallback(callbackData);
       } else if (callbackData.status === 'EXPIRED') {
-        // CRITICAL FIX: Make expired payment handling atomic with transaction
-        await prisma.$transaction(async (tx) => {
-          const payment = await tx.payments.findUnique({
-            where: { gateway_transaction_id: callbackData.id }
+        if (payment && payment.status === 'pending') {
+          await prisma.payment.update({
+            where: { id: payment.id },
+            data: {
+              status: 'expired',
+              cancelledAt: new Date()
+            }
           });
 
-          if (payment && payment.payment_status === 'pending') {
-            await tx.payments.update({
-              where: { id: payment.id },
-              data: {
-                payment_status: 'expired',
-                updated_at: new Date()
+          // Publish event for order service to handle order cancellation
+          await prisma.serviceOutbox.create({
+            data: {
+              aggregateType: 'Payment',
+              aggregateId: payment.id,
+              eventType: 'payment.expired',
+              payload: {
+                paymentId: payment.id,
+                orderId: payment.orderId,
+                userId: payment.userId
               }
-            });
-
-            if (payment.order_id) {
-              await tx.orders.update({
-                where: { id: payment.order_id },
-                data: {
-                  status: 'cancelled',
-                  cancelled_at: new Date(),
-                  updated_at: new Date()
-                }
-              });
             }
-          }
-
-          await tx.$executeRaw`
-            UPDATE webhook_events
-            SET processed = true, processed_at = NOW()
-            WHERE event_id = ${eventId}
-          `;
-        });
+          });
+        }
       }
 
       res.json({ received: true });
