@@ -1,13 +1,31 @@
+import { Request, Response, NextFunction } from 'express';
+import { validationResult } from 'express-validator';
+
 /**
- * Validation Types
- *
- * This file contains TypeScript types for API validation.
- * Routes use express-validator for runtime validation.
- * These types are for TypeScript compile-time type checking.
+ * Middleware to check express-validator results
+ * Use after validator array in route definitions
  */
+export const validateRequest = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation failed',
+      details: errors.array().map(err => ({
+        field: err.type === 'field' ? err.path : err.type,
+        message: err.msg
+      }))
+    });
+  }
+  next();
+};
 
 // =============================================================================
-// Payment Types
+// Validation Types
 // =============================================================================
 
 export type PaymentMethod =

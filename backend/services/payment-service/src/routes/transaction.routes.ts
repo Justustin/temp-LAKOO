@@ -1,9 +1,14 @@
-
 import { Router } from 'express';
+import { param, query } from 'express-validator';
 import { TransactionController } from '../controllers/transaction.controller';
+import { gatewayOrInternalAuth } from '../middleware/auth';
+import { validateRequest } from '../middleware/validation';
 
 const router = Router();
 const transactionController = new TransactionController();
+
+// All transaction routes require authentication
+router.use(gatewayOrInternalAuth);
 
 /**
  * @swagger
@@ -22,7 +27,11 @@ const transactionController = new TransactionController();
  *       200:
  *         description: Transaction history retrieved
  */
-router.get('/order/:orderId', transactionController.getOrderTransactionHistory);
+router.get('/order/:orderId',
+  [param('orderId').isUUID().withMessage('orderId must be a valid UUID')],
+  validateRequest,
+  transactionController.getOrderTransactionHistory
+);
 
 /**
  * @swagger
@@ -41,7 +50,11 @@ router.get('/order/:orderId', transactionController.getOrderTransactionHistory);
  *       200:
  *         description: Transaction history retrieved
  */
-router.get('/payment/:paymentId', transactionController.getPaymentTransactionHistory);
+router.get('/payment/:paymentId',
+  [param('paymentId').isUUID().withMessage('paymentId must be a valid UUID')],
+  validateRequest,
+  transactionController.getPaymentTransactionHistory
+);
 
 /**
  * @swagger
@@ -56,11 +69,31 @@ router.get('/payment/:paymentId', transactionController.getPaymentTransactionHis
  *         schema:
  *           type: string
  *           format: uuid
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
  *     responses:
  *       200:
- *         description: Transaction history retrieved
+ *         description: Transaction summary retrieved
  */
-router.get('/factory/:factoryId/summary', transactionController.getFactoryTransactionSummary);
+router.get('/factory/:factoryId/summary',
+  [
+    param('factoryId').isUUID().withMessage('factoryId must be a valid UUID'),
+    query('startDate').isISO8601().withMessage('startDate is required and must be ISO8601'),
+    query('endDate').isISO8601().withMessage('endDate is required and must be ISO8601')
+  ],
+  validateRequest,
+  transactionController.getFactoryTransactionSummary
+);
 
 /**
  * @swagger
@@ -68,8 +101,28 @@ router.get('/factory/:factoryId/summary', transactionController.getFactoryTransa
  *   get:
  *     tags: [Transactions]
  *     summary: Get transaction summary for a period
+ *     parameters:
+ *       - in: query
+ *         name: startDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
+ *       - in: query
+ *         name: endDate
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: date-time
  */
-router.get('/summary', transactionController.getTransactionSummary);
+router.get('/summary',
+  [
+    query('startDate').isISO8601().withMessage('startDate is required and must be ISO8601'),
+    query('endDate').isISO8601().withMessage('endDate is required and must be ISO8601')
+  ],
+  validateRequest,
+  transactionController.getTransactionSummary
+);
 
 /**
  * @swagger
@@ -77,8 +130,24 @@ router.get('/summary', transactionController.getTransactionSummary);
  *   get:
  *     tags: [Transactions]
  *     summary: Get recent transactions
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: offset
+ *         schema:
+ *           type: integer
  */
-router.get('/recent', transactionController.getRecentTransactions);
+router.get('/recent',
+  [
+    query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('limit must be 1-100'),
+    query('offset').optional().isInt({ min: 0 }).withMessage('offset must be >= 0')
+  ],
+  validateRequest,
+  transactionController.getRecentTransactions
+);
 
 /**
  * @swagger
@@ -86,7 +155,17 @@ router.get('/recent', transactionController.getRecentTransactions);
  *   get:
  *     tags: [Transactions]
  *     summary: Find transaction by code
+ *     parameters:
+ *       - in: path
+ *         name: transactionCode
+ *         required: true
+ *         schema:
+ *           type: string
  */
-router.get('/:transactionCode', transactionController.findByCode);
+router.get('/:transactionCode',
+  [param('transactionCode').isString().notEmpty().withMessage('transactionCode is required')],
+  validateRequest,
+  transactionController.findByCode
+);
 
 export default router;
