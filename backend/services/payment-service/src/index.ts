@@ -9,6 +9,7 @@ import webhookRoutes from './routes/webhook.routes';
 import transactionRoutes from './routes/transaction.routes';
 import adminRoutes from './routes/admin.routes';
 import { PaymentRepository } from './repositories/payment.repository';
+import { errorHandler } from './middleware/error-handler';
 
 dotenv.config();
 
@@ -70,16 +71,8 @@ app.use((req, res) => {
   });
 });
 
-// Global Error Handler
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled error:', err);
-  
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal server error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-});
+// Global Error Handler (handles AppError, Prisma, Zod errors)
+app.use(errorHandler);
 
 const gracefulShutdown = () => {
   console.log('Received shutdown signal, closing server gracefully...');
@@ -122,11 +115,9 @@ if (enableExpiration) {
 
 const server = app.listen(PORT, () => {
   console.log('='.repeat(50));
-  console.log(`💳 Payment Service`);
-    console.log(`🚀 product-service running on port ${PORT}`);
-  console.log(`📚 Swagger docs available at http://localhost:${PORT}/api-docs`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📊 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
-  console.log(`📋 Tables: payments, refunds, transaction_ledger`);
+  console.log(`Payment Service`);
+  console.log(`Running on port ${PORT}`);
+  console.log(`Swagger docs: http://localhost:${PORT}/api-docs`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('='.repeat(50));
 });

@@ -2,35 +2,36 @@ import crypto from 'crypto';
 
 export class CryptoUtils {
   /**
-   * Verify Xendit webhook signature using HMAC-SHA256
-   * @param payload - Raw request body as string
-   * @param receivedSignature - Signature from x-callback-token header
-   * @param webhookVerificationToken - Xendit webhook verification token
-   * @returns boolean - true if signature is valid
+   * Verify Xendit webhook callback token
+   *
+   * Xendit uses a simple token verification - the x-callback-token header
+   * should match the Webhook Verification Token configured in Xendit dashboard.
+   *
+   * @param receivedToken - Token from x-callback-token header
+   * @param expectedToken - Your Xendit webhook verification token
+   * @returns boolean - true if token is valid
    */
   static verifyXenditWebhook(
-    payload: string,
-    receivedSignature: string,
-    webhookVerificationToken: string
+    _payload: string, // Kept for backwards compatibility, not used
+    receivedToken: string,
+    expectedToken: string
   ): boolean {
-    if (!receivedSignature || !webhookVerificationToken) {
+    if (!receivedToken || !expectedToken) {
+      return false;
+    }
+
+    // Use timing-safe comparison to prevent timing attacks
+    // First check lengths to avoid Buffer.from errors
+    if (receivedToken.length !== expectedToken.length) {
       return false;
     }
 
     try {
-      // Compute HMAC-SHA256 of the payload using the verification token
-      const expectedSignature = crypto
-        .createHmac('sha256', webhookVerificationToken)
-        .update(payload)
-        .digest('hex');
-
-      // Use timing-safe comparison to prevent timing attacks
       return crypto.timingSafeEqual(
-        Buffer.from(receivedSignature),
-        Buffer.from(expectedSignature)
+        Buffer.from(receivedToken, 'utf8'),
+        Buffer.from(expectedToken, 'utf8')
       );
     } catch (error) {
-      // Buffer length mismatch or other error
       return false;
     }
   }
@@ -41,7 +42,7 @@ export class CryptoUtils {
    */
   static generatePaymentCode(): string {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.random().toString(36).substring(2, 9).toUpperCase();
+    const random = crypto.randomBytes(3).toString('hex').toUpperCase();
     return `PAY-${date}-${random}`;
   }
 
@@ -51,7 +52,7 @@ export class CryptoUtils {
    */
   static generateRefundCode(): string {
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-    const random = Math.random().toString(36).substring(2, 9).toUpperCase();
+    const random = crypto.randomBytes(3).toString('hex').toUpperCase();
     return `REF-${date}-${random}`;
   }
 
@@ -89,21 +90,39 @@ export class CryptoUtils {
   }
 
   /**
-   * Verify HMAC signature (useful for webhook verification)
+   * Generate idempotency key
+   */
+  static generateIdempotencyKey(): string {
+    return `${Date.now()}-${crypto.randomBytes(8).toString('hex')}`;
+  }
+
+  /**
+   * Verify HMAC signature (for general webhook verification)
    */
   static verifyHmac(
     data: string,
     signature: string,
     secret: string
   ): boolean {
+    if (!signature || !secret) return false;
+
     const expectedSignature = crypto
       .createHmac('sha256', secret)
       .update(data)
       .digest('hex');
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
-    );
+
+    if (signature.length !== expectedSignature.length) {
+      return false;
+    }
+
+    try {
+      return crypto.timingSafeEqual(
+        Buffer.from(signature, 'utf8'),
+        Buffer.from(expectedSignature, 'utf8')
+      );
+    } catch (error) {
+      return false;
+    }
   }
 
   /**

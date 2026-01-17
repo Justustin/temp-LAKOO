@@ -1,68 +1,96 @@
 import { Request, Response, NextFunction } from 'express';
-import axios from 'axios';
 import { UnauthorizedError, ForbiddenError } from './error-handler';
 
-const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
-
+/**
+ * User info forwarded by API Gateway
+ */
 export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
-    email: string;
-    role: string;
-    permissions?: string[];
+    role?: string;
   };
 }
 
 /**
- * Middleware to validate JWT token via Auth Service
+ * Gateway Trust Middleware
+ *
+ * Trusts that authentication was handled by the API Gateway.
+ * The gateway forwards user info via headers after validating JWT.
+ *
+ * Required headers from gateway:
+ * - x-gateway-key: Shared secret to verify request came from gateway
+ * - x-user-id: Authenticated user's ID
+ * - x-user-role: User's role (optional)
  */
-export const authenticate = async (
+export const gatewayAuth = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
-  try {
-    const authHeader = req.headers.authorization;
+  const gatewayKey = req.headers['x-gateway-key'] as string;
+  const expectedKey = process.env.GATEWAY_SECRET_KEY;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new UnauthorizedError('Missing or invalid authorization header');
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    if (!token) {
-      throw new UnauthorizedError('No token provided');
-    }
-
-    // Validate token via Auth Service
-    const response = await axios.post(
-      `${AUTH_SERVICE_URL}/api/auth/validate`,
-      { token },
-      { timeout: 5000 }
-    );
-
-    if (!response.data.success || !response.data.data) {
-      throw new UnauthorizedError('Invalid token');
-    }
-
-    req.user = response.data.data;
-    next();
-  } catch (error: any) {
-    if (error instanceof UnauthorizedError) {
-      return next(error);
-    }
-
-    if (error.response?.status === 401) {
-      return next(new UnauthorizedError('Token expired or invalid'));
-    }
-
-    console.error('Auth validation error:', error.message);
-    return next(new UnauthorizedError('Authentication failed'));
+  // In development, allow requests without gateway key
+  if (process.env.NODE_ENV === 'development' && !expectedKey) {
+    req.user = {
+      id: (req.headers['x-user-id'] as string) || 'dev-user',
+      role: (req.headers['x-user-role'] as string) || 'user'
+    };
+    return next();
   }
+
+  // Verify gateway key
+  if (!expectedKey) {
+    console.warn('GATEWAY_SECRET_KEY not configured');
+    return next(new UnauthorizedError('Gateway authentication not configured'));
+  }
+
+  if (!gatewayKey || gatewayKey !== expectedKey) {
+    return next(new UnauthorizedError('Invalid gateway key'));
+  }
+
+  // Extract user info from gateway headers
+  const userId = req.headers['x-user-id'] as string;
+  if (!userId) {
+    return next(new UnauthorizedError('Missing user ID from gateway'));
+  }
+
+  req.user = {
+    id: userId,
+    role: req.headers['x-user-role'] as string
+  };
+
+  next();
 };
 
 /**
- * Middleware to check user role
+ * Optional gateway auth - doesn't fail if no gateway headers
+ * Useful for endpoints that work for both authenticated and anonymous users
+ */
+export const optionalGatewayAuth = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) => {
+  const gatewayKey = req.headers['x-gateway-key'] as string;
+  const expectedKey = process.env.GATEWAY_SECRET_KEY;
+
+  // If gateway key matches, extract user info
+  if (gatewayKey && expectedKey && gatewayKey === expectedKey) {
+    const userId = req.headers['x-user-id'] as string;
+    if (userId) {
+      req.user = {
+        id: userId,
+        role: req.headers['x-user-role'] as string
+      };
+    }
+  }
+
+  next();
+};
+
+/**
+ * Role check middleware - requires gatewayAuth to run first
  */
 export const requireRole = (...roles: string[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -70,7 +98,7 @@ export const requireRole = (...roles: string[]) => {
       return next(new UnauthorizedError('Not authenticated'));
     }
 
-    if (!roles.includes(req.user.role)) {
+    if (!req.user.role || !roles.includes(req.user.role)) {
       return next(new ForbiddenError('Insufficient permissions'));
     }
 
@@ -79,100 +107,70 @@ export const requireRole = (...roles: string[]) => {
 };
 
 /**
- * Middleware to check specific permission
+ * Internal service authentication using API key
+ * For service-to-service communication
  */
-export const requirePermission = (permission: string) => {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return next(new UnauthorizedError('Not authenticated'));
-    }
-
-    if (!req.user.permissions?.includes(permission)) {
-      return next(new ForbiddenError(`Missing permission: ${permission}`));
-    }
-
-    next();
-  };
-};
-
-/**
- * Optional authentication - doesn't fail if no token
- */
-export const optionalAuth = async (
-  req: AuthenticatedRequest,
-  res: Response,
-  next: NextFunction
-) => {
-  const authHeader = req.headers.authorization;
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return next();
-  }
-
-  try {
-    const token = authHeader.split(' ')[1];
-
-    if (token) {
-      const response = await axios.post(
-        `${AUTH_SERVICE_URL}/api/auth/validate`,
-        { token },
-        { timeout: 5000 }
-      );
-
-      if (response.data.success && response.data.data) {
-        req.user = response.data.data;
-      }
-    }
-  } catch (error) {
-    // Silently fail for optional auth
-    console.warn('Optional auth validation failed:', (error as Error).message);
-  }
-
-  next();
-};
-
-/**
- * API Key authentication for internal services
- */
-export const authenticateApiKey = (
+export const internalServiceAuth = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const apiKey = req.headers['x-api-key'];
-  const validApiKey = process.env.INTERNAL_API_KEY;
+  const apiKey = req.headers['x-internal-api-key'] as string;
+  const expectedKey = process.env.INTERNAL_API_KEY;
 
-  if (!validApiKey) {
+  if (!expectedKey) {
     console.warn('INTERNAL_API_KEY not configured');
-    return next(new UnauthorizedError('API key authentication not configured'));
+    return next(new UnauthorizedError('Internal API key not configured'));
   }
 
-  if (!apiKey || apiKey !== validApiKey) {
-    return next(new UnauthorizedError('Invalid API key'));
+  if (!apiKey || apiKey !== expectedKey) {
+    return next(new UnauthorizedError('Invalid internal API key'));
   }
 
   next();
 };
 
 /**
- * Combined auth - accepts either JWT or API key
+ * Combined auth - accepts gateway auth OR internal API key
+ * Useful for endpoints called by both users (via gateway) and other services
  */
-export const authenticateAny = async (
+export const gatewayOrInternalAuth = (
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) => {
-  const apiKey = req.headers['x-api-key'];
-  const authHeader = req.headers.authorization;
+  const apiKey = req.headers['x-internal-api-key'] as string;
+  const gatewayKey = req.headers['x-gateway-key'] as string;
 
-  // Try API key first (for internal services)
+  // Try internal API key first
   if (apiKey && apiKey === process.env.INTERNAL_API_KEY) {
+    // For internal calls, user might be passed in header or body
+    req.user = {
+      id: (req.headers['x-user-id'] as string) || 'internal-service',
+      role: 'service'
+    };
     return next();
   }
 
-  // Try JWT authentication
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    return authenticate(req, res, next);
+  // Try gateway auth
+  if (gatewayKey && gatewayKey === process.env.GATEWAY_SECRET_KEY) {
+    const userId = req.headers['x-user-id'] as string;
+    if (userId) {
+      req.user = {
+        id: userId,
+        role: req.headers['x-user-role'] as string
+      };
+      return next();
+    }
+  }
+
+  // Development mode fallback
+  if (process.env.NODE_ENV === 'development') {
+    req.user = {
+      id: (req.headers['x-user-id'] as string) || 'dev-user',
+      role: 'user'
+    };
+    return next();
   }
 
   return next(new UnauthorizedError('Authentication required'));

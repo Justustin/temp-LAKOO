@@ -70,13 +70,17 @@ export class PaymentService {
    */
   async createPayment(data: CreatePaymentDTO) {
     // Check for existing payment with same idempotency key
-    const existingPayment = await this.repository.findByOrderId(data.orderId);
-    if (existingPayment && existingPayment.status === 'pending') {
-      return {
-        payment: existingPayment,
-        paymentUrl: existingPayment.gatewayInvoiceUrl,
-        invoiceId: existingPayment.gatewayTransactionId
-      };
+    if (data.idempotencyKey) {
+      const existingPayment = await this.repository.findByIdempotencyKey(data.idempotencyKey);
+      if (existingPayment) {
+        // Return existing payment regardless of status for idempotency
+        return {
+          payment: existingPayment,
+          paymentUrl: existingPayment.gatewayInvoiceUrl,
+          invoiceId: existingPayment.gatewayTransactionId,
+          isExisting: true
+        };
+      }
     }
 
     const userData = await this.fetchUser(data.userId);

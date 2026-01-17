@@ -1,6 +1,16 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import { PaymentService } from '../services/payment.service';
 import { RefundService } from '../services/refund.service';
+import { NotFoundError, BadRequestError } from '../middleware/error-handler';
+
+/**
+ * Async handler wrapper - catches errors and passes to error middleware
+ */
+const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => Promise<any>) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+};
 
 export class PaymentController {
   private paymentService: PaymentService;
@@ -14,195 +24,129 @@ export class PaymentController {
   /**
    * Create a new payment for an order
    */
-  createPayment = async (req: Request, res: Response) => {
-    try {
-      const result = await this.paymentService.createPayment(req.body);
-      res.status(201).json({
-        success: true,
-        data: result
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  createPayment = asyncHandler(async (req: Request, res: Response) => {
+    const result = await this.paymentService.createPayment(req.body);
+    res.status(result.isExisting ? 200 : 201).json({
+      success: true,
+      data: result
+    });
+  });
 
   /**
    * Get payment by order ID
    */
-  getPaymentByOrder = async (req: Request, res: Response) => {
-    try {
-      const payment = await this.paymentService.getPaymentByOrderId(req.params.orderId);
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          error: 'Payment not found'
-        });
-      }
-      res.json({
-        success: true,
-        data: payment
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message
-      });
+  getPaymentByOrder = asyncHandler(async (req: Request, res: Response) => {
+    const payment = await this.paymentService.getPaymentByOrderId(req.params.orderId);
+    if (!payment) {
+      throw new NotFoundError('Payment not found for this order');
     }
-  };
+    res.json({
+      success: true,
+      data: payment
+    });
+  });
 
   /**
    * Get payment by ID
    */
-  getPaymentById = async (req: Request, res: Response) => {
-    try {
-      const payment = await this.paymentService.getPaymentById(req.params.id);
-      if (!payment) {
-        return res.status(404).json({
-          success: false,
-          error: 'Payment not found'
-        });
-      }
-      res.json({
-        success: true,
-        data: payment
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message
-      });
+  getPaymentById = asyncHandler(async (req: Request, res: Response) => {
+    const payment = await this.paymentService.getPaymentById(req.params.id);
+    if (!payment) {
+      throw new NotFoundError('Payment not found');
     }
-  };
+    res.json({
+      success: true,
+      data: payment
+    });
+  });
 
   /**
    * Get payments for a user
    */
-  getPaymentsByUser = async (req: Request, res: Response) => {
-    try {
-      const { limit, offset } = req.query;
-      const payments = await this.paymentService.getPaymentsByUserId(
-        req.params.userId,
-        {
-          limit: limit ? parseInt(limit as string) : undefined,
-          offset: offset ? parseInt(offset as string) : undefined
-        }
-      );
-      res.json({
-        success: true,
-        data: payments
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  getPaymentsByUser = asyncHandler(async (req: Request, res: Response) => {
+    const { limit, offset } = req.query;
+    const payments = await this.paymentService.getPaymentsByUserId(
+      req.params.userId,
+      {
+        limit: limit ? parseInt(limit as string) : undefined,
+        offset: offset ? parseInt(offset as string) : undefined
+      }
+    );
+    res.json({
+      success: true,
+      data: payments
+    });
+  });
 
   /**
    * Get payments eligible for settlement (admin)
    */
-  getEligibleForSettlement = async (req: Request, res: Response) => {
-    try {
-      const { periodStart, periodEnd } = req.body;
-      const payments = await this.paymentService.findEligibleForSettlement(
-        new Date(periodStart),
-        new Date(periodEnd)
-      );
-      res.json({
-        success: true,
-        data: payments
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
+  getEligibleForSettlement = asyncHandler(async (req: Request, res: Response) => {
+    const { periodStart, periodEnd } = req.body;
+    if (!periodStart || !periodEnd) {
+      throw new BadRequestError('periodStart and periodEnd are required');
     }
-  };
+    const payments = await this.paymentService.findEligibleForSettlement(
+      new Date(periodStart),
+      new Date(periodEnd)
+    );
+    res.json({
+      success: true,
+      data: payments
+    });
+  });
 
   /**
    * Get payment statistics (admin)
    */
-  getPaymentStats = async (req: Request, res: Response) => {
-    try {
-      const { startDate, endDate } = req.body;
-      const stats = await this.paymentService.getPaymentStats(
-        new Date(startDate),
-        new Date(endDate)
-      );
-      res.json({
-        success: true,
-        data: stats
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
+  getPaymentStats = asyncHandler(async (req: Request, res: Response) => {
+    const { startDate, endDate } = req.body;
+    if (!startDate || !endDate) {
+      throw new BadRequestError('startDate and endDate are required');
     }
-  };
+    const stats = await this.paymentService.getPaymentStats(
+      new Date(startDate),
+      new Date(endDate)
+    );
+    res.json({
+      success: true,
+      data: stats
+    });
+  });
 
   /**
    * Create a refund for a payment
    */
-  createRefund = async (req: Request, res: Response) => {
-    try {
-      const refund = await this.refundService.createRefund(req.body);
-      res.status(201).json({
-        success: true,
-        data: refund
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  createRefund = asyncHandler(async (req: Request, res: Response) => {
+    const refund = await this.refundService.createRefund(req.body);
+    res.status(201).json({
+      success: true,
+      data: refund
+    });
+  });
 
   /**
    * Get refund by ID
    */
-  getRefundById = async (req: Request, res: Response) => {
-    try {
-      const refund = await this.refundService.getRefundById(req.params.id);
-      if (!refund) {
-        return res.status(404).json({
-          success: false,
-          error: 'Refund not found'
-        });
-      }
-      res.json({
-        success: true,
-        data: refund
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message
-      });
+  getRefundById = asyncHandler(async (req: Request, res: Response) => {
+    const refund = await this.refundService.getRefundById(req.params.id);
+    if (!refund) {
+      throw new NotFoundError('Refund not found');
     }
-  };
+    res.json({
+      success: true,
+      data: refund
+    });
+  });
 
   /**
    * Get refunds for an order
    */
-  getRefundsByOrder = async (req: Request, res: Response) => {
-    try {
-      const refunds = await this.refundService.getRefundsByOrderId(req.params.orderId);
-      res.json({
-        success: true,
-        data: refunds
-      });
-    } catch (error: any) {
-      res.status(500).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  getRefundsByOrder = asyncHandler(async (req: Request, res: Response) => {
+    const refunds = await this.refundService.getRefundsByOrderId(req.params.orderId);
+    res.json({
+      success: true,
+      data: refunds
+    });
+  });
 }

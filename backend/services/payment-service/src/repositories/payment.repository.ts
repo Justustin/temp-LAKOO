@@ -61,6 +61,12 @@ export class PaymentRepository {
     });
   }
 
+  async findByIdempotencyKey(idempotencyKey: string) {
+    return prisma.payment.findUnique({
+      where: { idempotencyKey }
+    });
+  }
+
   async findByUserId(userId: string, options?: { limit?: number; offset?: number }) {
     return prisma.payment.findMany({
       where: { userId },
