@@ -1,266 +1,216 @@
 import { Router } from 'express';
-import { body, param, query } from 'express-validator';
-import { AdminController } from '../controllers/admin.controller';
+import { warehouseController } from '../controllers/warehouse.controller';
+import { gatewayOrInternalAuth, requireRole } from '../middleware/auth';
+import {
+  validateRequest,
+  getInventoryStatusValidators,
+  createInventoryValidators,
+  adjustInventoryValidators,
+  updateBundleConfigValidators,
+  updateToleranceValidators,
+  createPurchaseOrderValidators,
+  updatePurchaseOrderStatusValidators,
+  receivePurchaseOrderValidators,
+  acknowledgeAlertValidators,
+  resolveAlertValidators
+} from '../middleware/validation';
 
 const router = Router();
-const controller = new AdminController();
 
-// Inventory Management
+// All admin routes require authentication and admin/warehouse_admin role
+router.use(gatewayOrInternalAuth);
+router.use(requireRole('admin', 'warehouse_admin', 'internal'));
+
+// =============================================================================
+// INVENTORY MANAGEMENT
+// =============================================================================
+
 /**
  * @swagger
  * /api/admin/inventory:
  *   get:
- *     summary: Get all inventory (Admin)
+ *     summary: Get all inventory items
  *     tags: [Admin - Inventory]
- *     parameters:
- *       - in: query
- *         name: productId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by product ID
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Inventory retrieved successfully
  */
-router.get('/inventory', [
-  query('productId').optional().isUUID(),
-  query('page').optional().isInt({ min: 1 }),
-  query('limit').optional().isInt({ min: 1, max: 100 })
-], controller.getInventory);
+router.get('/inventory', warehouseController.getAllInventory);
 
 /**
  * @swagger
- * /api/admin/inventory/{id}/adjust:
+ * /api/admin/inventory:
  *   post:
- *     summary: Adjust stock (Admin)
+ *     summary: Create new inventory record
  *     tags: [Admin - Inventory]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [adjustment, reason, adjustedBy]
- *             properties:
- *               adjustment:
- *                 type: integer
- *               reason:
- *                 type: string
- *               adjustedBy:
- *                 type: string
- *                 format: uuid
- *     responses:
- *       200:
- *         description: Stock adjusted
  */
-router.post('/inventory/:id/adjust', [
-  param('id').isUUID().withMessage('Invalid inventory ID'),
-  body('adjustment').isInt().withMessage('Adjustment must be an integer'),
-  body('reason').notEmpty().withMessage('Reason is required'),
-  body('adjustedBy').isUUID().withMessage('Invalid admin user ID')
-], controller.adjustStock);
+router.post(
+  '/inventory',
+  createInventoryValidators,
+  validateRequest,
+  warehouseController.createInventory
+);
 
 /**
  * @swagger
- * /api/admin/inventory/{id}/reserve:
+ * /api/admin/inventory/adjust:
  *   post:
- *     summary: Reserve stock (Admin)
+ *     summary: Adjust inventory quantity
  *     tags: [Admin - Inventory]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [quantity]
- *             properties:
- *               quantity:
- *                 type: integer
- *                 minimum: 1
- *               orderId:
- *                 type: string
- *                 format: uuid
- *     responses:
- *       200:
- *         description: Stock reserved
  */
-router.post('/inventory/:id/reserve', [
-  param('id').isUUID().withMessage('Invalid inventory ID'),
-  body('quantity').isInt({ min: 1 }).withMessage('Quantity must be positive'),
-  body('orderId').optional().isUUID()
-], controller.reserveStock);
+router.post(
+  '/inventory/adjust',
+  adjustInventoryValidators,
+  validateRequest,
+  warehouseController.adjustInventory
+);
 
 /**
  * @swagger
- * /api/admin/inventory/{id}/release:
- *   post:
- *     summary: Release stock reservation (Admin)
+ * /api/admin/inventory/movements:
+ *   get:
+ *     summary: Get inventory movement history
  *     tags: [Admin - Inventory]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [quantity]
- *             properties:
- *               quantity:
- *                 type: integer
- *                 minimum: 1
- *     responses:
- *       200:
- *         description: Reservation released
  */
-router.post('/inventory/:id/release', [
-  param('id').isUUID().withMessage('Invalid inventory ID'),
-  body('quantity').isInt({ min: 1 }).withMessage('Quantity must be positive')
-], controller.releaseReservation);
+router.get(
+  '/inventory/movements',
+  getInventoryStatusValidators,
+  validateRequest,
+  warehouseController.getMovementHistory
+);
 
-// Purchase Orders
+// =============================================================================
+// GROSIR BUNDLE CONFIGURATION
+// =============================================================================
+
+/**
+ * @swagger
+ * /api/admin/bundle-config:
+ *   post:
+ *     summary: Create or update bundle configuration
+ *     tags: [Admin - Grosir]
+ */
+router.post(
+  '/bundle-config',
+  updateBundleConfigValidators,
+  validateRequest,
+  warehouseController.updateBundleConfig
+);
+
+/**
+ * @swagger
+ * /api/admin/tolerance:
+ *   post:
+ *     summary: Create or update warehouse tolerance
+ *     tags: [Admin - Grosir]
+ */
+router.post(
+  '/tolerance',
+  updateToleranceValidators,
+  validateRequest,
+  warehouseController.updateTolerance
+);
+
+// =============================================================================
+// STOCK ALERTS
+// =============================================================================
+
+/**
+ * @swagger
+ * /api/admin/alerts:
+ *   get:
+ *     summary: Get active stock alerts
+ *     tags: [Admin - Alerts]
+ */
+router.get('/alerts', warehouseController.getActiveAlerts);
+
+/**
+ * @swagger
+ * /api/admin/alerts/{id}/acknowledge:
+ *   post:
+ *     summary: Acknowledge a stock alert
+ *     tags: [Admin - Alerts]
+ */
+router.post(
+  '/alerts/:id/acknowledge',
+  acknowledgeAlertValidators,
+  validateRequest,
+  warehouseController.acknowledgeAlert
+);
+
+/**
+ * @swagger
+ * /api/admin/alerts/{id}/resolve:
+ *   post:
+ *     summary: Resolve a stock alert
+ *     tags: [Admin - Alerts]
+ */
+router.post(
+  '/alerts/:id/resolve',
+  resolveAlertValidators,
+  validateRequest,
+  warehouseController.resolveAlert
+);
+
+// =============================================================================
+// PURCHASE ORDERS
+// =============================================================================
+
 /**
  * @swagger
  * /api/admin/purchase-orders:
  *   get:
- *     summary: Get all purchase orders (Admin)
+ *     summary: Get all purchase orders
  *     tags: [Admin - Purchase Orders]
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [pending, approved, shipped, received, cancelled]
- *         description: Filter by PO status
- *       - in: query
- *         name: factoryId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by factory ID
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Purchase orders retrieved
  */
-router.get('/purchase-orders', [
-  query('status').optional(),
-  query('factoryId').optional().isUUID(),
-  query('page').optional().isInt({ min: 1 }),
-  query('limit').optional().isInt({ min: 1, max: 100 })
-], controller.getPurchaseOrders);
+router.get('/purchase-orders', warehouseController.getPurchaseOrders);
+
+/**
+ * @swagger
+ * /api/admin/purchase-orders/{id}:
+ *   get:
+ *     summary: Get purchase order by ID
+ *     tags: [Admin - Purchase Orders]
+ */
+router.get('/purchase-orders/:id', warehouseController.getPurchaseOrder);
+
+/**
+ * @swagger
+ * /api/admin/purchase-orders:
+ *   post:
+ *     summary: Create a new purchase order
+ *     tags: [Admin - Purchase Orders]
+ */
+router.post(
+  '/purchase-orders',
+  createPurchaseOrderValidators,
+  validateRequest,
+  warehouseController.createPurchaseOrder
+);
 
 /**
  * @swagger
  * /api/admin/purchase-orders/{id}/status:
- *   put:
- *     summary: Update purchase order status (Admin)
+ *   patch:
+ *     summary: Update purchase order status
  *     tags: [Admin - Purchase Orders]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [status]
- *             properties:
- *               status:
- *                 type: string
- *                 enum: [pending, approved, shipped, received, cancelled]
- *               notes:
- *                 type: string
- *     responses:
- *       200:
- *         description: PO status updated
  */
-router.put('/purchase-orders/:id/status', [
-  param('id').isUUID().withMessage('Invalid PO ID'),
-  body('status').isIn(['pending', 'approved', 'shipped', 'received', 'cancelled']).withMessage('Invalid status'),
-  body('notes').optional()
-], controller.updatePurchaseOrderStatus);
-
-// Audit & Reports
-/**
- * @swagger
- * /api/admin/audit:
- *   get:
- *     summary: Get stock audit log (Admin)
- *     tags: [Admin - Audit]
- *     parameters:
- *       - in: query
- *         name: productId
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Filter by product ID
- *     responses:
- *       200:
- *         description: Audit log retrieved
- */
-router.get('/audit', [
-  query('productId').optional().isUUID()
-], controller.getStockAudit);
+router.patch(
+  '/purchase-orders/:id/status',
+  updatePurchaseOrderStatusValidators,
+  validateRequest,
+  warehouseController.updatePurchaseOrderStatus
+);
 
 /**
  * @swagger
- * /api/admin/low-stock:
- *   get:
- *     summary: Get low stock items (Admin)
- *     tags: [Admin - Reports]
- *     parameters:
- *       - in: query
- *         name: threshold
- *         schema:
- *           type: integer
- *           default: 10
- *     responses:
- *       200:
- *         description: Low stock items retrieved
+ * /api/admin/purchase-orders/{id}/receive:
+ *   post:
+ *     summary: Receive items from a purchase order
+ *     tags: [Admin - Purchase Orders]
  */
-router.get('/low-stock', [
-  query('threshold').optional().isInt({ min: 0 })
-], controller.getLowStockItems);
+router.post(
+  '/purchase-orders/:id/receive',
+  receivePurchaseOrderValidators,
+  validateRequest,
+  warehouseController.receivePurchaseOrder
+);
 
 export default router;

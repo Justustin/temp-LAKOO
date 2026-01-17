@@ -1,0 +1,378 @@
+// =============================================================================
+// WAREHOUSE SERVICE DATABASE SCHEMA
+// Service: warehouse-service (Port 3012)
+// Database: warehouse_db
+// Owner: Inventory management, grosir bundles, purchase orders, stock reservations
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// WAREHOUSE INVENTORY
+// =============================================================================
+
+model WarehouseInventory {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId         String    @db.Uuid // Reference to Product Service
+  variantId         String?   @db.Uuid // Reference to Product Service
+  // SKU tracking
+  sku               String    @db.VarChar(100)
+  // Quantities
+  quantity          Int       @default(0) // Total physical stock
+  reservedQuantity  Int       @default(0) // Reserved for pending orders
+  availableQuantity Int       @default(0) // quantity - reservedQuantity (computed)
+  damagedQuantity   Int       @default(0) // Damaged/unsellable
+  // Stock levels
+  minStockLevel     Int       @default(0) // Alert threshold
+  maxStockLevel     Int?      // Maximum storage capacity
+  reorderPoint      Int?      // When to reorder
+  reorderQuantity   Int?      // How much to reorder
+  // Location in warehouse
+  location          String?   @db.VarChar(100) // Aisle-Shelf-Bin
+  zone              String?   @db.VarChar(50)
+  // Tracking
+  lastRestockedAt   DateTime? @db.Timestamptz(6)
+  lastSoldAt        DateTime? @db.Timestamptz(6)
+  lastCountedAt     DateTime? @db.Timestamptz(6)
+  // Status
+  status            InventoryStatus @default(active)
+  // Optimistic locking
+  version           Int       @default(0)
+  // Audit
+  createdAt         DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @db.Timestamptz(6)
+
+  movements    InventoryMovement[]
+  reservations StockReservation[]
+
+  @@unique([productId, variantId])
+  @@index([productId])
+  @@index([sku])
+  @@index([availableQuantity])
+  @@index([status])
+  @@map("warehouse_inventory")
+}
+
+// =============================================================================
+// INVENTORY MOVEMENTS (Audit trail)
+// =============================================================================
+
+model InventoryMovement {
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryId     String       @db.Uuid
+  movementNumber  String       @unique @db.VarChar(50) // MOV-20260115-XXXXX
+  type            MovementType
+  // Quantities
+  quantityBefore  Int
+  quantityChange  Int          // Positive for in, negative for out
+  quantityAfter   Int
+  // Reference
+  referenceType   String?      @db.VarChar(50) // "order", "po", "adjustment", etc.
+  referenceId     String?      @db.Uuid
+  orderId         String?      @db.Uuid
+  purchaseOrderId String?      @db.Uuid
+  // Details
+  reason          String?      @db.VarChar(500)
+  notes           String?
+  // Cost tracking
+  unitCost        Decimal?     @db.Decimal(15, 2)
+  totalCost       Decimal?     @db.Decimal(15, 2)
+  // Audit
+  createdBy       String?      @db.Uuid
+  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
+
+  inventory WarehouseInventory @relation(fields: [inventoryId], references: [id])
+
+  @@index([inventoryId])
+  @@index([type])
+  @@index([referenceType, referenceId])
+  @@index([createdAt])
+  @@map("inventory_movement")
+}
+
+// =============================================================================
+// STOCK RESERVATIONS (For pending orders)
+// =============================================================================
+
+model StockReservation {
+  id            String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryId   String            @db.Uuid
+  orderId       String            @db.Uuid // Reference to Order Service
+  orderItemId   String?           @db.Uuid
+  quantity      Int
+  status        ReservationStatus @default(reserved)
+  reservedAt    DateTime          @default(now()) @db.Timestamptz(6)
+  confirmedAt   DateTime?         @db.Timestamptz(6) // When order shipped
+  releasedAt    DateTime?         @db.Timestamptz(6) // When reservation cancelled
+  expiresAt     DateTime          @db.Timestamptz(6) // Auto-release if not confirmed
+  createdAt     DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime          @updatedAt @db.Timestamptz(6)
+
+  inventory WarehouseInventory @relation(fields: [inventoryId], references: [id])
+
+  @@index([inventoryId])
+  @@index([orderId])
+  @@index([status])
+  @@index([expiresAt])
+  @@map("stock_reservation")
+}
+
+// =============================================================================
+// GROSIR BUNDLE CONFIGURATION
+// This is the key differentiator - factories ship in fixed bundles
+// =============================================================================
+
+model GrosirBundleConfig {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId       String   @db.Uuid // Reference to Product Service
+  supplierId      String?  @db.Uuid // Reference to Supplier Service
+  // Bundle composition
+  bundleName      String?  @db.VarChar(255)
+  totalUnits      Int      // Total units per bundle (e.g., 12)
+  // Size breakdown (JSON for flexibility)
+  // e.g., {"S": 2, "M": 5, "L": 4, "XL": 1}
+  sizeBreakdown   Json
+  // Pricing
+  bundleCost      Decimal  @db.Decimal(15, 2)
+  costPerUnit     Decimal  @db.Decimal(15, 2)
+  // Constraints
+  minBundleOrder  Int      @default(1)
+  // Status
+  isActive        Boolean  @default(true)
+  notes           String?
+  // Audit
+  createdBy       String?  @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([productId, supplierId])
+  @@index([productId])
+  @@map("grosir_bundle_config")
+}
+
+// =============================================================================
+// GROSIR WAREHOUSE TOLERANCE
+// Maximum excess inventory allowed per variant before locking
+// =============================================================================
+
+model GrosirWarehouseTolerance {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId             String   @db.Uuid
+  variantId             String?  @db.Uuid
+  size                  String?  @db.VarChar(50)
+  // Tolerance settings
+  maxExcessUnits        Int      // Max units above normal stock
+  currentExcess         Int      @default(0) // Current excess level
+  // Variant locking
+  isLocked              Boolean  @default(false)
+  lockedAt              DateTime? @db.Timestamptz(6)
+  lockedReason          String?  @db.VarChar(255)
+  // Clearance tracking
+  clearanceRateEstimate Int?     // Estimated units sold per day
+  expectedClearanceDays Int?     // Days to clear excess
+  // Status
+  isActive              Boolean  @default(true)
+  notes                 String?
+  // Audit
+  updatedBy             String?  @db.Uuid
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @updatedAt @db.Timestamptz(6)
+
+  @@unique([productId, variantId])
+  @@index([productId])
+  @@index([isLocked])
+  @@map("grosir_warehouse_tolerance")
+}
+
+// =============================================================================
+// PURCHASE ORDERS (To suppliers)
+// =============================================================================
+
+model WarehousePurchaseOrder {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  poNumber        String     @unique @db.VarChar(50) // PO-20260115-XXXXX
+  supplierId      String     @db.Uuid // Reference to Supplier Service
+  // Supplier snapshot
+  supplierName    String     @db.VarChar(255)
+  supplierContact String?    @db.VarChar(255)
+  supplierPhone   String?    @db.VarChar(20)
+  // Totals
+  totalItems      Int
+  totalUnits      Int
+  subtotal        Decimal    @db.Decimal(15, 2)
+  shippingCost    Decimal    @default(0) @db.Decimal(15, 2)
+  taxAmount       Decimal    @default(0) @db.Decimal(15, 2)
+  totalCost       Decimal    @db.Decimal(15, 2)
+  currency        String     @default("IDR") @db.VarChar(3)
+  // Dates
+  orderDate       DateTime   @default(now()) @db.Timestamptz(6)
+  expectedDate    DateTime?  @db.Timestamptz(6)
+  shippedDate     DateTime?  @db.Timestamptz(6)
+  receivedDate    DateTime?  @db.Timestamptz(6)
+  // Status
+  status          PoStatus   @default(draft)
+  // Payment
+  paymentTerms    String?    @db.VarChar(100)
+  paymentStatus   String?    @db.VarChar(50)
+  paidAt          DateTime?  @db.Timestamptz(6)
+  // Notes
+  notes           String?
+  internalNotes   String?
+  // Audit
+  createdBy       String?    @db.Uuid
+  approvedBy      String?    @db.Uuid
+  approvedAt      DateTime?  @db.Timestamptz(6)
+  createdAt       DateTime   @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @db.Timestamptz(6)
+
+  items PurchaseOrderItem[]
+
+  @@index([poNumber])
+  @@index([supplierId])
+  @@index([status])
+  @@index([orderDate])
+  @@map("warehouse_purchase_order")
+}
+
+model PurchaseOrderItem {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  purchaseOrderId String   @db.Uuid
+  productId       String   @db.Uuid
+  variantId       String?  @db.Uuid
+  // Product snapshot
+  productName     String   @db.VarChar(255)
+  variantName     String?  @db.VarChar(255)
+  sku             String   @db.VarChar(100)
+  // Quantities
+  bundleQuantity  Int      // Number of grosir bundles
+  unitsPerBundle  Int
+  totalUnits      Int      // bundleQuantity * unitsPerBundle
+  // Pricing
+  unitCost        Decimal  @db.Decimal(15, 2)
+  totalCost       Decimal  @db.Decimal(15, 2)
+  // Receiving
+  receivedUnits   Int      @default(0)
+  damagedUnits    Int      @default(0)
+  // Status
+  status          String   @default("pending") @db.VarChar(50)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  purchaseOrder WarehousePurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseOrderId])
+  @@index([productId])
+  @@map("purchase_order_item")
+}
+
+// =============================================================================
+// STOCK ALERTS
+// =============================================================================
+
+model StockAlert {
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  inventoryId   String        @db.Uuid
+  productId     String        @db.Uuid
+  variantId     String?       @db.Uuid
+  alertType     StockAlertType
+  // Details
+  currentStock  Int
+  threshold     Int
+  message       String        @db.VarChar(500)
+  // Status
+  status        AlertStatus   @default(active)
+  acknowledgedAt DateTime?    @db.Timestamptz(6)
+  acknowledgedBy String?      @db.Uuid
+  resolvedAt    DateTime?     @db.Timestamptz(6)
+  // Timestamps
+  triggeredAt   DateTime      @default(now()) @db.Timestamptz(6)
+
+  @@index([inventoryId])
+  @@index([alertType])
+  @@index([status])
+  @@map("stock_alert")
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For Kafka event publishing)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @db.VarChar(100)
+  aggregateId   String    @db.Uuid
+  eventType     String    @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime? @db.Timestamptz(6)
+  retryCount    Int       @default(0)
+  lastError     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum InventoryStatus {
+  active
+  inactive
+  discontinued
+}
+
+enum MovementType {
+  purchase_order_received // Stock in from supplier
+  order_fulfilled         // Stock out for order
+  order_cancelled         // Stock returned from cancelled order
+  return_received         // Stock in from customer return
+  adjustment_in           // Manual increase
+  adjustment_out          // Manual decrease
+  damage                  // Damaged stock
+  transfer_in             // Transfer from another location
+  transfer_out            // Transfer to another location
+  initial_stock           // Initial inventory setup
+}
+
+enum ReservationStatus {
+  reserved      // Stock held for order
+  confirmed     // Order shipped, reservation permanent
+  released      // Order cancelled, stock released
+  expired       // Reservation timed out
+}
+
+enum PoStatus {
+  draft
+  pending_approval
+  approved
+  sent_to_supplier
+  partially_received
+  received
+  cancelled
+}
+
+enum StockAlertType {
+  low_stock          // Below minimum level
+  out_of_stock       // Zero available
+  excess_stock       // Above maximum level
+  grosir_locked      // Variant locked due to grosir constraints
+  slow_moving        // Not selling well
+  expiring_soon      // For perishable items
+}
+
+enum AlertStatus {
+  active
+  acknowledged
+  resolved
+  dismissed
+}
