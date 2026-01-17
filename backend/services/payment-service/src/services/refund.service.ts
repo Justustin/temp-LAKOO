@@ -3,6 +3,7 @@ import { RefundRepository } from '../repositories/refund.repository';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { CreateRefundDTO } from '../types';
 import { notificationClient } from '../clients/notification.client';
+import { outboxService } from './outbox.service';
 import axios from 'axios';
 
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3005';
@@ -44,6 +45,9 @@ export class RefundService {
 
     const refund = await this.refundRepo.create(data, payment);
 
+    // Publish refund.requested event
+    await outboxService.refundRequested(refund);
+
     return refund;
   }
 
@@ -76,7 +80,15 @@ export class RefundService {
       }
 
       // Mark refund as completed
-      await this.refundRepo.markCompleted(refundId);
+      const completedRefund = await this.refundRepo.markCompleted(refundId);
+
+      // Publish refund.completed event
+      await outboxService.refundCompleted({
+        ...completedRefund,
+        orderId: refund.orderId,
+        userId: refund.userId,
+        refundMethod: refund.refundMethod
+      });
 
       // Update payment status
       await this.paymentRepo.markRefunded(refund.paymentId);
@@ -87,10 +99,20 @@ export class RefundService {
       // Send notification
       await this.sendRefundNotification(refund.userId, refund.orderId, 'completed');
 
-      return { success: true, refund, gatewayResponse };
+      return { success: true, refund: completedRefund, gatewayResponse };
     } catch (error: any) {
       console.error(`Refund processing failed for ${refundId}:`, error);
       await this.refundRepo.markFailed(refundId, error.message);
+
+      // Publish refund.failed event
+      await outboxService.refundFailed({
+        id: refund.id,
+        refundNumber: refund.refundNumber,
+        paymentId: refund.paymentId,
+        orderId: refund.orderId,
+        failureReason: error.message
+      });
+
       await this.sendRefundNotification(refund.userId, refund.orderId, 'failed');
       throw error;
     }

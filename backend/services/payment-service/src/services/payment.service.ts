@@ -3,6 +3,7 @@ import { CreatePaymentDTO } from '../types';
 import { xenditInvoiceClient } from '../config/xendit';
 import { CreateInvoiceRequest } from 'xendit-node/invoice/models';
 import { notificationClient } from '../clients/notification.client';
+import { outboxService } from './outbox.service';
 import axios from 'axios';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
@@ -118,6 +119,9 @@ export class PaymentService {
       invoice.id || ''
     );
 
+    // Publish payment.created event
+    await outboxService.paymentCreated(payment);
+
     return {
       payment,
       paymentUrl: invoice.invoiceUrl,
@@ -143,7 +147,10 @@ export class PaymentService {
     const gatewayFee = callbackData.fees_paid_amount || 0;
 
     // Mark payment as paid
-    await this.repository.markPaid(payment.id, gatewayFee, callbackData);
+    const updatedPayment = await this.repository.markPaid(payment.id, gatewayFee, callbackData);
+
+    // Publish payment.paid event
+    await outboxService.paymentPaid(updatedPayment);
 
     // Update order status
     await this.updateOrderStatus(payment.orderId, 'paid');
@@ -153,7 +160,7 @@ export class PaymentService {
 
     return {
       message: 'Payment processed successfully',
-      payment
+      payment: updatedPayment
     };
   }
 
@@ -173,6 +180,9 @@ export class PaymentService {
     }
 
     await this.repository.markExpired(payment.id);
+
+    // Publish payment.expired event
+    await outboxService.paymentExpired(payment);
 
     return {
       message: 'Payment marked as expired',

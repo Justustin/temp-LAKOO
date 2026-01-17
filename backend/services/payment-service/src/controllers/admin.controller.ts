@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { validationResult } from 'express-validator';
 import { prisma } from '../lib/prisma';
+import { outboxService } from '../services/outbox.service';
 
 export class AdminController {
   // Payment Management
@@ -111,10 +112,15 @@ export class AdminController {
       const { action, notes } = req.body;
       const adminUserId = (req as any).user?.id;
 
-      const refund = await prisma.refund.findUnique({ where: { id } });
+      const refund = await prisma.refund.findUnique({
+        where: { id },
+        include: { payment: { select: { orderId: true } } }
+      });
       if (!refund) {
         return res.status(404).json({ error: 'Refund not found' });
       }
+
+      const orderId = refund.payment.orderId;
 
       if (action === 'approve') {
         const updated = await prisma.refund.update({
@@ -133,6 +139,16 @@ export class AdminController {
           data: { status: 'refunded' }
         });
 
+        // Publish refund.approved event
+        await outboxService.refundApproved({
+          id: updated.id,
+          refundNumber: updated.refundNumber,
+          paymentId: updated.paymentId,
+          orderId,
+          approvedAt: updated.approvedAt,
+          approvedBy: updated.approvedBy
+        });
+
         res.json({
           message: 'Refund approved successfully',
           data: updated
@@ -146,6 +162,17 @@ export class AdminController {
             rejectedBy: adminUserId,
             rejectionReason: notes
           }
+        });
+
+        // Publish refund.rejected event
+        await outboxService.refundRejected({
+          id: updated.id,
+          refundNumber: updated.refundNumber,
+          paymentId: updated.paymentId,
+          orderId,
+          rejectedAt: updated.rejectedAt,
+          rejectedBy: updated.rejectedBy,
+          rejectionReason: updated.rejectionReason
         });
 
         res.json({
