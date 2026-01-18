@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { WarehouseService, warehouseService } from '../services/warehouse.service';
-import { asyncHandler } from '../utils/asyncHandler';
+import { asyncHandler } from '../middleware/error-handler';
 
 export class WarehouseController {
   private service: WarehouseService;

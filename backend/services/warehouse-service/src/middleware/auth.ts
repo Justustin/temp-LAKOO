@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { UnauthorizedError, ForbiddenError } from './error-handler';
 
 // Extend Express Request type
 declare global {
@@ -9,22 +10,6 @@ declare global {
         role: string;
       };
     }
-  }
-}
-
-export class UnauthorizedError extends Error {
-  statusCode = 401;
-  constructor(message = 'Unauthorized') {
-    super(message);
-    this.name = 'UnauthorizedError';
-  }
-}
-
-export class ForbiddenError extends Error {
-  statusCode = 403;
-  constructor(message = 'Forbidden') {
-    super(message);
-    this.name = 'ForbiddenError';
   }
 }
 
