@@ -25,6 +25,12 @@ const options: swaggerJsdoc.Options = {
           in: 'header',
           name: 'x-gateway-key',
           description: 'Gateway authentication key'
+        },
+        internalAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-internal-api-key',
+          description: 'Internal service authentication key'
         }
       },
       schemas: {
@@ -71,9 +77,8 @@ const options: swaggerJsdoc.Options = {
         },
         CreateAddress: {
           type: 'object',
-          required: ['userId', 'recipientName', 'phoneNumber', 'streetAddress', 'cityName', 'provinceName', 'postalCode'],
+          required: ['recipientName', 'phoneNumber', 'streetAddress', 'cityName', 'provinceName', 'postalCode'],
           properties: {
-            userId: { type: 'string', format: 'uuid', description: 'User ID' },
             label: { type: 'string', description: 'Address label', example: 'Home' },
             recipientName: { type: 'string', description: 'Recipient name', example: 'John Doe' },
             phoneNumber: { type: 'string', description: 'Phone number', example: '081234567890' },
