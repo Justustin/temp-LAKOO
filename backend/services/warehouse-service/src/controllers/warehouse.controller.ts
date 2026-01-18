@@ -51,7 +51,7 @@ export class WarehouseController {
       orderItemId
     });
 
-    res.json({ success: true, ...result });
+    return res.json(result);
   });
 
   releaseReservation = asyncHandler(async (req: Request, res: Response) => {
@@ -60,7 +60,7 @@ export class WarehouseController {
 
     const result = await this.service.releaseReservation(reservationId, reason);
 
-    res.json({ success: true, ...result });
+    return res.json(result);
   });
 
   confirmReservation = asyncHandler(async (req: Request, res: Response) => {
@@ -68,7 +68,7 @@ export class WarehouseController {
 
     const result = await this.service.confirmReservation(reservationId);
 
-    res.json({ success: true, ...result });
+    return res.json(result);
   });
 
   // =============================================================================
@@ -116,7 +116,7 @@ export class WarehouseController {
       createdBy: req.user?.id
     });
 
-    res.json({ success: true, ...result });
+    return res.json(result);
   });
 
   getMovementHistory = asyncHandler(async (req: Request, res: Response) => {
@@ -165,19 +165,19 @@ export class WarehouseController {
   });
 
   acknowledgeAlert = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const result = await this.service.acknowledgeAlert(id, req.user!.id);
 
-    res.json({ success: true, data: result });
+    return res.json({ success: true, data: result });
   });
 
   resolveAlert = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const result = await this.service.resolveAlert(id);
 
-    res.json({ success: true, data: result });
+    return res.json({ success: true, data: result });
   });
 
   // =============================================================================
@@ -198,7 +198,7 @@ export class WarehouseController {
   });
 
   getPurchaseOrder = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     const result = await this.service.getPurchaseOrder(id);
 
@@ -206,7 +206,7 @@ export class WarehouseController {
       return res.status(404).json({ success: false, error: 'Purchase order not found' });
     }
 
-    res.json({ success: true, data: result });
+    return res.json({ success: true, data: result });
   });
 
   createPurchaseOrder = asyncHandler(async (req: Request, res: Response) => {
@@ -219,21 +219,21 @@ export class WarehouseController {
   });
 
   updatePurchaseOrderStatus = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { status } = req.body;
 
     const result = await this.service.updatePurchaseOrderStatus(id, status, req.user?.id);
 
-    res.json({ success: true, data: result });
+    return res.json({ success: true, data: result });
   });
 
   receivePurchaseOrder = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const id = req.params.id as string;
     const { items } = req.body;
 
     const result = await this.service.receivePurchaseOrder(id, items);
 
-    res.json({ success: true, ...result });
+    return res.json(result);
   });
 }
 

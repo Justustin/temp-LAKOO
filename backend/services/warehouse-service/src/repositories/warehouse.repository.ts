@@ -7,12 +7,17 @@ export class WarehouseRepository {
   // =============================================================================
 
   async findInventory(productId: string, variantId: string | null) {
+    // NOTE: Prisma cannot use a composite @@unique that includes NULL to uniquely identify a row.
+    // For variant-less inventory (variantId = null), use findFirst.
+    if (variantId == null) {
+      return prisma.warehouseInventory.findFirst({
+        where: { productId, variantId: null }
+      });
+    }
+
     return prisma.warehouseInventory.findUnique({
       where: {
-        productId_variantId: {
-          productId,
-          variantId: variantId || null
-        }
+        productId_variantId: { productId, variantId }
       }
     });
   }
@@ -335,11 +340,47 @@ export class WarehouseRepository {
   }) {
     const costPerUnit = data.bundleCost / data.totalUnits;
 
+    // supplierId is optional; (productId, NULL) is not a true unique key in Postgres.
+    // So for NULL supplierId we do a manual "findFirst then update/create" flow.
+    if (!data.supplierId) {
+      const existing = await prisma.grosirBundleConfig.findFirst({
+        where: { productId: data.productId, supplierId: null }
+      });
+
+      if (existing) {
+        return prisma.grosirBundleConfig.update({
+          where: { id: existing.id },
+          data: {
+            bundleName: data.bundleName,
+            totalUnits: data.totalUnits,
+            sizeBreakdown: data.sizeBreakdown,
+            bundleCost: data.bundleCost,
+            costPerUnit,
+            minBundleOrder: data.minBundleOrder
+          }
+        });
+      }
+
+      return prisma.grosirBundleConfig.create({
+        data: {
+          productId: data.productId,
+          supplierId: null,
+          bundleName: data.bundleName,
+          totalUnits: data.totalUnits,
+          sizeBreakdown: data.sizeBreakdown,
+          bundleCost: data.bundleCost,
+          costPerUnit,
+          minBundleOrder: data.minBundleOrder || 1,
+          createdBy: data.createdBy
+        }
+      });
+    }
+
     return prisma.grosirBundleConfig.upsert({
       where: {
         productId_supplierId: {
           productId: data.productId,
-          supplierId: data.supplierId || null
+          supplierId: data.supplierId
         }
       },
       create: {
@@ -369,13 +410,9 @@ export class WarehouseRepository {
   // =============================================================================
 
   async findTolerance(productId: string, variantId?: string | null) {
-    return prisma.grosirWarehouseTolerance.findUnique({
-      where: {
-        productId_variantId: {
-          productId,
-          variantId: variantId || null
-        }
-      }
+    // Same NULL-in-composite-unique limitation as inventory.
+    return prisma.grosirWarehouseTolerance.findFirst({
+      where: { productId, variantId: variantId ?? null }
     });
   }
 
@@ -392,11 +429,38 @@ export class WarehouseRepository {
     maxExcessUnits: number;
     updatedBy?: string;
   }) {
+    if (!data.variantId) {
+      const existing = await prisma.grosirWarehouseTolerance.findFirst({
+        where: { productId: data.productId, variantId: null }
+      });
+
+      if (existing) {
+        return prisma.grosirWarehouseTolerance.update({
+          where: { id: existing.id },
+          data: {
+            size: data.size,
+            maxExcessUnits: data.maxExcessUnits,
+            updatedBy: data.updatedBy
+          }
+        });
+      }
+
+      return prisma.grosirWarehouseTolerance.create({
+        data: {
+          productId: data.productId,
+          variantId: null,
+          size: data.size,
+          maxExcessUnits: data.maxExcessUnits,
+          updatedBy: data.updatedBy
+        }
+      });
+    }
+
     return prisma.grosirWarehouseTolerance.upsert({
       where: {
         productId_variantId: {
           productId: data.productId,
-          variantId: data.variantId || null
+          variantId: data.variantId
         }
       },
       create: {
@@ -415,10 +479,13 @@ export class WarehouseRepository {
   }
 
   async lockVariant(productId: string, variantId: string | null, reason: string) {
+    const existing = await prisma.grosirWarehouseTolerance.findFirst({
+      where: { productId, variantId: variantId ?? null }
+    });
+    if (!existing) return null;
+
     return prisma.grosirWarehouseTolerance.update({
-      where: {
-        productId_variantId: { productId, variantId }
-      },
+      where: { id: existing.id },
       data: {
         isLocked: true,
         lockedAt: new Date(),
@@ -428,10 +495,13 @@ export class WarehouseRepository {
   }
 
   async unlockVariant(productId: string, variantId: string | null) {
+    const existing = await prisma.grosirWarehouseTolerance.findFirst({
+      where: { productId, variantId: variantId ?? null }
+    });
+    if (!existing) return null;
+
     return prisma.grosirWarehouseTolerance.update({
-      where: {
-        productId_variantId: { productId, variantId }
-      },
+      where: { id: existing.id },
       data: {
         isLocked: false,
         lockedAt: null,

@@ -15,7 +15,7 @@ import {
   resolveAlertValidators
 } from '../middleware/validation';
 
-const router = Router();
+const router: Router = Router();
 
 // All admin routes require authentication and admin/warehouse_admin role
 router.use(gatewayOrInternalAuth);

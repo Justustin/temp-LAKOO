@@ -698,12 +698,10 @@ export class WarehouseService {
         // Add received units to inventory
         const goodUnits = item.receivedUnits - (item.damagedUnits || 0);
         if (goodUnits > 0) {
-          const inventory = await tx.warehouseInventory.findUnique({
+          const inventory = await tx.warehouseInventory.findFirst({
             where: {
-              productId_variantId: {
-                productId: poItem.productId,
-                variantId: poItem.variantId || null
-              }
+              productId: poItem.productId,
+              variantId: poItem.variantId ?? null
             }
           });
 

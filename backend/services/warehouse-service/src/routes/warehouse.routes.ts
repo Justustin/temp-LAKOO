@@ -10,7 +10,7 @@ import { validateRequest,
   checkAllVariantsValidators
 } from '../middleware/validation';
 
-const router = Router();
+const router: Router = Router();
 
 // =============================================================================
 // PUBLIC ROUTES (via API Gateway)

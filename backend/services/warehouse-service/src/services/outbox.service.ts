@@ -165,7 +165,7 @@ export class OutboxService {
         aggregateId,
         eventType,
         payload,
-        metadata: metadata || null
+        metadata: metadata ?? undefined
       }
     });
   }
