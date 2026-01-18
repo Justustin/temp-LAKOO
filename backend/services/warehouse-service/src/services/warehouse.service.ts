@@ -277,7 +277,12 @@ export class WarehouseService {
     };
   }
 
+  /**
+   * Release a reservation: return stock to available.
+   * Uses atomic status check to prevent race conditions.
+   */
   async releaseReservation(reservationId: string, reason: string = 'order_cancelled') {
+    // First fetch reservation to get inventory info (for outbox event)
     const reservation = await this.repository.findReservation(reservationId);
 
     if (!reservation) {
@@ -287,17 +292,28 @@ export class WarehouseService {
       };
     }
 
-    if (reservation.status !== 'reserved') {
-      return {
-        success: false,
-        message: `Cannot release reservation with status: ${reservation.status}`
-      };
-    }
-
     const inventory = reservation.inventory;
 
-    // Release stock + publish outbox event atomically
+    // Wrap in transaction with atomic status check
     const result = await prisma.$transaction(async (tx: TxClient) => {
+      // Atomically update only if status is still 'reserved'
+      const updateResult = await tx.stockReservation.updateMany({
+        where: {
+          id: reservationId,
+          status: 'reserved'
+        },
+        data: {
+          status: 'released',
+          releasedAt: new Date()
+        }
+      });
+
+      // If no rows updated, another request already processed this reservation
+      if (updateResult.count === 0) {
+        return null;
+      }
+
+      // Release stock back to available
       const updatedInventory = await tx.warehouseInventory.update({
         where: { id: inventory.id },
         data: {
@@ -307,30 +323,27 @@ export class WarehouseService {
         }
       });
 
-      await tx.stockReservation.update({
-        where: { id: reservationId },
-        data: {
-          status: 'released',
-          releasedAt: new Date()
-        }
-      });
-
-      await outboxService.inventoryReleased(
-        {
-          inventoryId: inventory.id,
-          productId: inventory.productId,
-          variantId: inventory.variantId,
-          orderId: reservation.orderId,
-          quantity: reservation.quantity,
-          reservationId,
-          availableAfter: updatedInventory.availableQuantity,
-          reason
-        },
-        tx
-      );
+      // Publish event in transaction
+      await outboxService.inventoryReleased({
+        inventoryId: inventory.id,
+        productId: inventory.productId,
+        variantId: inventory.variantId,
+        orderId: reservation.orderId,
+        quantity: reservation.quantity,
+        reservationId,
+        availableAfter: updatedInventory.availableQuantity,
+        reason
+      }, tx);
 
       return { availableAfter: updatedInventory.availableQuantity };
     });
+
+    if (!result) {
+      return {
+        success: false,
+        message: `Cannot release reservation: already processed or status changed`
+      };
+    }
 
     console.log(`Released reservation ${reservationId}. Available: ${result.availableAfter}`);
 
@@ -344,9 +357,11 @@ export class WarehouseService {
 
   /**
    * Confirm a reservation: deduct stock and update grosir tolerance.
-   * Also auto-unlocks variant if currentExcess drops below threshold.
+   * Uses atomic status check to prevent race conditions.
+   * Fetches current inventory state inside transaction for accurate movement records.
    */
   async confirmReservation(reservationId: string) {
+    // First fetch reservation to get inventory info
     const reservation = await this.repository.findReservation(reservationId);
 
     if (!reservation) {
@@ -356,20 +371,37 @@ export class WarehouseService {
       };
     }
 
-    if (reservation.status !== 'reserved') {
-      return {
-        success: false,
-        message: `Cannot confirm reservation with status: ${reservation.status}`
-      };
-    }
+    // Wrap in transaction with atomic status check
+    const result = await prisma.$transaction(async (tx: TxClient) => {
+      // Atomically update only if status is still 'reserved'
+      const updateResult = await tx.stockReservation.updateMany({
+        where: {
+          id: reservationId,
+          status: 'reserved'
+        },
+        data: {
+          status: 'confirmed',
+          confirmedAt: new Date()
+        }
+      });
 
-    const inventory = reservation.inventory;
+      // If no rows updated, another request already processed this reservation
+      if (updateResult.count === 0) {
+        return null;
+      }
 
-    // Wrap in interactive transaction to handle tolerance updates
-    await prisma.$transaction(async (tx: TxClient) => {
-      // Confirm reservation and deduct from total stock
-      await tx.warehouseInventory.update({
-        where: { id: inventory.id },
+      // Fetch current inventory state inside transaction for accurate movement
+      const currentInventory = await tx.warehouseInventory.findUnique({
+        where: { id: reservation.inventoryId }
+      });
+
+      if (!currentInventory) {
+        throw new Error('Inventory not found');
+      }
+
+      // Deduct from total stock
+      const updatedInventory = await tx.warehouseInventory.update({
+        where: { id: reservation.inventoryId },
         data: {
           quantity: { decrement: reservation.quantity },
           reservedQuantity: { decrement: reservation.quantity },
@@ -378,22 +410,15 @@ export class WarehouseService {
         }
       });
 
-      await tx.stockReservation.update({
-        where: { id: reservationId },
-        data: {
-          status: 'confirmed',
-          confirmedAt: new Date()
-        }
-      });
-
+      // Create movement record with accurate before/after quantities
       await tx.inventoryMovement.create({
         data: {
-          inventoryId: inventory.id,
+          inventoryId: reservation.inventoryId,
           movementNumber: `MOV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
           type: 'order_fulfilled',
-          quantityBefore: inventory.quantity,
+          quantityBefore: currentInventory.quantity,
           quantityChange: -reservation.quantity,
-          quantityAfter: inventory.quantity - reservation.quantity,
+          quantityAfter: updatedInventory.quantity,
           referenceType: 'order',
           referenceId: reservation.orderId,
           orderId: reservation.orderId
@@ -403,8 +428,8 @@ export class WarehouseService {
       // Update grosir tolerance: decrement currentExcess when stock is sold
       const tolerance = await tx.grosirWarehouseTolerance.findFirst({
         where: {
-          productId: inventory.productId,
-          variantId: inventory.variantId ?? null
+          productId: currentInventory.productId,
+          variantId: currentInventory.variantId ?? null
         }
       });
 
@@ -431,29 +456,38 @@ export class WarehouseService {
 
           // Emit unlock event
           await outboxService.variantUnlocked({
-            productId: inventory.productId,
-            variantId: inventory.variantId
+            productId: currentInventory.productId,
+            variantId: currentInventory.variantId
           }, tx);
         }
       }
 
       // Publish confirmed event
       await outboxService.inventoryConfirmed({
-        inventoryId: inventory.id,
-        productId: inventory.productId,
-        variantId: inventory.variantId,
+        inventoryId: reservation.inventoryId,
+        productId: currentInventory.productId,
+        variantId: currentInventory.variantId,
         orderId: reservation.orderId,
         quantity: reservation.quantity,
         reservationId
       }, tx);
+
+      return { quantity: reservation.quantity };
     });
 
-    console.log(`Confirmed reservation ${reservationId}. Deducted ${reservation.quantity} from stock.`);
+    if (!result) {
+      return {
+        success: false,
+        message: `Cannot confirm reservation: already processed or status changed`
+      };
+    }
+
+    console.log(`Confirmed reservation ${reservationId}. Deducted ${result.quantity} from stock.`);
 
     return {
       success: true,
-      message: `Confirmed and deducted ${reservation.quantity} units`,
-      quantity: reservation.quantity
+      message: `Confirmed and deducted ${result.quantity} units`,
+      quantity: result.quantity
     };
   }
 
@@ -1014,22 +1048,42 @@ export class WarehouseService {
 
   /**
    * Process expired reservations: release stock and mark as expired.
+   * Uses atomic status check to prevent race conditions.
    * Should be called periodically by a cron job or scheduler.
    */
   async processExpiredReservations(): Promise<{
     processed: number;
     released: number;
+    skipped: number;
     errors: number;
   }> {
     const expiredReservations = await this.repository.findExpiredReservations();
 
     let processed = 0;
     let released = 0;
+    let skipped = 0;
     let errors = 0;
 
     for (const reservation of expiredReservations) {
       try {
-        await prisma.$transaction(async (tx: TxClient) => {
+        const result = await prisma.$transaction(async (tx: TxClient) => {
+          // Atomically update only if status is still 'reserved'
+          const updateResult = await tx.stockReservation.updateMany({
+            where: {
+              id: reservation.id,
+              status: 'reserved'
+            },
+            data: {
+              status: 'expired',
+              releasedAt: new Date()
+            }
+          });
+
+          // If no rows updated, another request already processed this reservation
+          if (updateResult.count === 0) {
+            return { skipped: true };
+          }
+
           // Release stock back to available
           const updatedInventory = await tx.warehouseInventory.update({
             where: { id: reservation.inventoryId },
@@ -1040,16 +1094,7 @@ export class WarehouseService {
             }
           });
 
-          // Mark reservation as expired
-          await tx.stockReservation.update({
-            where: { id: reservation.id },
-            data: {
-              status: 'expired',
-              releasedAt: new Date()
-            }
-          });
-
-          // Publish release event
+          // Publish release event with accurate availableAfter
           await outboxService.inventoryReleased({
             inventoryId: reservation.inventoryId,
             productId: reservation.inventory.productId,
@@ -1060,10 +1105,17 @@ export class WarehouseService {
             availableAfter: updatedInventory.availableQuantity,
             reason: 'reservation_expired'
           }, tx);
+
+          return { skipped: false };
         });
 
-        released++;
-        console.log(`Expired reservation ${reservation.id} released (${reservation.quantity} units)`);
+        if (result.skipped) {
+          skipped++;
+          console.log(`Reservation ${reservation.id} already processed, skipping`);
+        } else {
+          released++;
+          console.log(`Expired reservation ${reservation.id} released (${reservation.quantity} units)`);
+        }
       } catch (error) {
         errors++;
         console.error(`Failed to process expired reservation ${reservation.id}:`, error);
@@ -1072,9 +1124,9 @@ export class WarehouseService {
       processed++;
     }
 
-    console.log(`Processed ${processed} expired reservations: ${released} released, ${errors} errors`);
+    console.log(`Processed ${processed} expired reservations: ${released} released, ${skipped} skipped, ${errors} errors`);
 
-    return { processed, released, errors };
+    return { processed, released, skipped, errors };
   }
 }
 
