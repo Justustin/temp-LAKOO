@@ -1,0 +1,82 @@
+# ========================================
+# WAREHOUSE SERVICE DOCKER COMPOSE
+# Development Environment
+# ========================================
+
+version: '3.8'
+
+services:
+  warehouse-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: warehouse-service
+    restart: unless-stopped
+    ports:
+      - "3012:3012"
+    environment:
+      - NODE_ENV=development
+      - PORT=3012
+      - DATABASE_URL=postgresql://postgres:postgres@warehouse-db:5432/warehouse_db?schema=public
+      - RESERVATION_EXPIRY_HOURS=24
+      - GATEWAY_SECRET_KEY=${GATEWAY_SECRET_KEY}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+    depends_on:
+      warehouse-db:
+        condition: service_healthy
+    networks:
+      - warehouse-network
+      - shared-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3012/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  warehouse-db:
+    image: postgres:15-alpine
+    container_name: warehouse-db
+    restart: unless-stopped
+    ports:
+      - "5438:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=warehouse_db
+    volumes:
+      - warehouse-db-data:/var/lib/postgresql/data
+    networks:
+      - warehouse-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Database migration service (runs once)
+  warehouse-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: warehouse-migrate
+    command: npx prisma migrate deploy
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@warehouse-db:5432/warehouse_db?schema=public
+    depends_on:
+      warehouse-db:
+        condition: service_healthy
+    networks:
+      - warehouse-network
+    restart: "no"
+
+volumes:
+  warehouse-db-data:
+
+networks:
+  warehouse-network:
+    driver: bridge
+  shared-network:
+    external: true
+    name: microservices-network
+
