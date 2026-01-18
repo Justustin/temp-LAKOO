@@ -79,13 +79,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # Database migration service (runs once)
+  # Database schema sync service (runs once)
   payment-migrate:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: payment-migrate
-    command: npx prisma migrate deploy
+    command: npx prisma db push
     environment:
       - DATABASE_URL=postgresql://postgres:postgres@payment-db:5432/payment_db?schema=public
     depends_on:
