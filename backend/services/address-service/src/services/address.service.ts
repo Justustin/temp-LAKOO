@@ -95,11 +95,13 @@ export class AddressService {
       const { isDefault, ...updateData } = data;
       if (Object.keys(updateData).length > 0) {
         const updated = await this.repository.update(id, updateData);
+        await outboxService.addressSetDefault(updated);
         await outboxService.addressUpdated(updated);
         return updated;
       }
       const updated = await this.repository.findById(id);
       if (updated) {
+        await outboxService.addressSetDefault(updated);
         await outboxService.addressUpdated(updated);
       }
       return updated;
@@ -124,6 +126,7 @@ export class AddressService {
     }
 
     const updated = await this.repository.setAsDefault(id, userId);
+    await outboxService.addressSetDefault(updated);
     await outboxService.addressUpdated(updated);
     return updated;
   }

@@ -4,6 +4,17 @@ import { Prisma } from '../generated/prisma';
 
 export class AddressRepository {
   /**
+   * Serialize "default address" mutations per user to avoid ending up with multiple defaults
+   * under concurrent requests.
+   *
+   * Postgres advisory lock is scoped to the current transaction (xact lock).
+   */
+  private async lockUserDefaultMutation(tx: Prisma.TransactionClient, userId: string) {
+    // hashtext() returns int4; cast to bigint for pg_advisory_xact_lock(bigint)
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${userId})::bigint)`;
+  }
+
+  /**
    * Create a new address for a user
    * Uses transaction when setting as default to prevent race conditions
    */
@@ -11,6 +22,8 @@ export class AddressRepository {
     // If setting as default, use transaction to ensure atomicity
     if (data.isDefault) {
       return prisma.$transaction(async (tx) => {
+        await this.lockUserDefaultMutation(tx, data.userId);
+
         // Unset other defaults first
         await tx.address.updateMany({
           where: {
@@ -109,7 +122,9 @@ export class AddressRepository {
         userId,
         isDefault: true,
         deletedAt: null
-      }
+      },
+      // If a bug ever creates multiple defaults, make the selection deterministic
+      orderBy: { updatedAt: 'desc' }
     });
   }
 
@@ -164,6 +179,8 @@ export class AddressRepository {
    */
   async setAsDefault(id: string, userId: string) {
     return prisma.$transaction(async (tx) => {
+      await this.lockUserDefaultMutation(tx, userId);
+
       // Unset all other defaults for this user
       await tx.address.updateMany({
         where: {
@@ -187,6 +204,8 @@ export class AddressRepository {
    */
   async softDeleteWithDefaultSwitch(id: string, userId: string, newDefaultId?: string) {
     return prisma.$transaction(async (tx) => {
+      await this.lockUserDefaultMutation(tx, userId);
+
       // If we need to switch default, do it first
       if (newDefaultId) {
         await tx.address.updateMany({
