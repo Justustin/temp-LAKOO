@@ -1,6 +1,10 @@
 import { prisma } from '../lib/prisma';
 import { WarehouseRepository, warehouseRepository } from '../repositories/warehouse.repository';
 import { outboxService } from './outbox.service';
+import { Prisma } from '../generated/prisma';
+
+// Type for Prisma transaction client
+type TxClient = Prisma.TransactionClient;
 
 const RESERVATION_EXPIRY_HOURS = parseInt(process.env.RESERVATION_EXPIRY_HOURS || '24');
 const MAX_RETRY_ATTEMPTS = 3;
@@ -64,6 +68,11 @@ export class WarehouseService {
   // Stock Reservation (with optimistic locking to prevent oversell)
   // =============================================================================
 
+  /**
+   * Reserve inventory atomically.
+   * All operations (inventory update, reservation creation, outbox events, alerts)
+   * are wrapped in a single transaction to prevent ghost reservations.
+   */
   async reserveInventory(data: {
     productId: string;
     variantId: string | null;
@@ -99,82 +108,165 @@ export class WarehouseService {
       const expiresAt = new Date();
       expiresAt.setHours(expiresAt.getHours() + RESERVATION_EXPIRY_HOURS);
 
-      // Atomic reservation with optimistic locking
-      const updatedInventory = await this.repository.atomicReserveStock(
-        inventory.id,
-        quantity,
-        inventory.version
-      );
+      try {
+        // Wrap ALL operations in a single transaction for atomicity
+        const result = await prisma.$transaction(async (tx: TxClient) => {
+          // Atomic reservation with optimistic locking using updateMany
+          const updateResult = await tx.warehouseInventory.updateMany({
+            where: {
+              id: inventory.id,
+              version: inventory.version,
+              availableQuantity: { gte: quantity }
+            },
+            data: {
+              reservedQuantity: { increment: quantity },
+              availableQuantity: { decrement: quantity },
+              version: { increment: 1 }
+            }
+          });
 
-      if (!updatedInventory) {
-        // Concurrent modification detected, retry
-        console.log(`Reservation attempt ${attempt} failed due to concurrent update, retrying...`);
-        if (attempt === MAX_RETRY_ATTEMPTS) {
+          if (updateResult.count === 0) {
+            // Concurrent modification or insufficient stock - will trigger retry
+            return null;
+          }
+
+          // Get updated inventory state
+          const updatedInventory = await tx.warehouseInventory.findUnique({
+            where: { id: inventory.id }
+          });
+
+          if (!updatedInventory) {
+            return null;
+          }
+
+          // Create reservation record in same transaction
+          const reservation = await tx.stockReservation.create({
+            data: {
+              inventoryId: inventory.id,
+              orderId,
+              orderItemId,
+              quantity,
+              status: 'reserved',
+              expiresAt
+            }
+          });
+
+          const availableAfter = updatedInventory.availableQuantity;
+
+          // Publish outbox event in same transaction
+          await outboxService.inventoryReserved({
+            inventoryId: inventory.id,
+            productId,
+            variantId,
+            orderId,
+            orderItemId: orderItemId || null,
+            quantity,
+            reservationId: reservation.id,
+            availableAfter
+          }, tx);
+
+          // Check for low stock alert and create alert record + outbox event
+          if (availableAfter <= inventory.minStockLevel && availableAfter > 0) {
+            const alert = await tx.stockAlert.create({
+              data: {
+                inventoryId: inventory.id,
+                productId,
+                variantId,
+                alertType: 'low_stock',
+                currentStock: availableAfter,
+                threshold: inventory.minStockLevel,
+                message: `Low stock alert: ${inventory.sku} has ${availableAfter} units (min: ${inventory.minStockLevel})`
+              }
+            });
+
+            await outboxService.lowStock({
+              inventoryId: inventory.id,
+              productId,
+              variantId,
+              sku: inventory.sku,
+              currentStock: availableAfter,
+              minStockLevel: inventory.minStockLevel
+            }, tx);
+
+            await outboxService.stockAlertTriggered({
+              alertId: alert.id,
+              inventoryId: inventory.id,
+              productId,
+              variantId,
+              alertType: 'low_stock',
+              currentStock: availableAfter,
+              threshold: inventory.minStockLevel,
+              message: alert.message
+            }, tx);
+          } else if (availableAfter <= 0) {
+            const alert = await tx.stockAlert.create({
+              data: {
+                inventoryId: inventory.id,
+                productId,
+                variantId,
+                alertType: 'out_of_stock',
+                currentStock: 0,
+                threshold: 0,
+                message: `Out of stock alert: ${inventory.sku} is now out of stock`
+              }
+            });
+
+            await outboxService.outOfStock({
+              inventoryId: inventory.id,
+              productId,
+              variantId,
+              sku: inventory.sku
+            }, tx);
+
+            await outboxService.stockAlertTriggered({
+              alertId: alert.id,
+              inventoryId: inventory.id,
+              productId,
+              variantId,
+              alertType: 'out_of_stock',
+              currentStock: 0,
+              threshold: 0,
+              message: alert.message
+            }, tx);
+          }
+
           return {
-            success: false,
-            message: 'Could not reserve stock due to concurrent updates. Please try again.',
-            reserved: false
+            reservation,
+            availableAfter
           };
+        });
+
+        if (!result) {
+          // Concurrent modification detected, retry
+          console.log(`Reservation attempt ${attempt} failed due to concurrent update, retrying...`);
+          if (attempt === MAX_RETRY_ATTEMPTS) {
+            return {
+              success: false,
+              message: 'Could not reserve stock due to concurrent updates. Please try again.',
+              reserved: false
+            };
+          }
+          continue;
+        }
+
+        console.log(`Reserved ${quantity} units. Remaining: ${result.availableAfter}`);
+
+        return {
+          success: true,
+          message: `Successfully reserved ${quantity} units`,
+          reserved: true,
+          reservationId: result.reservation.id,
+          quantity,
+          availableAfter: result.availableAfter,
+          expiresAt
+        };
+      } catch (error) {
+        console.error(`Reservation attempt ${attempt} failed with error:`, error);
+        if (attempt === MAX_RETRY_ATTEMPTS) {
+          throw error;
         }
         continue;
       }
-
-      // Reservation successful, create reservation record
-      const reservation = await prisma.stockReservation.create({
-        data: {
-          inventoryId: inventory.id,
-          orderId,
-          orderItemId,
-          quantity,
-          status: 'reserved',
-          expiresAt
-        }
-      });
-
-      const availableAfter = updatedInventory.availableQuantity;
-
-      // Publish event
-      await outboxService.inventoryReserved({
-        inventoryId: inventory.id,
-        productId,
-        variantId,
-        orderId,
-        orderItemId: orderItemId || null,
-        quantity,
-        reservationId: reservation.id,
-        availableAfter
-      });
-
-      // Check for low stock alert
-      if (availableAfter <= inventory.minStockLevel && availableAfter > 0) {
-        await outboxService.lowStock({
-          inventoryId: inventory.id,
-          productId,
-          variantId,
-          sku: inventory.sku,
-          currentStock: availableAfter,
-          minStockLevel: inventory.minStockLevel
-        });
-      } else if (availableAfter <= 0) {
-        await outboxService.outOfStock({
-          inventoryId: inventory.id,
-          productId,
-          variantId,
-          sku: inventory.sku
-        });
-      }
-
-      console.log(`Reserved ${quantity} units. Remaining: ${availableAfter}`);
-
-      return {
-        success: true,
-        message: `Successfully reserved ${quantity} units`,
-        reserved: true,
-        reservationId: reservation.id,
-        quantity,
-        availableAfter,
-        expiresAt
-      };
     }
 
     // Should not reach here, but just in case
@@ -247,6 +339,10 @@ export class WarehouseService {
     };
   }
 
+  /**
+   * Confirm a reservation: deduct stock and update grosir tolerance.
+   * Also auto-unlocks variant if currentExcess drops below threshold.
+   */
   async confirmReservation(reservationId: string) {
     const reservation = await this.repository.findReservation(reservationId);
 
@@ -266,9 +362,10 @@ export class WarehouseService {
 
     const inventory = reservation.inventory;
 
-    // Confirm reservation and deduct from total stock atomically
-    await prisma.$transaction([
-      prisma.warehouseInventory.update({
+    // Wrap in interactive transaction to handle tolerance updates
+    await prisma.$transaction(async (tx: TxClient) => {
+      // Confirm reservation and deduct from total stock
+      await tx.warehouseInventory.update({
         where: { id: inventory.id },
         data: {
           quantity: { decrement: reservation.quantity },
@@ -276,15 +373,17 @@ export class WarehouseService {
           lastSoldAt: new Date(),
           version: { increment: 1 }
         }
-      }),
-      prisma.stockReservation.update({
+      });
+
+      await tx.stockReservation.update({
         where: { id: reservationId },
         data: {
           status: 'confirmed',
           confirmedAt: new Date()
         }
-      }),
-      prisma.inventoryMovement.create({
+      });
+
+      await tx.inventoryMovement.create({
         data: {
           inventoryId: inventory.id,
           movementNumber: `MOV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
@@ -296,17 +395,54 @@ export class WarehouseService {
           referenceId: reservation.orderId,
           orderId: reservation.orderId
         }
-      })
-    ]);
+      });
 
-    // Publish event
-    await outboxService.inventoryConfirmed({
-      inventoryId: inventory.id,
-      productId: inventory.productId,
-      variantId: inventory.variantId,
-      orderId: reservation.orderId,
-      quantity: reservation.quantity,
-      reservationId
+      // Update grosir tolerance: decrement currentExcess when stock is sold
+      const tolerance = await tx.grosirWarehouseTolerance.findFirst({
+        where: {
+          productId: inventory.productId,
+          variantId: inventory.variantId ?? null
+        }
+      });
+
+      if (tolerance) {
+        const newExcess = Math.max(0, (tolerance.currentExcess || 0) - reservation.quantity);
+
+        await tx.grosirWarehouseTolerance.update({
+          where: { id: tolerance.id },
+          data: {
+            currentExcess: newExcess
+          }
+        });
+
+        // Auto-unlock if previously locked due to overflow and now has room
+        if (tolerance.isLocked && newExcess <= tolerance.maxExcessUnits) {
+          await tx.grosirWarehouseTolerance.update({
+            where: { id: tolerance.id },
+            data: {
+              isLocked: false,
+              lockedAt: null,
+              lockedReason: null
+            }
+          });
+
+          // Emit unlock event
+          await outboxService.variantUnlocked({
+            productId: inventory.productId,
+            variantId: inventory.variantId
+          }, tx);
+        }
+      }
+
+      // Publish confirmed event
+      await outboxService.inventoryConfirmed({
+        inventoryId: inventory.id,
+        productId: inventory.productId,
+        variantId: inventory.variantId,
+        orderId: reservation.orderId,
+        quantity: reservation.quantity,
+        reservationId
+      }, tx);
     });
 
     console.log(`Confirmed reservation ${reservationId}. Deducted ${reservation.quantity} from stock.`);
@@ -662,36 +798,60 @@ export class WarehouseService {
   /**
    * Receive items from a purchase order.
    * All operations are wrapped in a transaction for atomicity.
+   * Uses increment operations to avoid concurrency issues from stale reads.
    * Status is computed from cumulative DB state after updates.
    */
   async receivePurchaseOrder(
     id: string,
     items: Array<{ itemId: string; receivedUnits: number; damagedUnits?: number }>
   ) {
-    const po = await this.repository.findPurchaseOrder(id);
-    if (!po) {
+    // Validate PO exists (we only need the poNumber for logging, not the item state)
+    const poHeader = await prisma.warehousePurchaseOrder.findUnique({
+      where: { id },
+      select: { id: true, poNumber: true, supplierId: true }
+    });
+
+    if (!poHeader) {
       throw new Error('Purchase order not found');
     }
 
     let totalReceived = 0;
     let totalDamaged = 0;
 
+    // Track inventory updates for outbox events
+    const inventoryUpdates: Array<{
+      inventoryId: string;
+      productId: string;
+      variantId: string | null;
+      sku: string;
+      goodUnits: number;
+      newTotal: number;
+    }> = [];
+
     // Wrap all operations in a transaction
-    await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: TxClient) => {
       for (const item of items) {
-        const poItem = po.items.find(i => i.id === item.itemId);
-        if (!poItem) continue;
+        // Fetch current PO item state INSIDE the transaction
+        const poItem = await tx.purchaseOrderItem.findUnique({
+          where: { id: item.itemId }
+        });
 
-        // Update PO item with received quantities (cumulative)
-        const newReceivedUnits = poItem.receivedUnits + item.receivedUnits;
-        const newDamagedUnits = poItem.damagedUnits + (item.damagedUnits || 0);
+        if (!poItem || poItem.purchaseOrderId !== id) continue;
 
+        // Use increment operations for concurrency safety
+        const updatedPoItem = await tx.purchaseOrderItem.update({
+          where: { id: item.itemId },
+          data: {
+            receivedUnits: { increment: item.receivedUnits },
+            damagedUnits: { increment: item.damagedUnits || 0 }
+          }
+        });
+
+        // Update status based on new totals
         await tx.purchaseOrderItem.update({
           where: { id: item.itemId },
           data: {
-            receivedUnits: newReceivedUnits,
-            damagedUnits: newDamagedUnits,
-            status: newReceivedUnits >= poItem.totalUnits ? 'received' : 'partial'
+            status: updatedPoItem.receivedUnits >= poItem.totalUnits ? 'received' : 'partial'
           }
         });
 
@@ -706,7 +866,7 @@ export class WarehouseService {
           });
 
           if (inventory) {
-            await tx.warehouseInventory.update({
+            const updatedInventory = await tx.warehouseInventory.update({
               where: { id: inventory.id },
               data: {
                 quantity: { increment: goodUnits },
@@ -716,7 +876,7 @@ export class WarehouseService {
               }
             });
 
-            // Create movement record
+            // Create movement record with current state
             await tx.inventoryMovement.create({
               data: {
                 inventoryId: inventory.id,
@@ -724,14 +884,74 @@ export class WarehouseService {
                 type: 'purchase_order_received',
                 quantityBefore: inventory.quantity,
                 quantityChange: goodUnits,
-                quantityAfter: inventory.quantity + goodUnits,
+                quantityAfter: updatedInventory.quantity,
                 referenceType: 'purchase_order',
-                referenceId: po.id,
-                purchaseOrderId: po.id,
-                reason: `Received from PO ${po.poNumber}`,
+                referenceId: id,
+                purchaseOrderId: id,
+                reason: `Received from PO ${poHeader.poNumber}`,
                 unitCost: Number(poItem.unitCost)
               }
             });
+
+            // Track for outbox event
+            inventoryUpdates.push({
+              inventoryId: inventory.id,
+              productId: inventory.productId,
+              variantId: inventory.variantId,
+              sku: inventory.sku,
+              goodUnits,
+              newTotal: updatedInventory.quantity
+            });
+
+            // Update grosir tolerance: increment currentExcess when stock arrives
+            const tolerance = await tx.grosirWarehouseTolerance.findFirst({
+              where: {
+                productId: inventory.productId,
+                variantId: inventory.variantId ?? null
+              }
+            });
+
+            if (tolerance) {
+              const newExcess = (tolerance.currentExcess || 0) + goodUnits;
+
+              await tx.grosirWarehouseTolerance.update({
+                where: { id: tolerance.id },
+                data: {
+                  currentExcess: newExcess
+                }
+              });
+
+              // Auto-lock if currentExcess exceeds maxExcessUnits
+              if (!tolerance.isLocked && newExcess > tolerance.maxExcessUnits) {
+                await tx.grosirWarehouseTolerance.update({
+                  where: { id: tolerance.id },
+                  data: {
+                    isLocked: true,
+                    lockedAt: new Date(),
+                    lockedReason: `Excess stock (${newExcess}) exceeds maximum (${tolerance.maxExcessUnits})`
+                  }
+                });
+
+                // Emit lock event
+                await outboxService.variantLocked({
+                  productId: inventory.productId,
+                  variantId: inventory.variantId,
+                  reason: `Excess stock (${newExcess}) exceeds maximum (${tolerance.maxExcessUnits})`,
+                  overflowVariants: [tolerance.size || 'default']
+                }, tx);
+              }
+            }
+
+            // Publish restocked event in transaction
+            await outboxService.restocked({
+              inventoryId: inventory.id,
+              productId: inventory.productId,
+              variantId: inventory.variantId,
+              sku: inventory.sku,
+              quantityAdded: goodUnits,
+              newTotal: updatedInventory.quantity,
+              purchaseOrderId: id
+            }, tx);
           }
         }
 
@@ -745,9 +965,9 @@ export class WarehouseService {
       });
 
       const allFullyReceived = updatedItems.every(
-        item => item.receivedUnits >= item.totalUnits
+        poItem => poItem.receivedUnits >= poItem.totalUnits
       );
-      const anyReceived = updatedItems.some(item => item.receivedUnits > 0);
+      const anyReceived = updatedItems.some(poItem => poItem.receivedUnits > 0);
 
       let newStatus: 'received' | 'partially_received' | 'draft' = 'draft';
       if (allFullyReceived) {
@@ -763,48 +983,95 @@ export class WarehouseService {
           receivedDate: allFullyReceived ? new Date() : undefined
         }
       });
-    });
 
-    // Publish events after successful transaction
-    // Re-fetch to get updated inventory data
-    const updatedPo = await this.repository.findPurchaseOrder(id);
+      // Publish PO received event in transaction
+      await outboxService.purchaseOrderReceived({
+        purchaseOrderId: id,
+        poNumber: poHeader.poNumber,
+        supplierId: poHeader.supplierId,
+        totalUnitsReceived: totalReceived,
+        damagedUnits: totalDamaged
+      }, tx);
 
-    for (const item of items) {
-      const poItem = po.items.find(i => i.id === item.itemId);
-      if (!poItem) continue;
-
-      const goodUnits = item.receivedUnits - (item.damagedUnits || 0);
-      if (goodUnits > 0) {
-        const inventory = await this.repository.findInventory(poItem.productId, poItem.variantId);
-        if (inventory) {
-          await outboxService.restocked({
-            inventoryId: inventory.id,
-            productId: inventory.productId,
-            variantId: inventory.variantId,
-            sku: inventory.sku,
-            quantityAdded: goodUnits,
-            newTotal: inventory.quantity,
-            purchaseOrderId: po.id
-          });
-        }
-      }
-    }
-
-    await outboxService.purchaseOrderReceived({
-      purchaseOrderId: po.id,
-      poNumber: po.poNumber,
-      supplierId: po.supplierId,
-      totalUnitsReceived: totalReceived,
-      damagedUnits: totalDamaged
+      return { newStatus, totalReceived, totalDamaged };
     });
 
     return {
       success: true,
-      message: `Received ${totalReceived} units (${totalDamaged} damaged)`,
-      status: updatedPo?.status || 'partially_received',
-      totalReceived,
-      totalDamaged
+      message: `Received ${result.totalReceived} units (${result.totalDamaged} damaged)`,
+      status: result.newStatus,
+      totalReceived: result.totalReceived,
+      totalDamaged: result.totalDamaged
     };
+  }
+
+  // =============================================================================
+  // Reservation Expiry Processing
+  // =============================================================================
+
+  /**
+   * Process expired reservations: release stock and mark as expired.
+   * Should be called periodically by a cron job or scheduler.
+   */
+  async processExpiredReservations(): Promise<{
+    processed: number;
+    released: number;
+    errors: number;
+  }> {
+    const expiredReservations = await this.repository.findExpiredReservations();
+
+    let processed = 0;
+    let released = 0;
+    let errors = 0;
+
+    for (const reservation of expiredReservations) {
+      try {
+        await prisma.$transaction(async (tx: TxClient) => {
+          // Release stock back to available
+          await tx.warehouseInventory.update({
+            where: { id: reservation.inventoryId },
+            data: {
+              reservedQuantity: { decrement: reservation.quantity },
+              availableQuantity: { increment: reservation.quantity },
+              version: { increment: 1 }
+            }
+          });
+
+          // Mark reservation as expired
+          await tx.stockReservation.update({
+            where: { id: reservation.id },
+            data: {
+              status: 'expired',
+              releasedAt: new Date()
+            }
+          });
+
+          // Publish release event
+          await outboxService.inventoryReleased({
+            inventoryId: reservation.inventoryId,
+            productId: reservation.inventory.productId,
+            variantId: reservation.inventory.variantId,
+            orderId: reservation.orderId,
+            quantity: reservation.quantity,
+            reservationId: reservation.id,
+            availableAfter: reservation.inventory.availableQuantity + reservation.quantity,
+            reason: 'reservation_expired'
+          }, tx);
+        });
+
+        released++;
+        console.log(`Expired reservation ${reservation.id} released (${reservation.quantity} units)`);
+      } catch (error) {
+        errors++;
+        console.error(`Failed to process expired reservation ${reservation.id}:`, error);
+      }
+
+      processed++;
+    }
+
+    console.log(`Processed ${processed} expired reservations: ${released} released, ${errors} errors`);
+
+    return { processed, released, errors };
   }
 }
 

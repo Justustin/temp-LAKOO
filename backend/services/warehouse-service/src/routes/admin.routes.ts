@@ -77,6 +77,20 @@ router.get(
 );
 
 // =============================================================================
+// RESERVATION MANAGEMENT
+// =============================================================================
+
+/**
+ * @swagger
+ * /api/admin/reservations/expire:
+ *   post:
+ *     summary: Process expired reservations (release stock)
+ *     description: Should be called by a cron job or scheduler periodically
+ *     tags: [Admin - Reservations]
+ */
+router.post('/reservations/expire', warehouseController.processExpiredReservations);
+
+// =============================================================================
 // GROSIR BUNDLE CONFIGURATION
 // =============================================================================
 

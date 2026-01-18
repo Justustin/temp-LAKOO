@@ -71,6 +71,19 @@ export class WarehouseController {
     return res.json(result);
   });
 
+  /**
+   * Process expired reservations (called by cron/scheduler)
+   */
+  processExpiredReservations = asyncHandler(async (req: Request, res: Response) => {
+    const result = await this.service.processExpiredReservations();
+
+    return res.json({
+      success: true,
+      message: `Processed ${result.processed} expired reservations`,
+      data: result
+    });
+  });
+
   // =============================================================================
   // Bundle/Grosir Checking
   // =============================================================================

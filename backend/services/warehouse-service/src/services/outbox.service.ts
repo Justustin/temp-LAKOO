@@ -1,10 +1,16 @@
 import { prisma } from '../lib/prisma';
+import { Prisma } from '../generated/prisma';
+
+// Transaction client type for passing into transactional methods
+type TxClient = Omit<typeof prisma, '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'>;
 
 /**
  * Outbox Service
  *
  * Publishes domain events to the ServiceOutbox table for eventual delivery
  * to other services via Kafka/message broker.
+ *
+ * Supports both standalone and transactional publishing via optional tx parameter.
  */
 
 // =============================================================================
@@ -151,15 +157,18 @@ export interface PurchaseOrderReceivedPayload {
 export class OutboxService {
   /**
    * Publish an event to the outbox
+   * @param tx - Optional transaction client for atomic publishing
    */
   async publish(
     aggregateType: 'Inventory' | 'Reservation' | 'PurchaseOrder' | 'StockAlert' | 'Variant',
     aggregateId: string,
     eventType: EventType,
     payload: Record<string, any>,
-    metadata?: Record<string, any>
+    metadata?: Record<string, any>,
+    tx?: TxClient
   ): Promise<void> {
-    await prisma.serviceOutbox.create({
+    const client = tx ?? prisma;
+    await client.serviceOutbox.create({
       data: {
         aggregateType,
         aggregateId,
@@ -183,13 +192,13 @@ export class OutboxService {
     quantity: number;
     reservationId: string;
     availableAfter: number;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: InventoryReservedPayload = {
       ...data,
       reservedAt: new Date().toISOString()
     };
 
-    await this.publish('Reservation', data.reservationId, 'inventory.reserved', payload);
+    await this.publish('Reservation', data.reservationId, 'inventory.reserved', payload, undefined, tx);
   }
 
   async inventoryReleased(data: {
@@ -201,13 +210,13 @@ export class OutboxService {
     reservationId: string;
     availableAfter: number;
     reason: string;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: InventoryReleasedPayload = {
       ...data,
       releasedAt: new Date().toISOString()
     };
 
-    await this.publish('Reservation', data.reservationId, 'inventory.released', payload);
+    await this.publish('Reservation', data.reservationId, 'inventory.released', payload, undefined, tx);
   }
 
   async inventoryConfirmed(data: {
@@ -217,13 +226,13 @@ export class OutboxService {
     orderId: string;
     quantity: number;
     reservationId: string;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: InventoryConfirmedPayload = {
       ...data,
       confirmedAt: new Date().toISOString()
     };
 
-    await this.publish('Reservation', data.reservationId, 'inventory.confirmed', payload);
+    await this.publish('Reservation', data.reservationId, 'inventory.confirmed', payload, undefined, tx);
   }
 
   async lowStock(data: {
@@ -233,13 +242,13 @@ export class OutboxService {
     sku: string;
     currentStock: number;
     minStockLevel: number;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: LowStockPayload = {
       ...data,
       triggeredAt: new Date().toISOString()
     };
 
-    await this.publish('Inventory', data.inventoryId, 'inventory.low_stock', payload);
+    await this.publish('Inventory', data.inventoryId, 'inventory.low_stock', payload, undefined, tx);
   }
 
   async outOfStock(data: {
@@ -247,13 +256,13 @@ export class OutboxService {
     productId: string;
     variantId: string | null;
     sku: string;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: OutOfStockPayload = {
       ...data,
       triggeredAt: new Date().toISOString()
     };
 
-    await this.publish('Inventory', data.inventoryId, 'inventory.out_of_stock', payload);
+    await this.publish('Inventory', data.inventoryId, 'inventory.out_of_stock', payload, undefined, tx);
   }
 
   async restocked(data: {
@@ -264,13 +273,13 @@ export class OutboxService {
     quantityAdded: number;
     newTotal: number;
     purchaseOrderId: string | null;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: RestockedPayload = {
       ...data,
       restockedAt: new Date().toISOString()
     };
 
-    await this.publish('Inventory', data.inventoryId, 'inventory.restocked', payload);
+    await this.publish('Inventory', data.inventoryId, 'inventory.restocked', payload, undefined, tx);
   }
 
   // =============================================================================
@@ -282,25 +291,25 @@ export class OutboxService {
     variantId: string | null;
     reason: string;
     overflowVariants: string[];
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: VariantLockedPayload = {
       ...data,
       lockedAt: new Date().toISOString()
     };
 
-    await this.publish('Variant', data.productId, 'variant.locked', payload);
+    await this.publish('Variant', data.productId, 'variant.locked', payload, undefined, tx);
   }
 
   async variantUnlocked(data: {
     productId: string;
     variantId: string | null;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: VariantUnlockedPayload = {
       ...data,
       unlockedAt: new Date().toISOString()
     };
 
-    await this.publish('Variant', data.productId, 'variant.unlocked', payload);
+    await this.publish('Variant', data.productId, 'variant.unlocked', payload, undefined, tx);
   }
 
   // =============================================================================
@@ -315,13 +324,13 @@ export class OutboxService {
     totalItems: number;
     totalUnits: number;
     totalCost: number;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: PurchaseOrderCreatedPayload = {
       ...data,
       createdAt: new Date().toISOString()
     };
 
-    await this.publish('PurchaseOrder', data.purchaseOrderId, 'purchase_order.created', payload);
+    await this.publish('PurchaseOrder', data.purchaseOrderId, 'purchase_order.created', payload, undefined, tx);
   }
 
   async purchaseOrderReceived(data: {
@@ -330,13 +339,35 @@ export class OutboxService {
     supplierId: string;
     totalUnitsReceived: number;
     damagedUnits: number;
-  }): Promise<void> {
+  }, tx?: TxClient): Promise<void> {
     const payload: PurchaseOrderReceivedPayload = {
       ...data,
       receivedAt: new Date().toISOString()
     };
 
-    await this.publish('PurchaseOrder', data.purchaseOrderId, 'purchase_order.received', payload);
+    await this.publish('PurchaseOrder', data.purchaseOrderId, 'purchase_order.received', payload, undefined, tx);
+  }
+
+  // =============================================================================
+  // Stock Alert Events
+  // =============================================================================
+
+  async stockAlertTriggered(data: {
+    alertId: string;
+    inventoryId: string;
+    productId: string;
+    variantId: string | null;
+    alertType: string;
+    currentStock: number;
+    threshold: number;
+    message: string;
+  }, tx?: TxClient): Promise<void> {
+    const payload = {
+      ...data,
+      triggeredAt: new Date().toISOString()
+    };
+
+    await this.publish('StockAlert', data.alertId, 'stock_alert.triggered', payload, undefined, tx);
   }
 }
 
