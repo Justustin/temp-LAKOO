@@ -1,4 +1,4 @@
-import { Decimal } from '@prisma/client/runtime/library';
+import { Decimal } from '../generated/prisma/runtime/library';
 
 // =============================================================================
 // ADDRESS DTOs
