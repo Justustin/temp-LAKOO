@@ -264,15 +264,17 @@ Common outbox flows you may still want to wire (depending on your MVP needs):
 For the strict transactional-outbox guarantee, the **domain state change** and the **outbox insert** should be written in the same database transaction (e.g., `prisma.$transaction`). Some flows currently do “DB update(s) → outbox insert” as separate steps.
 
 ## Swagger / API docs note
-Route files contain `@swagger` JSDoc blocks, and `GET /` returns `docs: '/api-docs'`. However, there is currently **no swagger-ui route mounted** in `src/index.ts`. If you want live docs, add Swagger tooling (e.g. `swagger-ui-express`) or remove the `/api-docs` reference.
+Route files contain `@swagger` JSDoc blocks, and Swagger UI is mounted at **`/api-docs`** in `src/index.ts`.
 
 ## Known gaps / tech debt (things to revisit)
 
-- Inventory reservation atomicity: `reserveInventory()` updates inventory first (atomicReserveStock), then creates a `StockReservation`, then writes outbox events. A crash between these steps can leave “reserved stock without a reservation row”.
-- Purchase order receive concurrency: `receivePurchaseOrder()` currently calculates `newReceivedUnits = poItem.receivedUnits + item.receivedUnits` using a pre-fetched `po` snapshot; concurrent receives can overwrite each other unless the update is done as DB-side increments or based on fresh reads inside the transaction.
-- Reservation expiry processing: reservations have `expiresAt` and the repository can find expired reservations, but there is no job/worker endpoint shown here that automatically expires and releases them.
-- Stock alerts persistence: the schema supports `StockAlert` and the admin endpoints can read/ack/resolve, but creation of alerts is not obviously wired from low/out-of-stock situations (today these are emitted as outbox events).
-- Grosir tolerance fields: overflow checks reference tolerance fields like `currentExcess` / `isLocked`, but the logic that updates `currentExcess` and actively locks/unlocks variants is not covered in the current service flows.
+- Reservation atomicity & races: ensure reservation transitions remain race-safe (confirm/release/expire should be guarded with an atomic “only if status is still `reserved`” update) and keep outbox inserts in the same DB transaction as the domain write.
+- Reservation expiry scheduling: there is an admin endpoint to process expiry (`POST /api/admin/reservations/expire`), but there is no built-in scheduler/worker in this service to call it periodically.
+- Docker / lockfiles: this repo uses `pnpm-lock.yaml` but the `Dockerfile` uses `npm ci` (requires a `package-lock.json`). This will need to be aligned (either switch Docker to pnpm, or commit an npm lockfile).
+- Docker migrations: `docker-compose.yml` runs `npx prisma migrate deploy` in a one-off container. Ensure the image has Prisma CLI available (or runs migrations in the build/dev image) so migrations don’t rely on `npx` downloading at runtime.
+- Inventory invariants: `availableQuantity` is stored (not computed), so all writes must preserve invariants (e.g. `availableQuantity = quantity - reservedQuantity`, and never negative). Pay special attention to admin adjustments when reservations exist.
+- Nullable-unique constraints: Postgres allows multiple `NULL`s in unique indexes, so `@@unique([productId, variantId])` does not prevent duplicates for “no-variant” rows. Code works around this with `findFirst`, but DB-level partial unique indexes (or a sentinel variant strategy) may be needed to prevent drift.
+- Error semantics / HTTP status codes: some business-rule failures return `{ success:false }` with HTTP 200, while others throw (500) or return 404. Consider standardizing (e.g. 400/404/409) for better client behavior and observability.
 
 ## File-by-file documentation
 
