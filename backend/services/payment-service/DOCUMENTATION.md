@@ -802,3 +802,62 @@ You generally should not edit these files by hand; regenerate them after schema 
 - **Controller layering**: admin routes use Prisma directly; if you want cleaner boundaries, move logic into services/repositories over time.
 - **Factory summary correctness**: `TransactionLedgerService.getFactoryTransactionSummary()` currently doesn’t filter by `factoryId` (it returns a global summary for the period).
 
+## Outbox event coverage (what’s wired vs still missing)
+
+This service uses the **transactional outbox pattern** via the `ServiceOutbox` table (`prisma/schema.prisma`) and the helper `src/services/outbox.service.ts`.
+
+### Events currently emitted (wired)
+- **`payment.created`**
+  - Emitted by: `PaymentService.createPayment()` → `outboxService.paymentCreated(payment)`
+- **`payment.paid`**
+  - Emitted by: `PaymentService.handlePaidCallback()` → `outboxService.paymentPaid(updatedPayment)`
+- **`payment.expired`**
+  - Emitted by:
+    - `PaymentService.handleExpiredCallback()` → `outboxService.paymentExpired(payment)`
+    - `WebhookController.handleXenditCallback()` (EXPIRED path) → direct `prisma.serviceOutbox.create({ eventType: 'payment.expired', ... })`
+- **`refund.requested`**
+  - Emitted by: `RefundService.createRefund()` → `outboxService.refundRequested(refund)`
+- **`refund.completed`**
+  - Emitted by: `RefundService.processRefund()` success path → `outboxService.refundCompleted(...)`
+- **`refund.failed`**
+  - Emitted by: `RefundService.processRefund()` failure path → `outboxService.refundFailed(...)`
+- **`refund.approved` / `refund.rejected`**
+  - Emitted by: `AdminController.processRefund()` → `outboxService.refundApproved(...)` / `outboxService.refundRejected(...)`
+- **`settlement.completed`**
+  - Emitted by: `weeklySettlementJob()` → `prisma.serviceOutbox.create({ eventType: 'settlement.completed', ... })`
+
+### Still missing (recommended to add)
+These are common “important flows” that are not yet consistently emitted via the outbox:
+
+- **Expiration cron / batch expiration should emit `payment.expired`**
+  - Current behavior:
+    - `PaymentRepository.expirePendingPayments()` (used by `src/index.ts` cron) does an `updateMany` and does **not** write outbox rows.
+    - `src/jobs/expire-payments.ts` does an `updateMany` and does **not** write outbox rows.
+  - Recommended:
+    - Update the job/cron flow to (1) fetch the IDs to expire, (2) update them, (3) write an outbox row per expired payment (or a batch event, if you prefer).
+
+- **Payment failure/cancellation should emit events**
+  - `src/services/outbox.service.ts` supports:
+    - `payment.failed`
+    - `payment.cancelled`
+  - Recommended:
+    - Wherever you call `PaymentRepository.markFailed(...)`, also call `outboxService.paymentFailed(...)`.
+    - Wherever you call `PaymentRepository.markCancelled(...)`, also call a `payment.cancelled` publisher (currently no helper method is implemented for `payment.cancelled` in `OutboxService`).
+
+- **Refund processing state events (optional but useful)**
+  - `src/services/outbox.service.ts` declares event types:
+    - `refund.processing`
+  - Current behavior:
+    - `RefundService.processRefund()` transitions refund to `processing`, but does not emit `refund.processing`.
+  - Recommended:
+    - Emit `refund.processing` when the refund enters processing, especially if downstream services need to show “refund in progress”.
+
+### Consistency reminders (also worth addressing)
+- **Prefer one outbox path (`outboxService`)**
+  - Some flows write outbox rows via `outboxService`, while others write directly via `prisma.serviceOutbox.create(...)`.
+  - Recommended:
+    - Standardize on `outboxService.publish(...)` everywhere so payload shapes and timestamps stay consistent.
+
+- **Transactional outbox**
+  - Ideal pattern: write the domain state change **and** the outbox row in the **same DB transaction** (`prisma.$transaction`).
+  - Many flows currently do “update, then insert outbox” as two separate operations.

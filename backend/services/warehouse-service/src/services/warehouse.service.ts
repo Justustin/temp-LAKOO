@@ -296,46 +296,49 @@ export class WarehouseService {
 
     const inventory = reservation.inventory;
 
-    // Release stock atomically
-    await prisma.$transaction([
-      prisma.warehouseInventory.update({
+    // Release stock + publish outbox event atomically
+    const result = await prisma.$transaction(async (tx: TxClient) => {
+      const updatedInventory = await tx.warehouseInventory.update({
         where: { id: inventory.id },
         data: {
           reservedQuantity: { decrement: reservation.quantity },
           availableQuantity: { increment: reservation.quantity },
           version: { increment: 1 }
         }
-      }),
-      prisma.stockReservation.update({
+      });
+
+      await tx.stockReservation.update({
         where: { id: reservationId },
         data: {
           status: 'released',
           releasedAt: new Date()
         }
-      })
-    ]);
+      });
 
-    const availableAfter = inventory.availableQuantity + reservation.quantity;
+      await outboxService.inventoryReleased(
+        {
+          inventoryId: inventory.id,
+          productId: inventory.productId,
+          variantId: inventory.variantId,
+          orderId: reservation.orderId,
+          quantity: reservation.quantity,
+          reservationId,
+          availableAfter: updatedInventory.availableQuantity,
+          reason
+        },
+        tx
+      );
 
-    // Publish event
-    await outboxService.inventoryReleased({
-      inventoryId: inventory.id,
-      productId: inventory.productId,
-      variantId: inventory.variantId,
-      orderId: reservation.orderId,
-      quantity: reservation.quantity,
-      reservationId,
-      availableAfter,
-      reason
+      return { availableAfter: updatedInventory.availableQuantity };
     });
 
-    console.log(`Released reservation ${reservationId}. Available: ${availableAfter}`);
+    console.log(`Released reservation ${reservationId}. Available: ${result.availableAfter}`);
 
     return {
       success: true,
       message: `Released ${reservation.quantity} units`,
       quantity: reservation.quantity,
-      availableAfter
+      availableAfter: result.availableAfter
     };
   }
 
@@ -1028,7 +1031,7 @@ export class WarehouseService {
       try {
         await prisma.$transaction(async (tx: TxClient) => {
           // Release stock back to available
-          await tx.warehouseInventory.update({
+          const updatedInventory = await tx.warehouseInventory.update({
             where: { id: reservation.inventoryId },
             data: {
               reservedQuantity: { decrement: reservation.quantity },
@@ -1054,7 +1057,7 @@ export class WarehouseService {
             orderId: reservation.orderId,
             quantity: reservation.quantity,
             reservationId: reservation.id,
-            availableAfter: reservation.inventory.availableQuantity + reservation.quantity,
+            availableAfter: updatedInventory.availableQuantity,
             reason: 'reservation_expired'
           }, tx);
         });
