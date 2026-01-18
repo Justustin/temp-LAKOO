@@ -29,7 +29,7 @@ export const getInventoryStatusValidators = [
 export const reserveInventoryValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
-  body('quantity').isInt({ gt: 0 }).withMessage('quantity must be a positive integer'),
+  body('quantity').isInt({ gt: 0 }).toInt().withMessage('quantity must be a positive integer'),
   body('orderId').isUUID().withMessage('orderId must be a valid UUID'),
   body('orderItemId').optional().isUUID().withMessage('orderItemId must be a valid UUID')
 ];
@@ -58,14 +58,14 @@ export const checkAllVariantsValidators = [
 export const fulfillDemandValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
-  body('quantity').isInt({ gt: 0 }).withMessage('quantity must be a positive integer'),
-  body('wholesaleUnit').isInt({ gt: 0 }).withMessage('wholesaleUnit must be a positive integer')
+  body('quantity').isInt({ gt: 0 }).toInt().withMessage('quantity must be a positive integer'),
+  body('wholesaleUnit').isInt({ gt: 0 }).toInt().withMessage('wholesaleUnit must be a positive integer')
 ];
 
 export const fulfillBundleDemandValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
-  body('quantity').isInt({ gt: 0 }).withMessage('quantity must be a positive integer')
+  body('quantity').isInt({ gt: 0 }).toInt().withMessage('quantity must be a positive integer')
 ];
 
 // =============================================================================
@@ -77,7 +77,9 @@ export const createPurchaseOrderValidators = [
   body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array'),
   body('items.*.productId').isUUID().withMessage('Each item must have a valid productId'),
   body('items.*.variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
-  body('items.*.bundleQuantity').isInt({ gt: 0 }).withMessage('bundleQuantity must be a positive integer'),
+  body('items.*.bundleQuantity').isInt({ gt: 0 }).toInt().withMessage('bundleQuantity must be a positive integer'),
+  body('items.*.unitsPerBundle').isInt({ gt: 0 }).toInt().withMessage('unitsPerBundle must be a positive integer'),
+  body('items.*.unitCost').isNumeric().toFloat().withMessage('unitCost must be a number'),
   body('notes').optional().isString().withMessage('notes must be a string')
 ];
 
@@ -91,8 +93,8 @@ export const receivePurchaseOrderValidators = [
   param('id').isUUID().withMessage('id must be a valid UUID'),
   body('items').isArray({ min: 1 }).withMessage('items must be a non-empty array'),
   body('items.*.itemId').isUUID().withMessage('Each item must have a valid itemId'),
-  body('items.*.receivedUnits').isInt({ min: 0 }).withMessage('receivedUnits must be a non-negative integer'),
-  body('items.*.damagedUnits').optional().isInt({ min: 0 }).withMessage('damagedUnits must be a non-negative integer')
+  body('items.*.receivedUnits').isInt({ min: 0 }).toInt().withMessage('receivedUnits must be a non-negative integer'),
+  body('items.*.damagedUnits').optional().isInt({ min: 0 }).toInt().withMessage('damagedUnits must be a non-negative integer')
 ];
 
 // =============================================================================
@@ -114,7 +116,7 @@ export const resolveAlertValidators = [
 export const adjustInventoryValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
-  body('quantityChange').isInt().withMessage('quantityChange must be an integer (positive or negative)'),
+  body('quantityChange').isInt().toInt().withMessage('quantityChange must be an integer (positive or negative)'),
   body('reason').isString().notEmpty().withMessage('reason is required'),
   body('notes').optional().isString().withMessage('notes must be a string')
 ];
@@ -123,11 +125,11 @@ export const createInventoryValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
   body('sku').isString().notEmpty().withMessage('sku is required'),
-  body('quantity').optional().isInt({ min: 0 }).withMessage('quantity must be a non-negative integer'),
-  body('minStockLevel').optional().isInt({ min: 0 }).withMessage('minStockLevel must be a non-negative integer'),
-  body('maxStockLevel').optional().isInt({ min: 0 }).withMessage('maxStockLevel must be a non-negative integer'),
-  body('reorderPoint').optional().isInt({ min: 0 }).withMessage('reorderPoint must be a non-negative integer'),
-  body('reorderQuantity').optional().isInt({ min: 0 }).withMessage('reorderQuantity must be a non-negative integer'),
+  body('quantity').optional().isInt({ min: 0 }).toInt().withMessage('quantity must be a non-negative integer'),
+  body('minStockLevel').optional().isInt({ min: 0 }).toInt().withMessage('minStockLevel must be a non-negative integer'),
+  body('maxStockLevel').optional().isInt({ min: 0 }).toInt().withMessage('maxStockLevel must be a non-negative integer'),
+  body('reorderPoint').optional().isInt({ min: 0 }).toInt().withMessage('reorderPoint must be a non-negative integer'),
+  body('reorderQuantity').optional().isInt({ min: 0 }).toInt().withMessage('reorderQuantity must be a non-negative integer'),
   body('location').optional().isString().withMessage('location must be a string'),
   body('zone').optional().isString().withMessage('zone must be a string')
 ];
@@ -136,15 +138,15 @@ export const updateBundleConfigValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('supplierId').optional().isUUID().withMessage('supplierId must be a valid UUID'),
   body('bundleName').optional().isString().withMessage('bundleName must be a string'),
-  body('totalUnits').isInt({ gt: 0 }).withMessage('totalUnits must be a positive integer'),
+  body('totalUnits').isInt({ gt: 0 }).toInt().withMessage('totalUnits must be a positive integer'),
   body('sizeBreakdown').isObject().withMessage('sizeBreakdown must be an object'),
-  body('bundleCost').isNumeric().withMessage('bundleCost must be a number'),
-  body('minBundleOrder').optional().isInt({ min: 1 }).withMessage('minBundleOrder must be at least 1')
+  body('bundleCost').isNumeric().toFloat().withMessage('bundleCost must be a number'),
+  body('minBundleOrder').optional().isInt({ min: 1 }).toInt().withMessage('minBundleOrder must be at least 1')
 ];
 
 export const updateToleranceValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
   body('size').optional().isString().withMessage('size must be a string'),
-  body('maxExcessUnits').isInt({ min: 0 }).withMessage('maxExcessUnits must be a non-negative integer')
+  body('maxExcessUnits').isInt({ min: 0 }).toInt().withMessage('maxExcessUnits must be a non-negative integer')
 ];
