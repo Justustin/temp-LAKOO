@@ -3,6 +3,7 @@ import { WarehouseRepository, warehouseRepository } from '../repositories/wareho
 import { outboxService } from './outbox.service';
 
 const RESERVATION_EXPIRY_HOURS = parseInt(process.env.RESERVATION_EXPIRY_HOURS || '24');
+const MAX_RETRY_ATTEMPTS = 3;
 
 export class WarehouseService {
   private repository: WarehouseRepository;
@@ -60,7 +61,7 @@ export class WarehouseService {
   }
 
   // =============================================================================
-  // Stock Reservation
+  // Stock Reservation (with optimistic locking to prevent oversell)
   // =============================================================================
 
   async reserveInventory(data: {
@@ -74,39 +75,52 @@ export class WarehouseService {
 
     console.log(`Reserve inventory: product ${productId}, variant ${variantId}, quantity ${quantity}`);
 
-    const inventory = await this.repository.findInventory(productId, variantId);
+    // Retry loop for optimistic locking
+    for (let attempt = 1; attempt <= MAX_RETRY_ATTEMPTS; attempt++) {
+      const inventory = await this.repository.findInventory(productId, variantId);
 
-    if (!inventory) {
-      return {
-        success: false,
-        message: 'Inventory not configured for this product/variant',
-        reserved: false
-      };
-    }
+      if (!inventory) {
+        return {
+          success: false,
+          message: 'Inventory not configured for this product/variant',
+          reserved: false
+        };
+      }
 
-    if (inventory.availableQuantity < quantity) {
-      return {
-        success: false,
-        message: `Insufficient stock (need ${quantity}, have ${inventory.availableQuantity})`,
-        reserved: false,
-        shortage: quantity - inventory.availableQuantity
-      };
-    }
+      if (inventory.availableQuantity < quantity) {
+        return {
+          success: false,
+          message: `Insufficient stock (need ${quantity}, have ${inventory.availableQuantity})`,
+          reserved: false,
+          shortage: quantity - inventory.availableQuantity
+        };
+      }
 
-    // Reserve stock and create reservation record
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + RESERVATION_EXPIRY_HOURS);
+      const expiresAt = new Date();
+      expiresAt.setHours(expiresAt.getHours() + RESERVATION_EXPIRY_HOURS);
 
-    const [, reservation] = await prisma.$transaction([
-      prisma.warehouseInventory.update({
-        where: { id: inventory.id },
-        data: {
-          reservedQuantity: { increment: quantity },
-          availableQuantity: { decrement: quantity },
-          version: { increment: 1 }
+      // Atomic reservation with optimistic locking
+      const updatedInventory = await this.repository.atomicReserveStock(
+        inventory.id,
+        quantity,
+        inventory.version
+      );
+
+      if (!updatedInventory) {
+        // Concurrent modification detected, retry
+        console.log(`Reservation attempt ${attempt} failed due to concurrent update, retrying...`);
+        if (attempt === MAX_RETRY_ATTEMPTS) {
+          return {
+            success: false,
+            message: 'Could not reserve stock due to concurrent updates. Please try again.',
+            reserved: false
+          };
         }
-      }),
-      prisma.stockReservation.create({
+        continue;
+      }
+
+      // Reservation successful, create reservation record
+      const reservation = await prisma.stockReservation.create({
         data: {
           inventoryId: inventory.id,
           orderId,
@@ -115,52 +129,59 @@ export class WarehouseService {
           status: 'reserved',
           expiresAt
         }
-      })
-    ]);
+      });
 
-    const availableAfter = inventory.availableQuantity - quantity;
+      const availableAfter = updatedInventory.availableQuantity;
 
-    // Publish event
-    await outboxService.inventoryReserved({
-      inventoryId: inventory.id,
-      productId,
-      variantId,
-      orderId,
-      orderItemId: orderItemId || null,
-      quantity,
-      reservationId: reservation.id,
-      availableAfter
-    });
-
-    // Check for low stock alert
-    if (availableAfter <= inventory.minStockLevel && availableAfter > 0) {
-      await outboxService.lowStock({
+      // Publish event
+      await outboxService.inventoryReserved({
         inventoryId: inventory.id,
         productId,
         variantId,
-        sku: inventory.sku,
-        currentStock: availableAfter,
-        minStockLevel: inventory.minStockLevel
+        orderId,
+        orderItemId: orderItemId || null,
+        quantity,
+        reservationId: reservation.id,
+        availableAfter
       });
-    } else if (availableAfter <= 0) {
-      await outboxService.outOfStock({
-        inventoryId: inventory.id,
-        productId,
-        variantId,
-        sku: inventory.sku
-      });
+
+      // Check for low stock alert
+      if (availableAfter <= inventory.minStockLevel && availableAfter > 0) {
+        await outboxService.lowStock({
+          inventoryId: inventory.id,
+          productId,
+          variantId,
+          sku: inventory.sku,
+          currentStock: availableAfter,
+          minStockLevel: inventory.minStockLevel
+        });
+      } else if (availableAfter <= 0) {
+        await outboxService.outOfStock({
+          inventoryId: inventory.id,
+          productId,
+          variantId,
+          sku: inventory.sku
+        });
+      }
+
+      console.log(`Reserved ${quantity} units. Remaining: ${availableAfter}`);
+
+      return {
+        success: true,
+        message: `Successfully reserved ${quantity} units`,
+        reserved: true,
+        reservationId: reservation.id,
+        quantity,
+        availableAfter,
+        expiresAt
+      };
     }
 
-    console.log(`Reserved ${quantity} units. Remaining: ${availableAfter}`);
-
+    // Should not reach here, but just in case
     return {
-      success: true,
-      message: `Successfully reserved ${quantity} units`,
-      reserved: true,
-      reservationId: reservation.id,
-      quantity,
-      availableAfter,
-      expiresAt
+      success: false,
+      message: 'Reservation failed after maximum retries',
+      reserved: false
     };
   }
 
@@ -183,7 +204,7 @@ export class WarehouseService {
 
     const inventory = reservation.inventory;
 
-    // Release stock
+    // Release stock atomically
     await prisma.$transaction([
       prisma.warehouseInventory.update({
         where: { id: inventory.id },
@@ -245,7 +266,7 @@ export class WarehouseService {
 
     const inventory = reservation.inventory;
 
-    // Confirm reservation and deduct from total stock
+    // Confirm reservation and deduct from total stock atomically
     await prisma.$transaction([
       prisma.warehouseInventory.update({
         where: { id: inventory.id },
@@ -263,7 +284,6 @@ export class WarehouseService {
           confirmedAt: new Date()
         }
       }),
-      // Create movement record
       prisma.inventoryMovement.create({
         data: {
           inventoryId: inventory.id,
@@ -303,7 +323,6 @@ export class WarehouseService {
   // =============================================================================
 
   async checkBundleOverflow(productId: string, variantId: string | null) {
-    // Get bundle config for the product
     const bundleConfig = await this.repository.findBundleConfig(productId);
 
     if (!bundleConfig) {
@@ -314,7 +333,6 @@ export class WarehouseService {
       };
     }
 
-    // Get current inventory for the requested variant
     const inventory = await this.repository.findInventory(productId, variantId);
 
     if (inventory && inventory.availableQuantity > 0) {
@@ -326,20 +344,16 @@ export class WarehouseService {
       };
     }
 
-    // No stock - check if ordering a bundle would overflow any variant
     const sizeBreakdown = bundleConfig.sizeBreakdown as Record<string, number>;
     const tolerances = await this.repository.findAllTolerances(productId);
     const overflowVariants: string[] = [];
 
     for (const [size, unitsInBundle] of Object.entries(sizeBreakdown)) {
-      // Find tolerance for this size/variant
       const tolerance = tolerances.find(t => t.size === size);
       if (!tolerance) continue;
 
       const currentExcess = tolerance.currentExcess || 0;
       const maxExcess = tolerance.maxExcessUnits;
-
-      // After ordering bundle, would this variant exceed max?
       const afterBundle = currentExcess + unitsInBundle;
 
       if (afterBundle > maxExcess) {
@@ -402,7 +416,6 @@ export class WarehouseService {
         continue;
       }
 
-      // Check if this variant is explicitly locked
       if (tolerance.isLocked) {
         variantStatuses.push({
           size,
@@ -415,7 +428,6 @@ export class WarehouseService {
         continue;
       }
 
-      // Check inventory
       const inventory = await this.repository.findInventory(productId, tolerance.variantId);
       const available = inventory?.availableQuantity || 0;
 
@@ -431,7 +443,6 @@ export class WarehouseService {
         continue;
       }
 
-      // Check overflow
       const overflowVariants: string[] = [];
       for (const [otherSize, otherUnits] of Object.entries(sizeBreakdown)) {
         const otherTolerance = tolerances.find(t => t.size === otherSize);
@@ -631,7 +642,6 @@ export class WarehouseService {
   }) {
     const po = await this.repository.createPurchaseOrder(data);
 
-    // Publish event
     await outboxService.purchaseOrderCreated({
       purchaseOrderId: po.id,
       poNumber: po.poNumber,
@@ -649,6 +659,11 @@ export class WarehouseService {
     return this.repository.updatePurchaseOrderStatus(id, status as any, updatedBy);
   }
 
+  /**
+   * Receive items from a purchase order.
+   * All operations are wrapped in a transaction for atomicity.
+   * Status is computed from cumulative DB state after updates.
+   */
   async receivePurchaseOrder(
     id: string,
     items: Array<{ itemId: string; receivedUnits: number; damagedUnits?: number }>
@@ -661,65 +676,122 @@ export class WarehouseService {
     let totalReceived = 0;
     let totalDamaged = 0;
 
-    // Update each item and add to inventory
+    // Wrap all operations in a transaction
+    await prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        const poItem = po.items.find(i => i.id === item.itemId);
+        if (!poItem) continue;
+
+        // Update PO item with received quantities (cumulative)
+        const newReceivedUnits = poItem.receivedUnits + item.receivedUnits;
+        const newDamagedUnits = poItem.damagedUnits + (item.damagedUnits || 0);
+
+        await tx.purchaseOrderItem.update({
+          where: { id: item.itemId },
+          data: {
+            receivedUnits: newReceivedUnits,
+            damagedUnits: newDamagedUnits,
+            status: newReceivedUnits >= poItem.totalUnits ? 'received' : 'partial'
+          }
+        });
+
+        // Add received units to inventory
+        const goodUnits = item.receivedUnits - (item.damagedUnits || 0);
+        if (goodUnits > 0) {
+          const inventory = await tx.warehouseInventory.findUnique({
+            where: {
+              productId_variantId: {
+                productId: poItem.productId,
+                variantId: poItem.variantId || null
+              }
+            }
+          });
+
+          if (inventory) {
+            await tx.warehouseInventory.update({
+              where: { id: inventory.id },
+              data: {
+                quantity: { increment: goodUnits },
+                availableQuantity: { increment: goodUnits },
+                lastRestockedAt: new Date(),
+                version: { increment: 1 }
+              }
+            });
+
+            // Create movement record
+            await tx.inventoryMovement.create({
+              data: {
+                inventoryId: inventory.id,
+                movementNumber: `MOV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+                type: 'purchase_order_received',
+                quantityBefore: inventory.quantity,
+                quantityChange: goodUnits,
+                quantityAfter: inventory.quantity + goodUnits,
+                referenceType: 'purchase_order',
+                referenceId: po.id,
+                purchaseOrderId: po.id,
+                reason: `Received from PO ${po.poNumber}`,
+                unitCost: Number(poItem.unitCost)
+              }
+            });
+          }
+        }
+
+        totalReceived += item.receivedUnits;
+        totalDamaged += item.damagedUnits || 0;
+      }
+
+      // Compute status from DB state (cumulative received vs expected)
+      const updatedItems = await tx.purchaseOrderItem.findMany({
+        where: { purchaseOrderId: id }
+      });
+
+      const allFullyReceived = updatedItems.every(
+        item => item.receivedUnits >= item.totalUnits
+      );
+      const anyReceived = updatedItems.some(item => item.receivedUnits > 0);
+
+      let newStatus: 'received' | 'partially_received' | 'draft' = 'draft';
+      if (allFullyReceived) {
+        newStatus = 'received';
+      } else if (anyReceived) {
+        newStatus = 'partially_received';
+      }
+
+      await tx.warehousePurchaseOrder.update({
+        where: { id },
+        data: {
+          status: newStatus,
+          receivedDate: allFullyReceived ? new Date() : undefined
+        }
+      });
+    });
+
+    // Publish events after successful transaction
+    // Re-fetch to get updated inventory data
+    const updatedPo = await this.repository.findPurchaseOrder(id);
+
     for (const item of items) {
       const poItem = po.items.find(i => i.id === item.itemId);
       if (!poItem) continue;
 
-      await this.repository.updatePurchaseOrderItemReceived(
-        item.itemId,
-        item.receivedUnits,
-        item.damagedUnits || 0
-      );
-
-      // Add received units to inventory
       const goodUnits = item.receivedUnits - (item.damagedUnits || 0);
       if (goodUnits > 0) {
         const inventory = await this.repository.findInventory(poItem.productId, poItem.variantId);
         if (inventory) {
-          await this.repository.addStock(inventory.id, goodUnits);
-
-          // Create movement record
-          await this.repository.createMovement({
-            inventoryId: inventory.id,
-            type: 'purchase_order_received',
-            quantityBefore: inventory.quantity,
-            quantityChange: goodUnits,
-            quantityAfter: inventory.quantity + goodUnits,
-            referenceType: 'purchase_order',
-            referenceId: po.id,
-            purchaseOrderId: po.id,
-            reason: `Received from PO ${po.poNumber}`,
-            unitCost: Number(poItem.unitCost)
-          });
-
-          // Publish restock event
           await outboxService.restocked({
             inventoryId: inventory.id,
             productId: inventory.productId,
             variantId: inventory.variantId,
             sku: inventory.sku,
             quantityAdded: goodUnits,
-            newTotal: inventory.quantity + goodUnits,
+            newTotal: inventory.quantity,
             purchaseOrderId: po.id
           });
         }
       }
-
-      totalReceived += item.receivedUnits;
-      totalDamaged += item.damagedUnits || 0;
     }
 
-    // Update PO status
-    const allReceived = po.items.every(item => {
-      const received = items.find(i => i.itemId === item.id);
-      return received && received.receivedUnits >= item.totalUnits;
-    });
-
-    const newStatus = allReceived ? 'received' : 'partially_received';
-    await this.repository.updatePurchaseOrderStatus(id, newStatus as any);
-
-    // Publish event
     await outboxService.purchaseOrderReceived({
       purchaseOrderId: po.id,
       poNumber: po.poNumber,
@@ -731,7 +803,7 @@ export class WarehouseService {
     return {
       success: true,
       message: `Received ${totalReceived} units (${totalDamaged} damaged)`,
-      status: newStatus,
+      status: updatedPo?.status || 'partially_received',
       totalReceived,
       totalDamaged
     };

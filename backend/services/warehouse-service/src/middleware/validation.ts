@@ -30,7 +30,7 @@ export const reserveInventoryValidators = [
   body('productId').isUUID().withMessage('productId must be a valid UUID'),
   body('variantId').optional({ nullable: true }).isUUID().withMessage('variantId must be a valid UUID'),
   body('quantity').isInt({ gt: 0 }).withMessage('quantity must be a positive integer'),
-  body('orderId').optional().isUUID().withMessage('orderId must be a valid UUID'),
+  body('orderId').isUUID().withMessage('orderId must be a valid UUID'),
   body('orderItemId').optional().isUUID().withMessage('orderItemId must be a valid UUID')
 ];
 

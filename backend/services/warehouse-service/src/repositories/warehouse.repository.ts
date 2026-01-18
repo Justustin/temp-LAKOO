@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { MovementType, ReservationStatus, PoStatus } from '@prisma/client';
+import { MovementType, ReservationStatus, PoStatus, Prisma } from '../generated/prisma';
 
 export class WarehouseRepository {
   // =============================================================================
@@ -28,24 +28,28 @@ export class WarehouseRepository {
     lowStock?: boolean;
     productId?: string;
   }) {
-    const where: any = {};
+    const where: Prisma.WarehouseInventoryWhereInput = {};
 
     if (filters?.status) {
-      where.status = filters.status;
+      where.status = filters.status as any;
     }
 
     if (filters?.productId) {
       where.productId = filters.productId;
     }
 
-    if (filters?.lowStock) {
-      where.availableQuantity = { lte: prisma.warehouseInventory.fields.minStockLevel };
-    }
-
-    return prisma.warehouseInventory.findMany({
+    // Fetch inventory items
+    const items = await prisma.warehouseInventory.findMany({
       where,
       orderBy: { updatedAt: 'desc' }
     });
+
+    // Filter low stock items in code (Prisma can't compare columns directly)
+    if (filters?.lowStock) {
+      return items.filter(item => item.availableQuantity <= item.minStockLevel);
+    }
+
+    return items;
   }
 
   async createInventory(data: {
@@ -100,6 +104,40 @@ export class WarehouseRepository {
         ...data,
         version: { increment: 1 }
       }
+    });
+  }
+
+  /**
+   * Atomically reserve stock with optimistic locking.
+   * Returns null if insufficient stock or version mismatch (concurrent update).
+   */
+  async atomicReserveStock(
+    inventoryId: string,
+    quantity: number,
+    expectedVersion: number
+  ) {
+    // Use updateMany with version check for optimistic locking
+    const result = await prisma.warehouseInventory.updateMany({
+      where: {
+        id: inventoryId,
+        version: expectedVersion,
+        availableQuantity: { gte: quantity }
+      },
+      data: {
+        reservedQuantity: { increment: quantity },
+        availableQuantity: { decrement: quantity },
+        version: { increment: 1 }
+      }
+    });
+
+    // If no rows updated, either version changed or insufficient stock
+    if (result.count === 0) {
+      return null;
+    }
+
+    // Fetch the updated inventory
+    return prisma.warehouseInventory.findUnique({
+      where: { id: inventoryId }
     });
   }
 
@@ -197,7 +235,7 @@ export class WarehouseRepository {
   }
 
   async updateReservationStatus(id: string, status: ReservationStatus) {
-    const updateData: any = { status };
+    const updateData: Prisma.StockReservationUpdateInput = { status };
 
     if (status === 'confirmed') {
       updateData.confirmedAt = new Date();
@@ -486,7 +524,7 @@ export class WarehouseRepository {
     startDate?: Date;
     endDate?: Date;
   }) {
-    const where: any = {};
+    const where: Prisma.WarehousePurchaseOrderWhereInput = {};
 
     if (filters?.status) {
       where.status = filters.status;
@@ -510,7 +548,7 @@ export class WarehouseRepository {
   }
 
   async updatePurchaseOrderStatus(id: string, status: PoStatus, updatedBy?: string) {
-    const updateData: any = { status };
+    const updateData: Prisma.WarehousePurchaseOrderUpdateInput = { status };
 
     if (status === 'approved') {
       updateData.approvedAt = new Date();
