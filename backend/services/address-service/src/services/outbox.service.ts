@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Address } from '@prisma/client';
+import type { Address } from '../generated/prisma';
 
 export type AddressEventType =
   | 'address.created'
@@ -28,7 +28,7 @@ export class OutboxService {
         aggregateId,
         eventType,
         payload,
-        metadata: metadata || null
+        ...(metadata ? { metadata } : {})
       }
     });
   }

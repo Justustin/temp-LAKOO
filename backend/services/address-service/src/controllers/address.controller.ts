@@ -1,5 +1,5 @@
-import { Request, Response } from 'express';
-import { AddressService, ForbiddenError } from '../services/address.service';
+import { type RequestHandler, Request, Response } from 'express';
+import { AddressService, BadRequestError, ForbiddenError } from '../services/address.service';
 import { asyncHandler } from '../utils/asyncHandler';
 
 export class AddressController {
@@ -12,7 +12,7 @@ export class AddressController {
   /**
    * Create a new address - uses authenticated user's ID
    */
-  createAddress = asyncHandler(async (req: Request, res: Response) => {
+  createAddress: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
 
     // Override any userId in body with authenticated user's ID
@@ -31,11 +31,14 @@ export class AddressController {
   /**
    * Get a single address by ID - verifies ownership
    */
-  getAddress = asyncHandler(async (req: Request, res: Response) => {
+  getAddress: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const isInternal = req.user!.role === 'internal';
 
-    const address = await this.service.getAddress(req.params.id);
+    const id = req.params.id;
+    if (!id) throw new BadRequestError('Missing address id');
+
+    const address = await this.service.getAddress(id);
 
     // Verify ownership (unless internal service)
     if (!isInternal && address.userId !== userId) {
@@ -51,10 +54,11 @@ export class AddressController {
   /**
    * Get all addresses for a user - verifies ownership or internal access
    */
-  getUserAddresses = asyncHandler(async (req: Request, res: Response) => {
+  getUserAddresses: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const isInternal = req.user!.role === 'internal';
     const requestedUserId = req.params.userId;
+    if (!requestedUserId) throw new BadRequestError('Missing userId');
 
     // Users can only access their own addresses (unless internal service)
     if (!isInternal && requestedUserId !== userId) {
@@ -71,10 +75,11 @@ export class AddressController {
   /**
    * Get the default address for a user - verifies ownership or internal access
    */
-  getDefaultAddress = asyncHandler(async (req: Request, res: Response) => {
+  getDefaultAddress: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const isInternal = req.user!.role === 'internal';
     const requestedUserId = req.params.userId;
+    if (!requestedUserId) throw new BadRequestError('Missing userId');
 
     // Users can only access their own default address (unless internal service)
     if (!isInternal && requestedUserId !== userId) {
@@ -91,9 +96,12 @@ export class AddressController {
   /**
    * Update an address - ownership verified in service layer
    */
-  updateAddress = asyncHandler(async (req: Request, res: Response) => {
+  updateAddress: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const address = await this.service.updateAddress(req.params.id, userId, req.body);
+    const id = req.params.id;
+    if (!id) throw new BadRequestError('Missing address id');
+
+    const address = await this.service.updateAddress(id, userId, req.body);
     res.json({
       success: true,
       data: address
@@ -103,9 +111,12 @@ export class AddressController {
   /**
    * Set an address as default - ownership verified in service layer
    */
-  setDefaultAddress = asyncHandler(async (req: Request, res: Response) => {
+  setDefaultAddress: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const address = await this.service.setDefaultAddress(req.params.id, userId);
+    const id = req.params.id;
+    if (!id) throw new BadRequestError('Missing address id');
+
+    const address = await this.service.setDefaultAddress(id, userId);
     res.json({
       success: true,
       data: address
@@ -115,9 +126,12 @@ export class AddressController {
   /**
    * Delete an address (soft delete) - ownership verified in service layer
    */
-  deleteAddress = asyncHandler(async (req: Request, res: Response) => {
+  deleteAddress: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    await this.service.deleteAddress(req.params.id, userId);
+    const id = req.params.id;
+    if (!id) throw new BadRequestError('Missing address id');
+
+    await this.service.deleteAddress(id, userId);
     res.status(204).send();
   });
 
@@ -125,8 +139,11 @@ export class AddressController {
    * Mark an address as used (internal only - for order placement)
    * Route-level middleware ensures only internal services can call this
    */
-  markAddressAsUsed = asyncHandler(async (req: Request, res: Response) => {
-    const address = await this.service.markAddressAsUsed(req.params.id);
+  markAddressAsUsed: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
+    const id = req.params.id;
+    if (!id) throw new BadRequestError('Missing address id');
+
+    const address = await this.service.markAddressAsUsed(id);
     res.json({
       success: true,
       data: address

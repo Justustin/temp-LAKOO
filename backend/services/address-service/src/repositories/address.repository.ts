@@ -1,6 +1,6 @@
 import { prisma } from '../lib/prisma';
 import { CreateAddressDTO, UpdateAddressDTO } from '../types';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '../generated/prisma';
 
 export class AddressRepository {
   /**

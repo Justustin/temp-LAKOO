@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { AddressController } from '../controllers/address.controller';
 import { gatewayOrInternalAuth, internalOnly } from '../middleware/auth';
 import {
@@ -11,7 +11,7 @@ import {
   deleteAddressValidators
 } from '../middleware/validation';
 
-const router = Router();
+const router: ExpressRouter = Router();
 const controller = new AddressController();
 
 // All routes require authentication
