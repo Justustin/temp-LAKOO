@@ -251,6 +251,10 @@ High-signal things that can bite you later:
   - `src/index.ts` uses `cors()` with no origin allowlist.
   - For production, restrict origins (and consider credentials) based on your frontend domains.
 
+- **Prisma `db push` vs migrations**
+  - Today we use `prisma db push` in Docker/dev because there are no `prisma/migrations/` files.
+  - Before production, consider switching to real migrations (`prisma migrate dev` to generate, `prisma migrate deploy` to apply) so schema changes are versioned and repeatable.
+
 - **`dist/` + Prisma generated client quirks**
   - This service copies `src/generated/prisma` into `dist/generated/prisma` at build time (see `scripts/copy-generated-prisma.mjs`).
   - If you move to Docker/CI builds, ensure the container build runs `prisma generate` and includes generated output (or adjust imports to avoid needing the copy step).
