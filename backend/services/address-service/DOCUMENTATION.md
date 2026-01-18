@@ -235,6 +235,30 @@ Key models:
 - **`ServiceOutbox`**
   - Outbox pattern storage for integration events.
 
+## Future-me problems (gotchas / tech debt)
+
+High-signal things that can bite you later:
+
+- **Default address invariants under concurrency**
+  - Even with transactions, concurrent “set default” requests can create multiple defaults unless you serialize per user or enforce it in the DB.
+  - Current approach: repository uses a **per-user Postgres advisory transaction lock** for default mutations.
+
+- **Transactional outbox guarantee**
+  - Today, address writes and outbox inserts are not universally wrapped in the same transaction.
+  - If you need strict guarantees (no “address changed but no event”, and no “event without change”), refactor to pass a Prisma `tx` into outbox publishing like `warehouse-service` does.
+
+- **CORS is permissive by default**
+  - `src/index.ts` uses `cors()` with no origin allowlist.
+  - For production, restrict origins (and consider credentials) based on your frontend domains.
+
+- **`dist/` + Prisma generated client quirks**
+  - This service copies `src/generated/prisma` into `dist/generated/prisma` at build time (see `scripts/copy-generated-prisma.mjs`).
+  - If you move to Docker/CI builds, ensure the container build runs `prisma generate` and includes generated output (or adjust imports to avoid needing the copy step).
+
+- **Internal endpoint safety (`POST /api/addresses/:id/mark-used`)**
+  - It is guarded by `internalOnly`, which relies on `gatewayOrInternalAuth` correctly classifying internal calls.
+  - Don’t expose `x-internal-api-key` to browsers; keep it server-to-server only.
+
 ## File-by-file guide
 
 ### `src/index.ts`
