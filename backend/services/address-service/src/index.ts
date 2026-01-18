@@ -3,35 +3,35 @@ import dotenv from 'dotenv';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import addressRoutes from './routes/address.routes';
+import { errorHandler } from './middleware/errorHandler';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3009;
+const PORT = process.env.PORT || 3010;
 
 app.use(express.json());
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
+// Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
     service: 'address-service',
+    version: '2.0.0',
     timestamp: new Date().toISOString()
   });
 });
 
+// API routes
 app.use('/api/addresses', addressRoutes);
 
-app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    success: false,
-    error: err.message || 'Internal server error'
-  });
-});
+// Centralized error handler
+app.use(errorHandler);
 
+// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -40,6 +40,6 @@ app.use((req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`📍 Address Service running on port ${PORT}`);
-  console.log(`📚 Swagger docs: http://localhost:${PORT}/api-docs`);
+  console.log(`Address Service running on port ${PORT}`);
+  console.log(`Swagger docs: http://localhost:${PORT}/api-docs`);
 });

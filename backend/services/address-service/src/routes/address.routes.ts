@@ -1,9 +1,21 @@
 import { Router } from 'express';
-import { body, param } from 'express-validator';
 import { AddressController } from '../controllers/address.controller';
+import { gatewayOrInternalAuth } from '../middleware/auth';
+import {
+  validateRequest,
+  createAddressValidators,
+  updateAddressValidators,
+  idParamValidator,
+  userIdParamValidator,
+  setDefaultValidators,
+  deleteAddressValidators
+} from '../middleware/validation';
 
 const router = Router();
 const controller = new AddressController();
+
+// All routes require authentication
+router.use(gatewayOrInternalAuth);
 
 /**
  * @swagger
@@ -11,6 +23,8 @@ const controller = new AddressController();
  *   post:
  *     summary: Create a new address
  *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -37,17 +51,7 @@ const controller = new AddressController();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/', [
-  body('userId').isUUID(),
-  body('label').notEmpty(),
-  body('recipientName').notEmpty(),
-  body('phoneNumber').notEmpty(),
-  body('province').notEmpty(),
-  body('city').notEmpty(),
-  body('district').notEmpty(),
-  body('postalCode').notEmpty(),
-  body('addressLine').notEmpty()
-], controller.createAddress);
+router.post('/', createAddressValidators, validateRequest, controller.createAddress);
 
 /**
  * @swagger
@@ -55,6 +59,8 @@ router.post('/', [
  *   get:
  *     summary: Get all addresses for a user
  *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
  *     parameters:
  *       - in: path
  *         name: userId
@@ -81,9 +87,7 @@ router.post('/', [
  *       400:
  *         description: Bad request
  */
-router.get('/user/:userId', [
-  param('userId').isUUID()
-], controller.getUserAddresses);
+router.get('/user/:userId', userIdParamValidator, validateRequest, controller.getUserAddresses);
 
 /**
  * @swagger
@@ -91,6 +95,8 @@ router.get('/user/:userId', [
  *   get:
  *     summary: Get default address for a user (used by order-service)
  *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
  *     parameters:
  *       - in: path
  *         name: userId
@@ -119,9 +125,7 @@ router.get('/user/:userId', [
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/user/:userId/default', [
-  param('userId').isUUID()
-], controller.getDefaultAddress);
+router.get('/user/:userId/default', userIdParamValidator, validateRequest, controller.getDefaultAddress);
 
 /**
  * @swagger
@@ -129,6 +133,8 @@ router.get('/user/:userId/default', [
  *   get:
  *     summary: Get a single address by ID
  *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -153,9 +159,7 @@ router.get('/user/:userId/default', [
  *       404:
  *         description: Address not found
  */
-router.get('/:id', [
-  param('id').isUUID()
-], controller.getAddress);
+router.get('/:id', idParamValidator, validateRequest, controller.getAddress);
 
 /**
  * @swagger
@@ -163,6 +167,8 @@ router.get('/:id', [
  *   patch:
  *     summary: Update an address
  *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -195,9 +201,7 @@ router.get('/:id', [
  *       404:
  *         description: Address not found
  */
-router.patch('/:id', [
-  param('id').isUUID()
-], controller.updateAddress);
+router.patch('/:id', updateAddressValidators, validateRequest, controller.updateAddress);
 
 /**
  * @swagger
@@ -205,6 +209,8 @@ router.patch('/:id', [
  *   post:
  *     summary: Set an address as default
  *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -213,18 +219,6 @@ router.patch('/:id', [
  *           type: string
  *           format: uuid
  *         description: Address ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [userId]
- *             properties:
- *               userId:
- *                 type: string
- *                 format: uuid
- *                 description: User ID for authorization
  *     responses:
  *       200:
  *         description: Address set as default
@@ -243,17 +237,16 @@ router.patch('/:id', [
  *       404:
  *         description: Address not found
  */
-router.post('/:id/set-default', [
-  param('id').isUUID(),
-  body('userId').isUUID()
-], controller.setDefaultAddress);
+router.post('/:id/set-default', setDefaultValidators, validateRequest, controller.setDefaultAddress);
 
 /**
  * @swagger
  * /api/addresses/{id}:
  *   delete:
- *     summary: Delete an address
+ *     summary: Delete an address (soft delete)
  *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -262,18 +255,6 @@ router.post('/:id/set-default', [
  *           type: string
  *           format: uuid
  *         description: Address ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [userId]
- *             properties:
- *               userId:
- *                 type: string
- *                 format: uuid
- *                 description: User ID for authorization
  *     responses:
  *       204:
  *         description: Address deleted successfully
@@ -286,9 +267,40 @@ router.post('/:id/set-default', [
  *       404:
  *         description: Address not found
  */
-router.delete('/:id', [
-  param('id').isUUID(),
-  body('userId').isUUID()
-], controller.deleteAddress);
+router.delete('/:id', deleteAddressValidators, validateRequest, controller.deleteAddress);
+
+/**
+ * @swagger
+ * /api/addresses/{id}/mark-used:
+ *   post:
+ *     summary: Mark an address as used (for order placement)
+ *     tags: [Addresses]
+ *     security:
+ *       - gatewayAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Address ID
+ *     responses:
+ *       200:
+ *         description: Address marked as used
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   $ref: '#/components/schemas/Address'
+ *       404:
+ *         description: Address not found
+ */
+router.post('/:id/mark-used', idParamValidator, validateRequest, controller.markAddressAsUsed);
 
 export default router;

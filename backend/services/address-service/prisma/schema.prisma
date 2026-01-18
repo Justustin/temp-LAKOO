@@ -1,0 +1,247 @@
+// =============================================================================
+// ADDRESS SERVICE DATABASE SCHEMA
+// Service: address-service (Port 3010)
+// Database: address_db
+// Owner: User addresses, address validation, Indonesian location data
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("ADDRESS_DATABASE_URL")
+}
+
+// =============================================================================
+// USER ADDRESSES
+// =============================================================================
+
+model Address {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @db.Uuid // Reference to Auth Service
+  label          String?   @db.VarChar(50) // "Home", "Office", "Apartment"
+  // Recipient info (can differ from user)
+  recipientName  String    @db.VarChar(255)
+  phoneNumber    String    @db.VarChar(20)
+  alternatePhone String?   @db.VarChar(20)
+  // Address details
+  streetAddress  String
+  addressLine2   String?   @db.VarChar(255) // Apartment, suite, unit, etc.
+  rt             String?   @db.VarChar(10)  // Indonesian RT
+  rw             String?   @db.VarChar(10)  // Indonesian RW
+  // Location hierarchy
+  villageId      String?   @db.Uuid
+  villageName    String?   @db.VarChar(100)
+  districtId     String?   @db.Uuid
+  districtName   String?   @db.VarChar(100) // Kecamatan
+  cityId         String?   @db.Uuid
+  cityName       String    @db.VarChar(100) // Kota/Kabupaten
+  provinceId     String?   @db.Uuid
+  provinceName   String    @db.VarChar(100)
+  postalCode     String    @db.VarChar(10)
+  country        String    @default("Indonesia") @db.VarChar(100)
+  countryCode    String    @default("ID") @db.VarChar(2)
+  // Coordinates (for delivery optimization)
+  latitude       Decimal?  @db.Decimal(10, 8)
+  longitude      Decimal?  @db.Decimal(11, 8)
+  geoAccuracy    String?   @db.VarChar(50) // "exact", "approximate", "postal_code"
+  // Courier-specific codes
+  biteshipAreaId String?   @db.VarChar(50)
+  jneAreaCode    String?   @db.VarChar(50)
+  jntAreaCode    String?   @db.VarChar(50)
+  // Settings
+  isDefault      Boolean   @default(false)
+  isValidated    Boolean   @default(false)
+  validatedAt    DateTime? @db.Timestamptz(6)
+  // Delivery notes
+  deliveryNotes  String?   @db.VarChar(500)
+  landmark       String?   @db.VarChar(255) // "Near the mosque", "Behind mall"
+  // Usage tracking
+  lastUsedAt     DateTime? @db.Timestamptz(6)
+  useCount       Int       @default(0)
+  // Audit
+  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
+  deletedAt      DateTime? @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([cityId])
+  @@index([postalCode])
+  @@index([isDefault])
+  @@index([deletedAt])
+  @@map("address")
+}
+
+// =============================================================================
+// INDONESIAN LOCATION DATA (Static reference data)
+// =============================================================================
+
+model Province {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String   @unique @db.VarChar(10) // BPS code
+  name        String   @db.VarChar(100)
+  altNames    String[] // Alternative names
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  cities City[]
+
+  @@index([name])
+  @@map("province")
+}
+
+model City {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  provinceId  String   @db.Uuid
+  code        String   @unique @db.VarChar(10) // BPS code
+  name        String   @db.VarChar(100)
+  type        CityType // Kota or Kabupaten
+  altNames    String[]
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  province  Province   @relation(fields: [provinceId], references: [id])
+  districts District[]
+
+  @@index([provinceId])
+  @@index([name])
+  @@map("city")
+}
+
+model District {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  cityId      String   @db.Uuid
+  code        String   @unique @db.VarChar(10) // BPS code
+  name        String   @db.VarChar(100) // Kecamatan name
+  altNames    String[]
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  city     City      @relation(fields: [cityId], references: [id])
+  villages Village[]
+
+  @@index([cityId])
+  @@index([name])
+  @@map("district")
+}
+
+model Village {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  districtId  String   @db.Uuid
+  code        String   @unique @db.VarChar(15) // BPS code
+  name        String   @db.VarChar(100) // Kelurahan/Desa name
+  type        VillageType // Kelurahan or Desa
+  postalCode  String?  @db.VarChar(10)
+  altNames    String[]
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  district District @relation(fields: [districtId], references: [id])
+
+  @@index([districtId])
+  @@index([postalCode])
+  @@index([name])
+  @@map("village")
+}
+
+// =============================================================================
+// POSTAL CODE DATA
+// =============================================================================
+
+model PostalCode {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postalCode  String   @db.VarChar(10)
+  villageName String?  @db.VarChar(100)
+  districtName String? @db.VarChar(100)
+  cityName    String   @db.VarChar(100)
+  provinceName String  @db.VarChar(100)
+  latitude    Decimal? @db.Decimal(10, 8)
+  longitude   Decimal? @db.Decimal(11, 8)
+  // Courier area codes
+  biteshipAreaId String? @db.VarChar(50)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([postalCode, villageName])
+  @@index([postalCode])
+  @@index([cityName])
+  @@map("postal_code")
+}
+
+// =============================================================================
+// ADDRESS VALIDATION CACHE
+// =============================================================================
+
+model AddressValidationCache {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  addressHash     String    @unique @db.VarChar(64) // SHA256 of address components
+  // Input
+  inputAddress    String
+  inputCity       String    @db.VarChar(100)
+  inputPostalCode String    @db.VarChar(10)
+  // Validated output
+  isValid         Boolean
+  validatedAddress String?
+  validatedCity   String?   @db.VarChar(100)
+  validatedProvince String? @db.VarChar(100)
+  validatedPostalCode String? @db.VarChar(10)
+  latitude        Decimal?  @db.Decimal(10, 8)
+  longitude       Decimal?  @db.Decimal(11, 8)
+  confidence      Decimal?  @db.Decimal(5, 2) // 0-100
+  // Courier compatibility
+  biteshipAreaId  String?   @db.VarChar(50)
+  // Metadata
+  validationSource String?  @db.VarChar(50) // "biteship", "google", "internal"
+  expiresAt       DateTime  @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([addressHash])
+  @@index([expiresAt])
+  @@map("address_validation_cache")
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For future Kafka migration)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @db.VarChar(100)
+  aggregateId   String    @db.Uuid
+  eventType     String    @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime? @db.Timestamptz(6)
+  retryCount    Int       @default(0)
+  lastError     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum CityType {
+  kota      // City
+  kabupaten // Regency
+}
+
+enum VillageType {
+  kelurahan // Urban village
+  desa      // Rural village
+}

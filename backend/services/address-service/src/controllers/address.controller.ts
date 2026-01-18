@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { AddressService } from '../services/address.service';
+import { asyncHandler } from '../utils/asyncHandler';
 
 export class AddressController {
   private service: AddressService;
@@ -8,107 +9,115 @@ export class AddressController {
     this.service = new AddressService();
   }
 
-  createAddress = async (req: Request, res: Response) => {
-    try {
-      const address = await this.service.createAddress(req.body);
-      res.status(201).json({
-        success: true,
-        data: address
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  /**
+   * Create a new address
+   */
+  createAddress = asyncHandler(async (req: Request, res: Response) => {
+    const address = await this.service.createAddress(req.body);
+    res.status(201).json({
+      success: true,
+      data: address
+    });
+  });
 
-  getAddress = async (req: Request, res: Response) => {
-    try {
-      const address = await this.service.getAddress(req.params.id);
-      res.json({
-        success: true,
-        data: address
-      });
-    } catch (error: any) {
-      res.status(404).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  /**
+   * Get a single address by ID
+   */
+  getAddress = asyncHandler(async (req: Request, res: Response) => {
+    const address = await this.service.getAddress(req.params.id);
+    res.json({
+      success: true,
+      data: address
+    });
+  });
 
-  getUserAddresses = async (req: Request, res: Response) => {
-    try {
-      const addresses = await this.service.getUserAddresses(req.params.userId);
-      res.json({
-        success: true,
-        data: addresses
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  /**
+   * Get all addresses for a user
+   */
+  getUserAddresses = asyncHandler(async (req: Request, res: Response) => {
+    const addresses = await this.service.getUserAddresses(req.params.userId);
+    res.json({
+      success: true,
+      data: addresses
+    });
+  });
 
-  getDefaultAddress = async (req: Request, res: Response) => {
-    try {
-      const address = await this.service.getDefaultAddress(req.params.userId);
-      res.json({
-        success: true,
-        data: address
-      });
-    } catch (error: any) {
-      res.status(404).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+  /**
+   * Get the default address for a user
+   */
+  getDefaultAddress = asyncHandler(async (req: Request, res: Response) => {
+    const address = await this.service.getDefaultAddress(req.params.userId);
+    res.json({
+      success: true,
+      data: address
+    });
+  });
 
-  updateAddress = async (req: Request, res: Response) => {
-    try {
-      const address = await this.service.updateAddress(req.params.id, req.body);
-      res.json({
-        success: true,
-        data: address
-      });
-    } catch (error: any) {
-      res.status(400).json({
+  /**
+   * Update an address
+   */
+  updateAddress = asyncHandler(async (req: Request, res: Response) => {
+    // Get userId from authenticated user context
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        error: error.message
+        error: 'User not authenticated'
       });
     }
-  };
 
-  setDefaultAddress = async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.body;
-      const address = await this.service.setDefaultAddress(req.params.id, userId);
-      res.json({
-        success: true,
-        data: address
-      });
-    } catch (error: any) {
-      res.status(400).json({
-        success: false,
-        error: error.message
-      });
-    }
-  };
+    const address = await this.service.updateAddress(req.params.id, userId, req.body);
+    res.json({
+      success: true,
+      data: address
+    });
+  });
 
-  deleteAddress = async (req: Request, res: Response) => {
-    try {
-      const { userId } = req.body;
-      await this.service.deleteAddress(req.params.id, userId);
-      res.status(204).send();
-    } catch (error: any) {
-      res.status(400).json({
+  /**
+   * Set an address as default
+   */
+  setDefaultAddress = asyncHandler(async (req: Request, res: Response) => {
+    // Get userId from authenticated user context
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
         success: false,
-        error: error.message
+        error: 'User not authenticated'
       });
     }
-  };
+
+    const address = await this.service.setDefaultAddress(req.params.id, userId);
+    res.json({
+      success: true,
+      data: address
+    });
+  });
+
+  /**
+   * Delete an address (soft delete)
+   */
+  deleteAddress = asyncHandler(async (req: Request, res: Response) => {
+    // Get userId from authenticated user context
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'User not authenticated'
+      });
+    }
+
+    await this.service.deleteAddress(req.params.id, userId);
+    res.status(204).send();
+  });
+
+  /**
+   * Mark an address as used (for order placement)
+   */
+  markAddressAsUsed = asyncHandler(async (req: Request, res: Response) => {
+    const address = await this.service.markAddressAsUsed(req.params.id);
+    res.json({
+      success: true,
+      data: address
+    });
+  });
 }
