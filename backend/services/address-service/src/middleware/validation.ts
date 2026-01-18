@@ -22,7 +22,7 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
 // =============================================================================
 
 export const createAddressValidators = [
-  body('userId').isUUID().withMessage('userId must be a valid UUID'),
+  // userId is derived from authenticated user, not from body
   body('recipientName').notEmpty().withMessage('recipientName is required'),
   body('phoneNumber').notEmpty().withMessage('phoneNumber is required'),
   body('streetAddress').notEmpty().withMessage('streetAddress is required'),

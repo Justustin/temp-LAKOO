@@ -1,16 +1,20 @@
-import express from 'express';
 import dotenv from 'dotenv';
+// Load env vars before config validation
+dotenv.config();
+
+import express from 'express';
+import cors from 'cors';
 import swaggerUi from 'swagger-ui-express';
+import { config } from './config/env';
 import { swaggerSpec } from './config/swagger';
 import addressRoutes from './routes/address.routes';
 import { errorHandler } from './middleware/errorHandler';
 
-dotenv.config();
-
 const app = express();
-const PORT = process.env.PORT || 3010;
 
-app.use(express.json());
+// Security middleware
+app.use(cors());
+app.use(express.json({ limit: '1mb' }));
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -39,7 +43,8 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Address Service running on port ${PORT}`);
-  console.log(`Swagger docs: http://localhost:${PORT}/api-docs`);
+app.listen(config.port, () => {
+  console.log(`Address Service running on port ${config.port}`);
+  console.log(`Environment: ${config.nodeEnv}`);
+  console.log(`Swagger docs: http://localhost:${config.port}/api-docs`);
 });

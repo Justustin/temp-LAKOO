@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { AddressController } from '../controllers/address.controller';
-import { gatewayOrInternalAuth } from '../middleware/auth';
+import { gatewayOrInternalAuth, internalOnly } from '../middleware/auth';
 import {
   validateRequest,
   createAddressValidators,
@@ -273,10 +273,11 @@ router.delete('/:id', deleteAddressValidators, validateRequest, controller.delet
  * @swagger
  * /api/addresses/{id}/mark-used:
  *   post:
- *     summary: Mark an address as used (for order placement)
+ *     summary: Mark an address as used (internal only - for order placement)
  *     tags: [Addresses]
+ *     description: Internal endpoint for order-service to track address usage
  *     security:
- *       - gatewayAuth: []
+ *       - internalAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -298,9 +299,11 @@ router.delete('/:id', deleteAddressValidators, validateRequest, controller.delet
  *                   example: true
  *                 data:
  *                   $ref: '#/components/schemas/Address'
+ *       403:
+ *         description: Forbidden - internal access only
  *       404:
  *         description: Address not found
  */
-router.post('/:id/mark-used', idParamValidator, validateRequest, controller.markAddressAsUsed);
+router.post('/:id/mark-used', internalOnly, idParamValidator, validateRequest, controller.markAddressAsUsed);
 
 export default router;

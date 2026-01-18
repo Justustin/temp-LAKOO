@@ -118,3 +118,18 @@ export const requireRole = (...allowedRoles: string[]) => {
     next();
   };
 };
+
+/**
+ * Internal-only middleware - only allows internal service calls
+ */
+export const internalOnly = (req: Request, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    return next(new UnauthorizedError('Not authenticated'));
+  }
+
+  if (req.user.role !== 'internal') {
+    return next(new ForbiddenError('Internal service access only'));
+  }
+
+  next();
+};

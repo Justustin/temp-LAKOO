@@ -5,52 +5,70 @@ import { Prisma } from '@prisma/client';
 export class AddressRepository {
   /**
    * Create a new address for a user
+   * Uses transaction when setting as default to prevent race conditions
    */
   async create(data: CreateAddressDTO) {
-    // If setting as default, unset other defaults first
+    // If setting as default, use transaction to ensure atomicity
     if (data.isDefault) {
-      await prisma.address.updateMany({
-        where: {
-          userId: data.userId,
-          deletedAt: null
-        },
-        data: { isDefault: false }
+      return prisma.$transaction(async (tx) => {
+        // Unset other defaults first
+        await tx.address.updateMany({
+          where: {
+            userId: data.userId,
+            deletedAt: null
+          },
+          data: { isDefault: false }
+        });
+
+        // Create the new address
+        return tx.address.create({
+          data: this.buildCreateData(data)
+        });
       });
     }
 
+    // No default handling needed, simple create
     return prisma.address.create({
-      data: {
-        userId: data.userId,
-        label: data.label,
-        recipientName: data.recipientName,
-        phoneNumber: data.phoneNumber,
-        alternatePhone: data.alternatePhone,
-        streetAddress: data.streetAddress,
-        addressLine2: data.addressLine2,
-        rt: data.rt,
-        rw: data.rw,
-        villageId: data.villageId,
-        villageName: data.villageName,
-        districtId: data.districtId,
-        districtName: data.districtName,
-        cityId: data.cityId,
-        cityName: data.cityName,
-        provinceId: data.provinceId,
-        provinceName: data.provinceName,
-        postalCode: data.postalCode,
-        country: data.country || 'Indonesia',
-        countryCode: data.countryCode || 'ID',
-        latitude: data.latitude ? new Prisma.Decimal(data.latitude) : null,
-        longitude: data.longitude ? new Prisma.Decimal(data.longitude) : null,
-        geoAccuracy: data.geoAccuracy,
-        biteshipAreaId: data.biteshipAreaId,
-        jneAreaCode: data.jneAreaCode,
-        jntAreaCode: data.jntAreaCode,
-        isDefault: data.isDefault || false,
-        deliveryNotes: data.deliveryNotes,
-        landmark: data.landmark
-      }
+      data: this.buildCreateData(data)
     });
+  }
+
+  /**
+   * Build the Prisma create data from DTO
+   */
+  private buildCreateData(data: CreateAddressDTO): Prisma.AddressCreateInput {
+    return {
+      userId: data.userId,
+      label: data.label,
+      recipientName: data.recipientName,
+      phoneNumber: data.phoneNumber,
+      alternatePhone: data.alternatePhone,
+      streetAddress: data.streetAddress,
+      addressLine2: data.addressLine2,
+      rt: data.rt,
+      rw: data.rw,
+      villageId: data.villageId,
+      villageName: data.villageName,
+      districtId: data.districtId,
+      districtName: data.districtName,
+      cityId: data.cityId,
+      cityName: data.cityName,
+      provinceId: data.provinceId,
+      provinceName: data.provinceName,
+      postalCode: data.postalCode,
+      country: data.country || 'Indonesia',
+      countryCode: data.countryCode || 'ID',
+      // Fix: use !== undefined to handle 0 as valid coordinate
+      latitude: data.latitude !== undefined ? new Prisma.Decimal(data.latitude) : null,
+      longitude: data.longitude !== undefined ? new Prisma.Decimal(data.longitude) : null,
+      geoAccuracy: data.geoAccuracy,
+      biteshipAreaId: data.biteshipAreaId,
+      jneAreaCode: data.jneAreaCode,
+      jntAreaCode: data.jntAreaCode,
+      isDefault: data.isDefault || false,
+      deliveryNotes: data.deliveryNotes,
+      landmark: data.landmark
+    };
   }
 
   /**
@@ -121,8 +139,9 @@ export class AddressRepository {
     if (data.postalCode !== undefined) updateData.postalCode = data.postalCode;
     if (data.country !== undefined) updateData.country = data.country;
     if (data.countryCode !== undefined) updateData.countryCode = data.countryCode;
-    if (data.latitude !== undefined) updateData.latitude = data.latitude ? new Prisma.Decimal(data.latitude) : null;
-    if (data.longitude !== undefined) updateData.longitude = data.longitude ? new Prisma.Decimal(data.longitude) : null;
+    // Fix: use !== undefined to handle 0 as valid coordinate
+    if (data.latitude !== undefined) updateData.latitude = data.latitude !== null ? new Prisma.Decimal(data.latitude) : null;
+    if (data.longitude !== undefined) updateData.longitude = data.longitude !== null ? new Prisma.Decimal(data.longitude) : null;
     if (data.geoAccuracy !== undefined) updateData.geoAccuracy = data.geoAccuracy;
     if (data.biteshipAreaId !== undefined) updateData.biteshipAreaId = data.biteshipAreaId;
     if (data.jneAreaCode !== undefined) updateData.jneAreaCode = data.jneAreaCode;
@@ -141,26 +160,59 @@ export class AddressRepository {
 
   /**
    * Set an address as default (unsets all others for the user)
+   * Uses transaction to prevent race conditions with multiple defaults
    */
   async setAsDefault(id: string, userId: string) {
-    // Unset all other defaults for this user
-    await prisma.address.updateMany({
-      where: {
-        userId,
-        deletedAt: null
-      },
-      data: { isDefault: false }
-    });
+    return prisma.$transaction(async (tx) => {
+      // Unset all other defaults for this user
+      await tx.address.updateMany({
+        where: {
+          userId,
+          deletedAt: null
+        },
+        data: { isDefault: false }
+      });
 
-    // Set this one as default
-    return prisma.address.update({
-      where: { id },
-      data: { isDefault: true }
+      // Set this one as default
+      return tx.address.update({
+        where: { id },
+        data: { isDefault: true }
+      });
     });
   }
 
   /**
-   * Soft delete an address
+   * Soft delete an address and optionally set new default
+   * Uses transaction when switching default to prevent race conditions
+   */
+  async softDeleteWithDefaultSwitch(id: string, userId: string, newDefaultId?: string) {
+    return prisma.$transaction(async (tx) => {
+      // If we need to switch default, do it first
+      if (newDefaultId) {
+        await tx.address.updateMany({
+          where: {
+            userId,
+            deletedAt: null
+          },
+          data: { isDefault: false }
+        });
+
+        await tx.address.update({
+          where: { id: newDefaultId },
+          data: { isDefault: true }
+        });
+      }
+
+      // Soft delete the address
+      return tx.address.update({
+        where: { id },
+        data: { deletedAt: new Date() }
+      });
+    });
+  }
+
+  /**
+   * Soft delete an address (simple version without default switch)
    */
   async softDelete(id: string) {
     return prisma.address.update({
@@ -200,203 +252,6 @@ export class AddressRepository {
         userId,
         deletedAt: null
       }
-    });
-  }
-}
-
-// =============================================================================
-// LOCATION REPOSITORIES
-// =============================================================================
-
-export class ProvinceRepository {
-  async findAll(activeOnly = true) {
-    return prisma.province.findMany({
-      where: activeOnly ? { isActive: true } : undefined,
-      orderBy: { name: 'asc' }
-    });
-  }
-
-  async findById(id: string) {
-    return prisma.province.findUnique({
-      where: { id }
-    });
-  }
-
-  async findByCode(code: string) {
-    return prisma.province.findUnique({
-      where: { code }
-    });
-  }
-
-  async searchByName(name: string) {
-    return prisma.province.findMany({
-      where: {
-        OR: [
-          { name: { contains: name, mode: 'insensitive' } },
-          { altNames: { has: name } }
-        ],
-        isActive: true
-      }
-    });
-  }
-}
-
-export class CityRepository {
-  async findByProvinceId(provinceId: string, activeOnly = true) {
-    return prisma.city.findMany({
-      where: {
-        provinceId,
-        ...(activeOnly ? { isActive: true } : {})
-      },
-      orderBy: { name: 'asc' }
-    });
-  }
-
-  async findById(id: string) {
-    return prisma.city.findUnique({
-      where: { id },
-      include: { province: true }
-    });
-  }
-
-  async findByCode(code: string) {
-    return prisma.city.findUnique({
-      where: { code },
-      include: { province: true }
-    });
-  }
-
-  async searchByName(name: string, provinceId?: string) {
-    return prisma.city.findMany({
-      where: {
-        OR: [
-          { name: { contains: name, mode: 'insensitive' } },
-          { altNames: { has: name } }
-        ],
-        isActive: true,
-        ...(provinceId ? { provinceId } : {})
-      },
-      include: { province: true }
-    });
-  }
-}
-
-export class DistrictRepository {
-  async findByCityId(cityId: string, activeOnly = true) {
-    return prisma.district.findMany({
-      where: {
-        cityId,
-        ...(activeOnly ? { isActive: true } : {})
-      },
-      orderBy: { name: 'asc' }
-    });
-  }
-
-  async findById(id: string) {
-    return prisma.district.findUnique({
-      where: { id },
-      include: { city: { include: { province: true } } }
-    });
-  }
-
-  async findByCode(code: string) {
-    return prisma.district.findUnique({
-      where: { code },
-      include: { city: { include: { province: true } } }
-    });
-  }
-
-  async searchByName(name: string, cityId?: string) {
-    return prisma.district.findMany({
-      where: {
-        OR: [
-          { name: { contains: name, mode: 'insensitive' } },
-          { altNames: { has: name } }
-        ],
-        isActive: true,
-        ...(cityId ? { cityId } : {})
-      },
-      include: { city: { include: { province: true } } }
-    });
-  }
-}
-
-export class VillageRepository {
-  async findByDistrictId(districtId: string, activeOnly = true) {
-    return prisma.village.findMany({
-      where: {
-        districtId,
-        ...(activeOnly ? { isActive: true } : {})
-      },
-      orderBy: { name: 'asc' }
-    });
-  }
-
-  async findById(id: string) {
-    return prisma.village.findUnique({
-      where: { id },
-      include: { district: { include: { city: { include: { province: true } } } } }
-    });
-  }
-
-  async findByCode(code: string) {
-    return prisma.village.findUnique({
-      where: { code },
-      include: { district: { include: { city: { include: { province: true } } } } }
-    });
-  }
-
-  async findByPostalCode(postalCode: string) {
-    return prisma.village.findMany({
-      where: {
-        postalCode,
-        isActive: true
-      },
-      include: { district: { include: { city: { include: { province: true } } } } }
-    });
-  }
-
-  async searchByName(name: string, districtId?: string) {
-    return prisma.village.findMany({
-      where: {
-        OR: [
-          { name: { contains: name, mode: 'insensitive' } },
-          { altNames: { has: name } }
-        ],
-        isActive: true,
-        ...(districtId ? { districtId } : {})
-      },
-      include: { district: { include: { city: { include: { province: true } } } } }
-    });
-  }
-}
-
-export class PostalCodeRepository {
-  async findByPostalCode(postalCode: string) {
-    return prisma.postalCode.findMany({
-      where: { postalCode }
-    });
-  }
-
-  async findByCity(cityName: string) {
-    return prisma.postalCode.findMany({
-      where: {
-        cityName: { contains: cityName, mode: 'insensitive' }
-      }
-    });
-  }
-
-  async searchPostalCodes(query: string) {
-    return prisma.postalCode.findMany({
-      where: {
-        OR: [
-          { postalCode: { startsWith: query } },
-          { villageName: { contains: query, mode: 'insensitive' } },
-          { districtName: { contains: query, mode: 'insensitive' } },
-          { cityName: { contains: query, mode: 'insensitive' } }
-        ]
-      },
-      take: 20
     });
   }
 }

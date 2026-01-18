@@ -10,11 +10,11 @@ export class NotFoundError extends Error {
   }
 }
 
-export class UnauthorizedError extends Error {
-  statusCode = 401;
-  constructor(message = 'Unauthorized') {
+export class ForbiddenError extends Error {
+  statusCode = 403;
+  constructor(message = 'Forbidden') {
     super(message);
-    this.name = 'UnauthorizedError';
+    this.name = 'ForbiddenError';
   }
 }
 
@@ -85,7 +85,7 @@ export class AddressService {
 
     // Verify ownership
     if (existing.userId !== userId) {
-      throw new UnauthorizedError('Not authorized to update this address');
+      throw new ForbiddenError('Not authorized to update this address');
     }
 
     // If setting as default, handle the switch
@@ -120,7 +120,7 @@ export class AddressService {
     }
 
     if (address.userId !== userId) {
-      throw new UnauthorizedError('Not authorized to modify this address');
+      throw new ForbiddenError('Not authorized to modify this address');
     }
 
     const updated = await this.repository.setAsDefault(id, userId);
@@ -130,6 +130,7 @@ export class AddressService {
 
   /**
    * Delete an address (soft delete)
+   * Uses transaction when switching default to prevent race conditions
    */
   async deleteAddress(id: string, userId: string) {
     const address = await this.repository.findById(id);
@@ -138,7 +139,7 @@ export class AddressService {
     }
 
     if (address.userId !== userId) {
-      throw new UnauthorizedError('Not authorized to delete this address');
+      throw new ForbiddenError('Not authorized to delete this address');
     }
 
     // Count user's addresses
@@ -149,16 +150,17 @@ export class AddressService {
       throw new BadRequestError('Cannot delete the only address');
     }
 
-    // If deleting default address, set another one as default
+    let deleted;
+
+    // If deleting default address, find new default and use transactional delete
     if (address.isDefault) {
       const allAddresses = await this.repository.findByUserId(userId);
-      const otherAddress = allAddresses.find(a => a.id !== id);
-      if (otherAddress) {
-        await this.repository.setAsDefault(otherAddress.id, userId);
-      }
+      const newDefault = allAddresses.find(a => a.id !== id);
+      deleted = await this.repository.softDeleteWithDefaultSwitch(id, userId, newDefault?.id);
+    } else {
+      deleted = await this.repository.softDelete(id);
     }
 
-    const deleted = await this.repository.softDelete(id);
     await outboxService.addressDeleted(deleted);
     return deleted;
   }
