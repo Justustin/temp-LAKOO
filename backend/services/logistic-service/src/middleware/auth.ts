@@ -175,3 +175,11 @@ export const gatewayOrInternalAuth = (
 
   return next(new UnauthorizedError('Authentication required'));
 };
+
+/**
+ * Backwards-compatible aliases used by routes/controllers.
+ * Keep these at the bottom so referenced consts are initialized.
+ */
+export const authenticate = gatewayAuth;
+export const requireAdmin = requireRole('admin');
+export const requireInternalAuth = internalServiceAuth;

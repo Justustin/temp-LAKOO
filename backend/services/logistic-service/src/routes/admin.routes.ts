@@ -26,7 +26,7 @@ import {
   createWarehouseSchema
 } from '../middleware/validation';
 
-const router = Router();
+const router: import('express').Router = Router();
 
 // All admin routes require authentication and admin role
 router.use(authenticate, requireAdmin);

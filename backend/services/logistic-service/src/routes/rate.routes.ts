@@ -6,7 +6,7 @@ import {
 } from '../controllers/rate.controller';
 import { validate, getRatesSchema } from '../middleware/validation';
 
-const router = Router();
+const router: import('express').Router = Router();
 
 // Get shipping rates
 router.post('/', validate(getRatesSchema), getShippingRates);

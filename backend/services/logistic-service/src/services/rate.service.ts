@@ -13,6 +13,13 @@ export class RateService {
   }
 
   /**
+   * Backwards-compatible alias used by controllers.
+   */
+  async getRates(data: GetRatesDTO): Promise<ShippingRateResponse[]> {
+    return this.getShippingRates(data);
+  }
+
+  /**
    * Get shipping rates for a given route and weight
    */
   async getShippingRates(data: GetRatesDTO): Promise<ShippingRateResponse[]> {
@@ -134,6 +141,35 @@ export class RateService {
     rates.sort((a, b) => a.rate - b.rate);
 
     return rates;
+  }
+
+  /**
+   * Public-facing list of active couriers (no secrets like apiKey).
+   */
+  async getActiveCouriers() {
+    const couriers = await this.courierRepository.findAllCouriers(true);
+
+    return couriers.map(courier => ({
+      id: courier.id,
+      courierCode: courier.courierCode,
+      courierName: courier.courierName,
+      supportsCod: courier.supportsCod,
+      supportsInsurance: courier.supportsInsurance,
+      supportsPickup: courier.supportsPickup,
+      supportsDropoff: courier.supportsDropoff,
+      supportsRealTimeTracking: courier.supportsRealTimeTracking,
+      rateMultiplier: courier.rateMultiplier ? Number(courier.rateMultiplier) : 1,
+      logoUrl: courier.logoUrl,
+      displayOrder: courier.displayOrder,
+      services: courier.services.map(service => ({
+        id: service.id,
+        serviceCode: service.serviceCode,
+        serviceName: service.serviceName,
+        serviceType: service.serviceType,
+        estimatedDays: service.estimatedDays,
+        displayOrder: service.displayOrder
+      }))
+    }));
   }
 
   /**

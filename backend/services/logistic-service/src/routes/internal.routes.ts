@@ -9,7 +9,7 @@ import { getShippingRatesInternal } from '../controllers/rate.controller';
 import { requireInternalAuth } from '../middleware/auth';
 import { validate, createShipmentSchema, getRatesSchema } from '../middleware/validation';
 
-const router = Router();
+const router: import('express').Router = Router();
 
 // All internal routes require internal API key
 router.use(requireInternalAuth);

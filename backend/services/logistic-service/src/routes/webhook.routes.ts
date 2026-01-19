@@ -4,7 +4,7 @@ import {
   testBiteshipWebhook
 } from '../controllers/webhook.controller';
 
-const router = Router();
+const router: import('express').Router = Router();
 
 // Biteship webhooks
 router.post('/biteship', handleBiteshipWebhook);

@@ -138,12 +138,12 @@ export async function getShipmentById(req: AuthenticatedRequest, res: Response, 
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: shipment
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -174,12 +174,12 @@ export async function getShipmentByOrderId(req: AuthenticatedRequest, res: Respo
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: shipment
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -205,12 +205,12 @@ export async function getTrackingHistory(req: AuthenticatedRequest, res: Respons
 
     const trackingEvents = await shipmentService.getTrackingHistory(id);
 
-    res.json({
+    return res.json({
       success: true,
       data: trackingEvents
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -236,12 +236,12 @@ export async function cancelShipment(req: AuthenticatedRequest, res: Response, n
 
     const cancelledShipment = await shipmentService.cancelShipment(id);
 
-    res.json({
+    return res.json({
       success: true,
       data: cancelledShipment
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }
 
@@ -339,11 +339,11 @@ export async function getByOrderIdInternal(req: Request, res: Response, next: Ne
       });
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: shipment
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 }

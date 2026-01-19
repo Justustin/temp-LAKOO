@@ -16,8 +16,10 @@ import { Decimal } from '@prisma/client/runtime/library';
 export type ShipmentEventType =
   | 'shipment.created'
   | 'shipment.booked'
+  | 'shipment.awaiting_pickup'
   | 'shipment.picked_up'
   | 'shipment.in_transit'
+  | 'shipment.at_destination_hub'
   | 'shipment.out_for_delivery'
   | 'shipment.delivered'
   | 'shipment.failed'
@@ -101,7 +103,7 @@ export class OutboxService {
         aggregateId,
         eventType,
         payload,
-        metadata: metadata || null
+        ...(metadata !== undefined && { metadata })
       }
     });
   }
@@ -189,7 +191,7 @@ export class OutboxService {
     };
 
     // Map status to event type
-    const eventType = `shipment.${shipment.status.replace('_', '_')}` as ShipmentEventType;
+    const eventType = `shipment.${shipment.status}` as ShipmentEventType;
     await this.publish('Shipment', shipment.id, eventType, payload);
   }
 

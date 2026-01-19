@@ -6,6 +6,30 @@ export class CourierRepository {
   // Courier Integration Methods
   // =============================================================================
 
+  /**
+   * Backwards-compatible aliases used by controllers.
+   * Prefer the explicit *Courier/*Service method names in new code.
+   */
+  async create(data: CreateCourierDTO) {
+    return this.createCourier(data);
+  }
+
+  async update(id: string, data: UpdateCourierDTO) {
+    return this.updateCourier(id, data);
+  }
+
+  async findAll() {
+    return this.findAllCouriers(false);
+  }
+
+  async findActive() {
+    return this.findAllCouriers(true);
+  }
+
+  async addService(data: CreateCourierServiceDTO) {
+    return this.createService(data);
+  }
+
   async createCourier(data: CreateCourierDTO) {
     return prisma.courierIntegration.create({
       data: {

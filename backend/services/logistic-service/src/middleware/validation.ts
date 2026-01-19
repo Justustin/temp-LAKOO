@@ -22,7 +22,7 @@ export const validateRequest = (
       }))
     });
   }
-  next();
+  return next();
 };
 
 // =============================================================================
@@ -149,7 +149,7 @@ export function validate(schema: z.ZodSchema) {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
       schema.parse(req.body);
-      next();
+      return next();
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({
@@ -161,7 +161,7 @@ export function validate(schema: z.ZodSchema) {
           }))
         });
       }
-      next(error);
+      return next(error);
     }
   };
 }

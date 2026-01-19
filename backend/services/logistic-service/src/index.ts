@@ -1,6 +1,10 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
 import {
@@ -12,34 +16,36 @@ import {
 } from './routes';
 import { errorHandler } from './middleware/error-handler';
 
-dotenv.config();
-
 const app = express();
 const PORT = process.env.PORT || 3009;
+
+// Security headers
+app.use(helmet());
 
 // Swagger docs
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // CORS
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',');
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
 app.use(cors({
   origin: allowedOrigins,
   credentials: true
 }));
 
 // Body parsing
-app.use(express.json());
+// Capture raw body for webhook signature verification while still parsing JSON
+app.use(express.json({
+  verify: (req, _res, buf) => {
+    (req as any).rawBody = buf;
+  }
+}));
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
-  });
-  next();
-});
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Redirect root to API docs
 app.get('/', (req, res) => {
@@ -78,10 +84,11 @@ app.use((req, res) => {
 app.use(errorHandler);
 
 // Graceful shutdown
+let server: ReturnType<typeof app.listen> | undefined;
 const gracefulShutdown = () => {
   console.log('Received shutdown signal, closing server gracefully...');
 
-  server.close(() => {
+  server?.close(() => {
     console.log('Server closed');
     process.exit(0);
   });
@@ -95,7 +102,7 @@ const gracefulShutdown = () => {
 process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
-const server = app.listen(PORT, () => {
+server = app.listen(PORT, () => {
   console.log('='.repeat(50));
   console.log(`Logistics Service`);
   console.log(`Running on port ${PORT}`);

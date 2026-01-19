@@ -18,15 +18,21 @@ function verifyBiteshipSignature(payload: string, signature: string): boolean {
     return true;
   }
 
+  const provided = signature.startsWith('sha256=')
+    ? signature.slice('sha256='.length)
+    : signature;
+
   const expectedSignature = crypto
     .createHmac('sha256', BITESHIP_WEBHOOK_SECRET)
     .update(payload)
     .digest('hex');
 
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  const providedBuf = Buffer.from(provided, 'hex');
+  const expectedBuf = Buffer.from(expectedSignature, 'hex');
+
+  if (providedBuf.length !== expectedBuf.length) return false;
+
+  return crypto.timingSafeEqual(providedBuf, expectedBuf);
 }
 
 /**
@@ -60,7 +66,9 @@ function mapBiteshipStatus(biteshipStatus: string): ShipmentStatus | null {
 export async function handleBiteshipWebhook(req: Request, res: Response, next: NextFunction) {
   try {
     const signature = req.headers['x-biteship-signature'] as string;
-    const rawBody = JSON.stringify(req.body);
+    const rawBody = (req as any).rawBody
+      ? (req as any).rawBody.toString('utf8')
+      : JSON.stringify(req.body);
 
     // Verify signature (optional based on config)
     if (signature && !verifyBiteshipSignature(rawBody, signature)) {
@@ -108,14 +116,14 @@ export async function handleBiteshipWebhook(req: Request, res: Response, next: N
         console.log(`Unhandled Biteship event: ${payload.event}`);
     }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Webhook processed'
     });
   } catch (error) {
     console.error('Error processing Biteship webhook:', error);
     // Return 200 to prevent retries for unrecoverable errors
-    res.json({
+    return res.json({
       success: false,
       message: 'Webhook processing failed'
     });
@@ -174,7 +182,7 @@ export async function testBiteshipWebhook(req: Request, res: Response) {
 
   console.log('Test webhook received:', req.body);
 
-  res.json({
+  return res.json({
     success: true,
     message: 'Test webhook received',
     payload: req.body

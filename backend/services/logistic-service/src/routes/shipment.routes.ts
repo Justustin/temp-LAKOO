@@ -11,7 +11,7 @@ import {
 import { authenticate } from '../middleware/auth';
 import { validate, createShipmentSchema } from '../middleware/validation';
 
-const router = Router();
+const router: import('express').Router = Router();
 
 // =============================================================================
 // Public Routes
