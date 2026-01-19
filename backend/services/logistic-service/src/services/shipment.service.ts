@@ -13,8 +13,9 @@ import { outboxService } from './outbox.service';
 import { NotFoundError, BadRequestError, ShipmentError } from '../middleware/error-handler';
 import axios from 'axios';
 
-const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3005';
-const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3003';
+// Defaults aligned with MICROSERVICE_ARCHITECTURE_PLAN.md (order-service: 3006, notification-service: 3008)
+const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3006';
+const NOTIFICATION_SERVICE_URL = process.env.NOTIFICATION_SERVICE_URL || 'http://localhost:3008';
 
 export class ShipmentService {
   private shipmentRepository: ShipmentRepository;

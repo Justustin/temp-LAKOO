@@ -1,13 +1,45 @@
 import { prisma } from '../lib/prisma';
 import { CreateWarehouseDTO, UpdateWarehouseDTO } from '../types';
+import { Prisma } from '../generated/prisma';
 
 export class WarehouseRepository {
+  /**
+   * Serialize "default warehouse" mutations to avoid multiple defaults under concurrency.
+   * Uses a Postgres advisory transaction lock.
+   */
+  private async lockDefaultWarehouse(tx: Prisma.TransactionClient) {
+    // Constant lock key for this service
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(424242::bigint)`;
+  }
+
   async create(data: CreateWarehouseDTO) {
     // If this is set as default, unset other defaults first
     if (data.isDefault) {
-      await prisma.warehouseLocation.updateMany({
-        where: { isDefault: true },
-        data: { isDefault: false }
+      return prisma.$transaction(async (tx) => {
+        await this.lockDefaultWarehouse(tx);
+        await tx.warehouseLocation.updateMany({
+          where: { isDefault: true },
+          data: { isDefault: false }
+        });
+
+        return tx.warehouseLocation.create({
+          data: {
+            code: data.code,
+            name: data.name,
+            contactName: data.contactName,
+            contactPhone: data.contactPhone,
+            address: data.address,
+            district: data.district,
+            city: data.city,
+            province: data.province,
+            postalCode: data.postalCode,
+            latitude: data.latitude,
+            longitude: data.longitude,
+            isDefault: true,
+            isActive: data.isActive ?? true,
+            operatingHours: data.operatingHours
+          }
+        });
       });
     }
 
@@ -62,9 +94,31 @@ export class WarehouseRepository {
   async update(id: string, data: UpdateWarehouseDTO) {
     // If this is being set as default, unset other defaults first
     if (data.isDefault) {
-      await prisma.warehouseLocation.updateMany({
-        where: { isDefault: true, id: { not: id } },
-        data: { isDefault: false }
+      return prisma.$transaction(async (tx) => {
+        await this.lockDefaultWarehouse(tx);
+        await tx.warehouseLocation.updateMany({
+          where: { isDefault: true, id: { not: id } },
+          data: { isDefault: false }
+        });
+
+        return tx.warehouseLocation.update({
+          where: { id },
+          data: {
+            ...(data.name !== undefined && { name: data.name }),
+            ...(data.contactName !== undefined && { contactName: data.contactName }),
+            ...(data.contactPhone !== undefined && { contactPhone: data.contactPhone }),
+            ...(data.address !== undefined && { address: data.address }),
+            ...(data.district !== undefined && { district: data.district }),
+            ...(data.city !== undefined && { city: data.city }),
+            ...(data.province !== undefined && { province: data.province }),
+            ...(data.postalCode !== undefined && { postalCode: data.postalCode }),
+            ...(data.latitude !== undefined && { latitude: data.latitude }),
+            ...(data.longitude !== undefined && { longitude: data.longitude }),
+            ...(data.isDefault !== undefined && { isDefault: data.isDefault }),
+            ...(data.isActive !== undefined && { isActive: data.isActive }),
+            ...(data.operatingHours !== undefined && { operatingHours: data.operatingHours })
+          }
+        });
       });
     }
 
@@ -95,16 +149,20 @@ export class WarehouseRepository {
   }
 
   async setDefault(id: string) {
-    // Unset all current defaults
-    await prisma.warehouseLocation.updateMany({
-      where: { isDefault: true },
-      data: { isDefault: false }
-    });
+    return prisma.$transaction(async (tx) => {
+      await this.lockDefaultWarehouse(tx);
 
-    // Set new default
-    return prisma.warehouseLocation.update({
-      where: { id },
-      data: { isDefault: true }
+      // Unset all current defaults
+      await tx.warehouseLocation.updateMany({
+        where: { isDefault: true },
+        data: { isDefault: false }
+      });
+
+      // Set new default
+      return tx.warehouseLocation.update({
+        where: { id },
+        data: { isDefault: true }
+      });
     });
   }
 }

@@ -1,0 +1,88 @@
+# ========================================
+# LOGISTIC SERVICE DOCKER COMPOSE
+# Development Environment
+# ========================================
+
+version: '3.8'
+
+services:
+  logistic-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logistic-service
+    restart: unless-stopped
+    ports:
+      - "3009:3009"
+    environment:
+      - NODE_ENV=development
+      - PORT=3009
+      - LOGISTICS_DATABASE_URL=postgresql://postgres:postgres@logistic-db:5432/logistics_db?schema=public
+      - ALLOWED_ORIGINS=http://localhost:3000
+      - GATEWAY_SECRET_KEY=${GATEWAY_SECRET_KEY:-dev-gateway-key}
+      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-dev-internal-key}
+      - ORDER_SERVICE_URL=${ORDER_SERVICE_URL:-http://order-service:3005}
+      - NOTIFICATION_SERVICE_URL=${NOTIFICATION_SERVICE_URL:-http://notification-service:3003}
+      - BITESHIP_BASE_URL=${BITESHIP_BASE_URL:-https://api.biteship.com/v1}
+      - BITESHIP_API_KEY=${BITESHIP_API_KEY:-}
+      - BITESHIP_WEBHOOK_SECRET=${BITESHIP_WEBHOOK_SECRET:-}
+      - RATE_CACHE_TTL_HOURS=${RATE_CACHE_TTL_HOURS:-24}
+    depends_on:
+      logistic-db:
+        condition: service_healthy
+    networks:
+      - logistic-network
+      - shared-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3009/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  logistic-db:
+    image: postgres:15-alpine
+    container_name: logistic-db
+    restart: unless-stopped
+    ports:
+      - "5439:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=logistics_db
+    volumes:
+      - logistic-db-data:/var/lib/postgresql/data
+    networks:
+      - logistic-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Database schema sync service (runs once)
+  logistic-migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: logistic-migrate
+    command: sh -lc "pnpm dlx prisma db push"
+    environment:
+      - LOGISTICS_DATABASE_URL=postgresql://postgres:postgres@logistic-db:5432/logistics_db?schema=public
+    depends_on:
+      logistic-db:
+        condition: service_healthy
+    networks:
+      - logistic-network
+    restart: "no"
+
+volumes:
+  logistic-db-data:
+
+networks:
+  logistic-network:
+    driver: bridge
+  shared-network:
+    external: true
+    name: microservices-network
+

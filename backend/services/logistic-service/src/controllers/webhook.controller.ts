@@ -14,7 +14,9 @@ const BITESHIP_WEBHOOK_SECRET = process.env.BITESHIP_WEBHOOK_SECRET || '';
  */
 function verifyBiteshipSignature(payload: string, signature: string): boolean {
   if (!BITESHIP_WEBHOOK_SECRET) {
-    console.warn('BITESHIP_WEBHOOK_SECRET not configured, skipping signature verification');
+    // In production, treat missing secret as misconfiguration (fail closed).
+    if (process.env.NODE_ENV === 'production') return false;
+    console.warn('BITESHIP_WEBHOOK_SECRET not configured, skipping signature verification (development only)');
     return true;
   }
 
@@ -70,13 +72,18 @@ export async function handleBiteshipWebhook(req: Request, res: Response, next: N
       ? (req as any).rawBody.toString('utf8')
       : JSON.stringify(req.body);
 
-    // Verify signature (optional based on config)
-    if (signature && !verifyBiteshipSignature(rawBody, signature)) {
-      console.warn('Invalid Biteship webhook signature');
-      return res.status(401).json({
-        success: false,
-        error: 'Invalid signature'
-      });
+    // Verify signature (fail closed in production when secret is configured)
+    if (BITESHIP_WEBHOOK_SECRET) {
+      if (!signature) {
+        return res.status(401).json({ success: false, error: 'Missing signature' });
+      }
+      if (!verifyBiteshipSignature(rawBody, signature)) {
+        console.warn('Invalid Biteship webhook signature');
+        return res.status(401).json({ success: false, error: 'Invalid signature' });
+      }
+    } else if (process.env.NODE_ENV === 'production') {
+      // Secret must be configured in production to accept webhooks
+      return res.status(500).json({ success: false, error: 'Webhook verification not configured' });
     }
 
     const payload: BiteshipWebhookPayload = req.body;
