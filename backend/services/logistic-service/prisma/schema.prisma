@@ -1,0 +1,271 @@
+// =============================================================================
+// LOGISTICS SERVICE DATABASE SCHEMA
+// Service: logistics-service (Port 3009)
+// Database: logistics_db
+// Owner: Shipments, tracking events, courier integrations, shipping rates
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("LOGISTICS_DATABASE_URL")
+}
+
+// =============================================================================
+// SHIPMENTS
+// =============================================================================
+
+model Shipment {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentNumber      String         @unique @db.VarChar(50) // SHP-20260115-XXXXX
+  orderId             String         @db.Uuid // Reference to Order Service
+  returnId            String?        @db.Uuid // For return shipments
+  userId              String         @db.Uuid
+  // Courier info (Biteship integration)
+  courier             String         @db.VarChar(50) // jne, jnt, sicepat, etc.
+  courierName         String?        @db.VarChar(100)
+  serviceType         String?        @db.VarChar(50) // REG, YES, OKE
+  serviceName         String?        @db.VarChar(100)
+  trackingNumber      String?        @db.VarChar(100)
+  waybillId           String?        @db.VarChar(100) // Biteship waybill ID
+  // Shipping details
+  shippingCost        Decimal        @db.Decimal(15, 2)
+  insuranceCost       Decimal        @default(0) @db.Decimal(15, 2)
+  codAmount           Decimal        @default(0) @db.Decimal(15, 2) // Cash on delivery
+  totalCost           Decimal        @db.Decimal(15, 2)
+  // Package info
+  weightGrams         Int
+  lengthCm            Decimal?       @db.Decimal(10, 2)
+  widthCm             Decimal?       @db.Decimal(10, 2)
+  heightCm            Decimal?       @db.Decimal(10, 2)
+  itemCount           Int            @default(1)
+  itemDescription     String?        @db.VarChar(255)
+  // Origin address (warehouse)
+  originName          String         @db.VarChar(255)
+  originPhone         String         @db.VarChar(20)
+  originAddress       String
+  originDistrict      String?        @db.VarChar(100)
+  originCity          String         @db.VarChar(100)
+  originProvince      String         @db.VarChar(100)
+  originPostalCode    String         @db.VarChar(10)
+  originLatitude      Decimal?       @db.Decimal(10, 8)
+  originLongitude     Decimal?       @db.Decimal(11, 8)
+  // Destination address
+  destName            String         @db.VarChar(255)
+  destPhone           String         @db.VarChar(20)
+  destAddress         String
+  destDistrict        String?        @db.VarChar(100)
+  destCity            String         @db.VarChar(100)
+  destProvince        String         @db.VarChar(100)
+  destPostalCode      String         @db.VarChar(10)
+  destLatitude        Decimal?       @db.Decimal(10, 8)
+  destLongitude       Decimal?       @db.Decimal(11, 8)
+  // Timestamps
+  estimatedDelivery   DateTime?      @db.Timestamptz(6)
+  bookedAt            DateTime?      @db.Timestamptz(6)
+  pickedUpAt          DateTime?      @db.Timestamptz(6)
+  inTransitAt         DateTime?      @db.Timestamptz(6)
+  outForDeliveryAt    DateTime?      @db.Timestamptz(6)
+  deliveredAt         DateTime?      @db.Timestamptz(6)
+  failedAt            DateTime?      @db.Timestamptz(6)
+  returnedAt          DateTime?      @db.Timestamptz(6)
+  // Status
+  status              ShipmentStatus @default(pending)
+  failureReason       String?        @db.VarChar(500)
+  // Delivery confirmation
+  receiverName        String?        @db.VarChar(255)
+  proofOfDeliveryUrl  String?
+  signature           String?
+  // Notes
+  instructions        String?        @db.VarChar(500)
+  internalNotes       String?
+  // Metadata
+  biteshipOrderId     String?        @db.VarChar(100)
+  metadata            Json?
+  createdAt           DateTime       @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime       @updatedAt @db.Timestamptz(6)
+
+  trackingEvents TrackingEvent[]
+
+  @@index([shipmentNumber])
+  @@index([orderId])
+  @@index([trackingNumber])
+  @@index([status])
+  @@index([createdAt])
+  @@map("shipment")
+}
+
+// =============================================================================
+// TRACKING EVENTS
+// =============================================================================
+
+model TrackingEvent {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  shipmentId    String    @db.Uuid
+  // Event info
+  status        String    @db.VarChar(100) // Raw status from courier
+  statusCode    String?   @db.VarChar(50)
+  description   String?
+  location      String?   @db.VarChar(255)
+  city          String?   @db.VarChar(100)
+  // Courier info
+  courierStatus String?   @db.VarChar(100)
+  // Timestamp from courier
+  eventTime     DateTime  @db.Timestamptz(6)
+  // Source
+  source        String    @default("webhook") @db.VarChar(50) // "webhook", "api_poll", "manual"
+  rawPayload    Json?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([shipmentId])
+  @@index([eventTime])
+  @@map("tracking_event")
+}
+
+// =============================================================================
+// COURIER INTEGRATION CONFIG
+// =============================================================================
+
+model CourierIntegration {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierCode     String   @unique @db.VarChar(50) // jne, jnt, sicepat
+  courierName     String   @db.VarChar(100)
+  isActive        Boolean  @default(true)
+  // API config (encrypted in practice)
+  apiEndpoint     String?  @db.VarChar(255)
+  apiKey          String?  @db.VarChar(255)
+  // Features
+  supportsCod     Boolean  @default(false)
+  supportsInsurance Boolean @default(true)
+  supportsPickup  Boolean  @default(true)
+  supportsDropoff Boolean  @default(true)
+  supportsRealTimeTracking Boolean @default(true)
+  // Rate calculation
+  hasFixedRates   Boolean  @default(false)
+  rateMultiplier  Decimal  @default(1.00) @db.Decimal(5, 2) // For markup
+  // Display
+  logoUrl         String?  @db.VarChar(255)
+  displayOrder    Int      @default(0)
+  // Cutoff times
+  pickupCutoffTime String?  @db.VarChar(5) // "14:00"
+  // Settings
+  settings        Json?
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  services CourierService[]
+
+  @@map("courier_integration")
+}
+
+model CourierService {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  courierId       String   @db.Uuid
+  serviceCode     String   @db.VarChar(50) // REG, YES, OKE
+  serviceName     String   @db.VarChar(100)
+  serviceType     String?  @db.VarChar(50) // standard, express, economy
+  estimatedDays   String?  @db.VarChar(20) // "1-2", "2-3"
+  isActive        Boolean  @default(true)
+  displayOrder    Int      @default(0)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  courier CourierIntegration @relation(fields: [courierId], references: [id], onDelete: Cascade)
+
+  @@unique([courierId, serviceCode])
+  @@map("courier_service")
+}
+
+// =============================================================================
+// SHIPPING RATE CACHE
+// =============================================================================
+
+model ShippingRateCache {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  originPostalCode String  @db.VarChar(10)
+  destPostalCode  String   @db.VarChar(10)
+  weightGrams     Int
+  courier         String   @db.VarChar(50)
+  serviceCode     String   @db.VarChar(50)
+  // Cached rate
+  rate            Decimal  @db.Decimal(15, 2)
+  estimatedDays   String?  @db.VarChar(20)
+  // Validity
+  expiresAt       DateTime @db.Timestamptz(6)
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([originPostalCode, destPostalCode, weightGrams, courier, serviceCode])
+  @@index([expiresAt])
+  @@map("shipping_rate_cache")
+}
+
+// =============================================================================
+// WAREHOUSE LOCATION (For origin addresses)
+// =============================================================================
+
+model WarehouseLocation {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code          String   @unique @db.VarChar(50)
+  name          String   @db.VarChar(255)
+  contactName   String   @db.VarChar(255)
+  contactPhone  String   @db.VarChar(20)
+  address       String
+  district      String?  @db.VarChar(100)
+  city          String   @db.VarChar(100)
+  province      String   @db.VarChar(100)
+  postalCode    String   @db.VarChar(10)
+  latitude      Decimal? @db.Decimal(10, 8)
+  longitude     Decimal? @db.Decimal(11, 8)
+  isDefault     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  operatingHours String?  @db.VarChar(100) // "Mon-Sat 08:00-17:00"
+  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @db.Timestamptz(6)
+
+  @@map("warehouse_location")
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For future Kafka migration)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @db.VarChar(100)
+  aggregateId   String    @db.Uuid
+  eventType     String    @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime? @db.Timestamptz(6)
+  retryCount    Int       @default(0)
+  lastError     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum ShipmentStatus {
+  pending           // Shipment created, not yet booked
+  booked            // Booked with courier
+  awaiting_pickup   // Waiting for courier pickup
+  picked_up         // Courier picked up
+  in_transit        // On the way
+  at_destination_hub // Arrived at destination city
+  out_for_delivery  // Last mile delivery
+  delivered         // Successfully delivered
+  failed            // Delivery failed
+  returned          // Returned to sender
+  cancelled         // Cancelled before pickup
+}
