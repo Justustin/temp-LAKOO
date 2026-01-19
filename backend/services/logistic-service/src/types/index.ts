@@ -213,6 +213,45 @@ export interface CreateCourierServiceDTO {
 }
 
 // =============================================================================
+// Courier Entity Types (matching Prisma models)
+// =============================================================================
+
+export interface CourierService {
+  id: string;
+  courierId: string;
+  serviceCode: string;
+  serviceName: string;
+  serviceType: string | null;
+  estimatedDays: string | null;
+  isActive: boolean;
+  displayOrder: number;
+  createdAt: Date;
+}
+
+export interface CourierIntegration {
+  id: string;
+  courierCode: string;
+  courierName: string;
+  isActive: boolean;
+  apiEndpoint: string | null;
+  apiKey: string | null;
+  supportsCod: boolean;
+  supportsInsurance: boolean;
+  supportsPickup: boolean;
+  supportsDropoff: boolean;
+  supportsRealTimeTracking: boolean;
+  hasFixedRates: boolean;
+  rateMultiplier: import('@prisma/client/runtime/library').Decimal | null;
+  logoUrl: string | null;
+  displayOrder: number;
+  pickupCutoffTime: string | null;
+  settings: any;
+  createdAt: Date;
+  updatedAt: Date;
+  services: CourierService[];
+}
+
+// =============================================================================
 // Warehouse Location DTOs
 // =============================================================================
 

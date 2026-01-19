@@ -1,6 +1,6 @@
 import { CourierRepository } from '../repositories/courier.repository';
 import { RateCacheRepository, CachedRate } from '../repositories/rate-cache.repository';
-import { GetRatesDTO, ShippingRateResponse } from '../types';
+import { GetRatesDTO, ShippingRateResponse, CourierIntegration, CourierService } from '../types';
 import { biteshipClient } from '../config/biteship';
 
 export class RateService {
@@ -30,7 +30,7 @@ export class RateService {
 
     // Filter by requested couriers if specified
     if (couriers && couriers.length > 0) {
-      activeCouriers = activeCouriers.filter(c => couriers.includes(c.courierCode));
+      activeCouriers = activeCouriers.filter((c: CourierIntegration) => couriers.includes(c.courierCode));
     }
 
     if (activeCouriers.length === 0) {
@@ -96,10 +96,10 @@ export class RateService {
         const ratesToCache: CachedRate[] = [];
 
         for (const rate of biteshipRates) {
-          const courier = activeCouriers.find(c => c.courierCode === rate.courierCode);
+          const courier = activeCouriers.find((c: CourierIntegration) => c.courierCode === rate.courierCode);
           if (!courier) continue;
 
-          const service = courier.services.find(s => s.serviceCode === rate.serviceCode);
+          const service = courier.services.find((s: CourierService) => s.serviceCode === rate.serviceCode);
 
           // Apply rate multiplier
           const finalRate = rate.rate * Number(courier.rateMultiplier || 1);
@@ -149,7 +149,7 @@ export class RateService {
   async getActiveCouriers() {
     const couriers = await this.courierRepository.findAllCouriers(true);
 
-    return couriers.map(courier => ({
+    return couriers.map((courier: CourierIntegration) => ({
       id: courier.id,
       courierCode: courier.courierCode,
       courierName: courier.courierName,
@@ -161,7 +161,7 @@ export class RateService {
       rateMultiplier: courier.rateMultiplier ? Number(courier.rateMultiplier) : 1,
       logoUrl: courier.logoUrl,
       displayOrder: courier.displayOrder,
-      services: courier.services.map(service => ({
+      services: courier.services.map((service: CourierService) => ({
         id: service.id,
         serviceCode: service.serviceCode,
         serviceName: service.serviceName,
