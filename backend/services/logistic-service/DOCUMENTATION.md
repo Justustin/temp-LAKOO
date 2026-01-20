@@ -294,6 +294,17 @@ High-signal things that can bite you later:
   - Docker/dev uses `prisma db push` when there’s no `prisma/migrations/` history.
   - Before production, consider switching to real migrations (`prisma migrate dev` → `prisma migrate deploy`) so schema changes are versioned and repeatable.
 
+- **DB init container command (`pnpm dlx` vs `npx`)**
+  - In `docker-compose.yml`, the one-shot DB init container uses `pnpm dlx prisma db push`.
+  - Depending on how the image is built, `pnpm` might not be available in the runtime container. A safer default is `npx prisma db push` (or build a dedicated “migrate” image that includes pnpm).
+
+- **Webhook retry strategy**
+  - Right now the webhook handler returns `200` even on exceptions to avoid retries.
+  - That’s ok for “bad payload” cases, but for transient failures (DB unavailable, network blips) you may want to return `500` so Biteship retries.
+
+- **Rate limiting for webhooks**
+  - Consider rate limiting `/api/webhooks/biteship` to reduce abuse/DoS risk (especially if the endpoint is publicly reachable).
+
 ## Outbox event coverage (what’s emitted)
 Outbox rows are written via `src/services/outbox.service.ts`:
 - Shipment lifecycle: `shipment.created`, `shipment.booked`, `shipment.awaiting_pickup`, `shipment.picked_up`, `shipment.in_transit`, `shipment.at_destination_hub`, `shipment.out_for_delivery`, `shipment.delivered`, `shipment.failed`, `shipment.returned`, `shipment.cancelled`
