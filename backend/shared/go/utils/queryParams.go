@@ -5,21 +5,16 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/schema"
 )
 
-var (
-	decoder  *schema.Decoder
-	validate *validator.Validate
-)
+var decoder *schema.Decoder
 
 func init() {
 	decoder = schema.NewDecoder()
 	decoder.IgnoreUnknownKeys(true)
 	decoder.SetAliasTag("query")
 
-	validate = validator.New()
 }
 
 func DecodeQueryParams(payload any, r *http.Request) error {
@@ -44,12 +39,5 @@ func DecodeQueryParamsWithValidation(payload any, r *http.Request) error {
 		return err
 	}
 
-	return validatePayload(payload)
-}
-
-func validatePayload(payload any) error {
-	if err := validate.Struct(payload); err != nil {
-		return errors.New("validation error: " + err.Error())
-	}
-	return nil
+	return ValidatePayload(payload)
 }

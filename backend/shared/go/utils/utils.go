@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"strconv"
 	"strings"
-
-	"github.com/Flow-Indo/LAKOO/backend/shared/types"
 )
 
 func PayloadToMap(payload interface{}) (map[string]interface{}, error) {
@@ -22,7 +20,7 @@ func PayloadToMap(payload interface{}) (map[string]interface{}, error) {
 	return result, nil
 }
 
-func GetStringFromJSONB(data types.JSONB, path string) string {
+func GetStringFromJSONB(data JSONB, path string) string {
 	if data == nil {
 		return ""
 	}
@@ -57,7 +55,7 @@ func GetStringFromJSONB(data types.JSONB, path string) string {
 
 }
 
-func GetIntFromJSONB(data types.JSONB, path string) int {
+func GetIntFromJSONB(data JSONB, path string) int {
 	if data == nil {
 		return 0
 	}

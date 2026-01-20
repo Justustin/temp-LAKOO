@@ -1,0 +1,86 @@
+services:
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: ./Dockerfile
+  #   container_name: LAKOO-frontend
+  #   volumes :
+  #     - ./frontend:/app
+  #     - /app/node_modules
+  #   depends_on:
+  #     - api-gateway
+
+  # backend:
+  #   build:
+  #     context: ./backend
+  #     dockerfile: ./Dockerfile
+  #   container_name: LAKOO-backend
+  #   volumes:
+  #     - ./backend:/app
+  #     - go_modules:/go/pkg/mod
+  #     - go_build_cache:/root/.cache/go-build
+  #   expose:
+  #     - "8080" #only gateway should talk to it
+  #   depends_on:
+  #     - api-gateway
+  cart-service:
+    build:
+      context: ./backend/services/cart-service
+      dockerfile: ./Dockerfile.dev
+    container_name: LAKOO-cart-service
+    expose:
+     - "8003"
+    volumes:
+      - ./backend/services/cart-service:/app
+      - go_modules:/go/pkg/mod
+      - go_build_cache:/root/.cache/go-build
+    environment:
+      CART_SERVICE_PORT: ${DOCKER_CART_SERVICE_PORT}
+      DB_HOST: ${DOCKER_DB_HOST}
+      DB_USER: ${DOCKER_DB_USER}
+      DB_PASSWORD: ${DOCKER_DB_PASSWORD}
+      DB_NAME: ${DOCKER_DB_NAME}
+      DB_PORT: ${DOCKER_DB_PORT}
+      DB_SSL: require
+      PRODUCT_SERVICE_BASE_URL: ${DOCKER_PRODUCT_SERVICE_BASE_URL}
+
+  
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+      dockerfile: ./Dockerfile.dev
+    container_name: LAKOO-api-gateway
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./backend/api-gateway:/app
+      - node_modules:/app/node_modules
+    depends_on:
+      - cart-service
+    environment:
+      PRODUCT_SERVICE_BASE_URL: ${DOCKER_PRODUCT_SERVICE_BASE_URL}
+      SERVICE_SECRET: ${SERVICE_SECRET}
+      FRONTEND_URL: ${DOCKER_FRONTEND_URL}
+      API_GATEWAY_PORT: ${DOCKER_API_GATEWAY_PORT}
+      JWT_SECRET: ${DOCKER_JWT_SECRET}
+
+  redis:
+    image: redis:7-alpine
+    expose:
+      - "6379"
+
+  nginx:
+    image: nginx:alpine
+    ports: 
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend/out:/usr/share/nginx/html:ro
+    depends_on:
+      - api-gateway
+
+
+volumes:
+  go_modules:
+  go_build_cache:
+  node_modules:
