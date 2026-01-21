@@ -45,12 +45,6 @@ export class ConflictError extends AppError {
   }
 }
 
-export class PaymentError extends AppError {
-  constructor(message: string, code?: string) {
-    super(message, 402, code);
-  }
-}
-
 export const errorHandler = (
   err: Error,
   req: Request,
@@ -63,19 +57,10 @@ export const errorHandler = (
     stack: process.env.NODE_ENV === 'development' ? err.stack : undefined,
   });
 
-  if (err instanceof AppError) {
-    return res.status(err.statusCode).json({
-      success: false,
-      error: err.message,
-      code: err.code,
-      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
-    });
-  }
-
-  // Support custom errors that define `statusCode` (common in some services)
+  // Supports AppError and any custom errors that define `statusCode`
   const anyErr = err as any;
-  if (typeof anyErr.statusCode === 'number') {
-    return res.status(anyErr.statusCode).json({
+  if (err instanceof AppError || typeof anyErr.statusCode === 'number') {
+    return res.status(anyErr.statusCode ?? 500).json({
       success: false,
       error: err.message,
       code: anyErr.code,
@@ -136,3 +121,4 @@ export const asyncHandler = (
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 };
+

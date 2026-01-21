@@ -19,6 +19,8 @@ import { errorHandler } from './middleware/error-handler';
 const app = express();
 const PORT = process.env.PORT || 3009;
 
+app.disable('x-powered-by');
+
 // Security headers
 app.use(helmet());
 

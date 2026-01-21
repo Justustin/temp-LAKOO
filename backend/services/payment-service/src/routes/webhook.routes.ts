@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { WebhookController } from '../controllers/webhook.controller';
 
-const router = Router();
+const router: ExpressRouter = Router();
 const controller = new WebhookController();
 
 // NOTE: Webhook routes are intentionally PUBLIC (no gateway auth)

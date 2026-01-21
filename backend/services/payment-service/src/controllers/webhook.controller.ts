@@ -10,11 +10,11 @@ export class WebhookController {
     this.paymentService = new PaymentService();
   }
 
-  handleXenditCallback = async (req: Request, res: Response) => {
+  handleXenditCallback = async (req: Request, res: Response): Promise<void> => {
     try {
       // Get webhook verification token from environment
       const webhookVerificationToken = process.env.XENDIT_WEBHOOK_VERIFICATION_TOKEN || '';
-      const receivedSignature = req.headers['x-callback-token'] as string;
+      const receivedSignature = (req.headers['x-callback-token'] as string | undefined) ?? '';
 
       // Get raw body for signature verification
       const rawBody = JSON.stringify(req.body);
@@ -22,7 +22,8 @@ export class WebhookController {
       // Verify webhook signature using callback token comparison
       if (!CryptoUtils.verifyXenditWebhook(rawBody, receivedSignature, webhookVerificationToken)) {
         console.warn('Invalid webhook signature received');
-        return res.status(403).json({ error: 'Invalid webhook signature' });
+        res.status(403).json({ error: 'Invalid webhook signature' });
+        return;
       }
 
       const callbackData = req.body;
@@ -43,7 +44,8 @@ export class WebhookController {
 
       if (existingLog) {
         console.log(`Webhook event ${eventId} already processed - ignoring`);
-        return res.json({ received: true, message: 'Already processed' });
+        res.json({ received: true, message: 'Already processed' });
+        return;
       }
 
       // Find payment by gateway transaction ID

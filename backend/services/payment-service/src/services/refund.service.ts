@@ -5,6 +5,7 @@ import { CreateRefundDTO } from '../types';
 import { notificationClient } from '../clients/notification.client';
 import { outboxService } from './outbox.service';
 import axios from 'axios';
+import { getServiceAuthHeaders } from '../utils/serviceAuth';
 
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3005';
 
@@ -242,9 +243,11 @@ export class RefundService {
    */
   private async updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
     try {
-      await axios.put(`${ORDER_SERVICE_URL}/api/orders/${orderId}/status`, {
-        newStatus
-      });
+      await axios.put(
+        `${ORDER_SERVICE_URL}/api/orders/${orderId}/status`,
+        { newStatus },
+        { headers: getServiceAuthHeaders() }
+      );
     } catch (error: any) {
       console.error(`Failed to update order ${orderId} status:`, error.message);
     }

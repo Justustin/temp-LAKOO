@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
@@ -11,11 +11,10 @@ import { errorHandler } from './middleware/error-handler';
 
 dotenv.config();
 
-// Keep the default environment as development (similar to payment-service bootstrap)
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
-
-const app = express();
+const app: Express = express();
 const PORT = process.env.PORT || 3012;
+
+app.disable('x-powered-by');
 
 // Swagger UI
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
@@ -23,23 +22,18 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Security middleware
 app.use(helmet());
 
-// CORS (kept permissive for development; tighten for production when ready)
-// const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',');
-// app.use(cors({ origin: allowedOrigins, credentials: true }));
-app.use(cors());
+// CORS
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 
-// Logging (keep morgan + add a simple duration log like payment-service)
-if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('combined'));
-}
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
-  });
-  next();
-});
+// Logging
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // Body parsing
 app.use(express.json());

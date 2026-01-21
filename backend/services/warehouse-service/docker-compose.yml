@@ -20,7 +20,7 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@warehouse-db:5432/warehouse_db?schema=public
       - RESERVATION_EXPIRY_HOURS=24
       - GATEWAY_SECRET_KEY=${GATEWAY_SECRET_KEY}
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
     depends_on:
       warehouse-db:
         condition: service_healthy

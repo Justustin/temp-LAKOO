@@ -20,7 +20,7 @@ services:
       - LOGISTICS_DATABASE_URL=postgresql://postgres:postgres@logistic-db:5432/logistics_db?schema=public
       - ALLOWED_ORIGINS=http://localhost:3000
       - GATEWAY_SECRET_KEY=${GATEWAY_SECRET_KEY:-dev-gateway-key}
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY:-dev-internal-key}
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
       - ORDER_SERVICE_URL=${ORDER_SERVICE_URL:-http://order-service:3005}
       - NOTIFICATION_SERVICE_URL=${NOTIFICATION_SERVICE_URL:-http://notification-service:3003}
       - BITESHIP_BASE_URL=${BITESHIP_BASE_URL:-https://api.biteship.com/v1}

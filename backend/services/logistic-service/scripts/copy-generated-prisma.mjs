@@ -1,36 +1,22 @@
-import fs from 'node:fs';
+﻿import fs from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+/**
+ * Copy Prisma client output from src/generated/prisma -> dist/generated/prisma
+ * Needed because Prisma generates JS files that tsc does not copy to dist automatically.
+ */
+const projectRoot = process.cwd();
+const srcPath = path.join(projectRoot, 'src', 'generated', 'prisma');
+const distPath = path.join(projectRoot, 'dist', 'generated', 'prisma');
 
-const srcDir = path.resolve(__dirname, '../src/generated/prisma');
-const destDir = path.resolve(__dirname, '../dist/generated/prisma');
+console.log(`Copying Prisma client: ${srcPath} -> ${distPath}`);
 
-function copyDirSync(src, dest) {
-  if (!fs.existsSync(src)) {
-    console.error(`Source directory does not exist: ${src}`);
-    process.exit(1);
-  }
-
-  fs.mkdirSync(dest, { recursive: true });
-
-  const entries = fs.readdirSync(src, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-
-    if (entry.isDirectory()) {
-      copyDirSync(srcPath, destPath);
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
+if (!fs.existsSync(srcPath)) {
+  console.error(`Source Prisma client directory not found: ${srcPath}`);
+  process.exit(1);
 }
 
-console.log(`Copying Prisma client: ${srcDir} -> ${destDir}`);
-copyDirSync(srcDir, destDir);
-console.log('Prisma client copied successfully.');
+fs.mkdirSync(distPath, { recursive: true });
+fs.cpSync(srcPath, distPath, { recursive: true });
 
+console.log('Prisma client copied successfully.');

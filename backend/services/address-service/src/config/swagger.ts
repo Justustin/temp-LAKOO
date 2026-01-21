@@ -26,11 +26,17 @@ const options: swaggerJsdoc.Options = {
           name: 'x-gateway-key',
           description: 'Gateway authentication key'
         },
-        internalAuth: {
+        internalServiceAuth: {
           type: 'apiKey',
           in: 'header',
-          name: 'x-internal-api-key',
-          description: 'Internal service authentication key'
+          name: 'x-service-auth',
+          description: 'Internal service auth token (serviceName:timestamp:signature)'
+        },
+        internalServiceName: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-service-name',
+          description: 'Internal service name (must match the token)'
         }
       },
       schemas: {

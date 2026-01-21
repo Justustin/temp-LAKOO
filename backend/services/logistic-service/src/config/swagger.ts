@@ -29,10 +29,15 @@ const options: swaggerJsdoc.Options = {
           in: 'header',
           name: 'x-gateway-key'
         },
-        internalAuth: {
+        internalServiceAuth: {
           type: 'apiKey',
           in: 'header',
-          name: 'x-internal-api-key'
+          name: 'x-service-auth'
+        },
+        internalServiceName: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-service-name'
         }
       }
     },

@@ -12,6 +12,7 @@ import {
 import { outboxService } from './outbox.service';
 import { NotFoundError, BadRequestError, ShipmentError } from '../middleware/error-handler';
 import axios from 'axios';
+import { getServiceAuthHeaders } from '../utils/serviceAuth';
 
 // Defaults aligned with MICROSERVICE_ARCHITECTURE_PLAN.md (order-service: 3006, notification-service: 3008)
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3006';
@@ -344,7 +345,7 @@ export class ShipmentService {
         },
         {
           headers: {
-            'x-internal-api-key': process.env.INTERNAL_API_KEY
+            ...getServiceAuthHeaders()
           }
         }
       );
@@ -391,7 +392,7 @@ export class ShipmentService {
         },
         {
           headers: {
-            'x-internal-api-key': process.env.INTERNAL_API_KEY
+            ...getServiceAuthHeaders()
           }
         }
       );

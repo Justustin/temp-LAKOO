@@ -12,9 +12,13 @@ export class TransactionController {
    * Get transaction history for an order
    * GET /api/transactions/order/:orderId
    */
-  getOrderTransactionHistory = async (req: Request, res: Response) => {
+  getOrderTransactionHistory = async (req: Request, res: Response): Promise<void> => {
     try {
       const { orderId } = req.params;
+      if (!orderId) {
+        res.status(400).json({ success: false, error: 'orderId is required' });
+        return;
+      }
 
       const transactions = await this.transactionService.getOrderTransactionHistory(orderId);
 
@@ -35,9 +39,13 @@ export class TransactionController {
    * Get transaction history for a payment
    * GET /api/transactions/payment/:paymentId
    */
-  getPaymentTransactionHistory = async (req: Request, res: Response) => {
+  getPaymentTransactionHistory = async (req: Request, res: Response): Promise<void> => {
     try {
       const { paymentId } = req.params;
+      if (!paymentId) {
+        res.status(400).json({ success: false, error: 'paymentId is required' });
+        return;
+      }
 
       const transactions = await this.transactionService.getPaymentTransactionHistory(paymentId);
 
@@ -58,16 +66,22 @@ export class TransactionController {
    * Get factory transaction summary
    * GET /api/transactions/factory/:factoryId/summary
    */
-  getFactoryTransactionSummary = async (req: Request, res: Response) => {
+  getFactoryTransactionSummary = async (req: Request, res: Response): Promise<void> => {
     try {
       const { factoryId } = req.params;
       const { startDate, endDate } = req.query;
 
+      if (!factoryId) {
+        res.status(400).json({ success: false, error: 'factoryId is required' });
+        return;
+      }
+
       if (!startDate || !endDate) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'startDate and endDate are required'
         });
+        return;
       }
 
       const summary = await this.transactionService.getFactoryTransactionSummary(
@@ -93,15 +107,16 @@ export class TransactionController {
    * Get transaction summary for a period
    * GET /api/transactions/summary
    */
-  getTransactionSummary = async (req: Request, res: Response) => {
+  getTransactionSummary = async (req: Request, res: Response): Promise<void> => {
     try {
       const { startDate, endDate } = req.query;
 
       if (!startDate || !endDate) {
-        return res.status(400).json({
+        res.status(400).json({
           success: false,
           error: 'startDate and endDate are required'
         });
+        return;
       }
 
       const summary = await this.transactionService.getTransactionSummary(
@@ -126,7 +141,7 @@ export class TransactionController {
    * Get recent transactions
    * GET /api/transactions/recent
    */
-  getRecentTransactions = async (req: Request, res: Response) => {
+  getRecentTransactions = async (req: Request, res: Response): Promise<void> => {
     try {
       const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
       const offset = req.query.offset ? parseInt(req.query.offset as string) : 0;
@@ -154,17 +169,22 @@ export class TransactionController {
    * Find transaction by code
    * GET /api/transactions/:transactionCode
    */
-  findByCode = async (req: Request, res: Response) => {
+  findByCode = async (req: Request, res: Response): Promise<void> => {
     try {
       const { transactionCode } = req.params;
+      if (!transactionCode) {
+        res.status(400).json({ success: false, error: 'transactionCode is required' });
+        return;
+      }
 
       const transaction = await this.transactionService.findByCode(transactionCode);
 
       if (!transaction) {
-        return res.status(404).json({
+        res.status(404).json({
           success: false,
           error: 'Transaction not found'
         });
+        return;
       }
 
       res.json({

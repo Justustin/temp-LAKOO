@@ -36,7 +36,11 @@ export class PaymentController {
    * Get payment by order ID
    */
   getPaymentByOrder = asyncHandler(async (req: Request, res: Response) => {
-    const payment = await this.paymentService.getPaymentByOrderId(req.params.orderId);
+    const orderId = req.params.orderId;
+    if (!orderId) {
+      throw new BadRequestError('orderId is required');
+    }
+    const payment = await this.paymentService.getPaymentByOrderId(orderId);
     if (!payment) {
       throw new NotFoundError('Payment not found for this order');
     }
@@ -50,7 +54,11 @@ export class PaymentController {
    * Get payment by ID
    */
   getPaymentById = asyncHandler(async (req: Request, res: Response) => {
-    const payment = await this.paymentService.getPaymentById(req.params.id);
+    const id = req.params.id;
+    if (!id) {
+      throw new BadRequestError('id is required');
+    }
+    const payment = await this.paymentService.getPaymentById(id);
     if (!payment) {
       throw new NotFoundError('Payment not found');
     }
@@ -65,8 +73,12 @@ export class PaymentController {
    */
   getPaymentsByUser = asyncHandler(async (req: Request, res: Response) => {
     const { limit, offset } = req.query;
+    const userId = req.params.userId;
+    if (!userId) {
+      throw new BadRequestError('userId is required');
+    }
     const payments = await this.paymentService.getPaymentsByUserId(
-      req.params.userId,
+      userId,
       {
         limit: limit ? parseInt(limit as string) : undefined,
         offset: offset ? parseInt(offset as string) : undefined
@@ -129,7 +141,11 @@ export class PaymentController {
    * Get refund by ID
    */
   getRefundById = asyncHandler(async (req: Request, res: Response) => {
-    const refund = await this.refundService.getRefundById(req.params.id);
+    const id = req.params.id;
+    if (!id) {
+      throw new BadRequestError('id is required');
+    }
+    const refund = await this.refundService.getRefundById(id);
     if (!refund) {
       throw new NotFoundError('Refund not found');
     }
@@ -143,7 +159,11 @@ export class PaymentController {
    * Get refunds for an order
    */
   getRefundsByOrder = asyncHandler(async (req: Request, res: Response) => {
-    const refunds = await this.refundService.getRefundsByOrderId(req.params.orderId);
+    const orderId = req.params.orderId;
+    if (!orderId) {
+      throw new BadRequestError('orderId is required');
+    }
+    const refunds = await this.refundService.getRefundsByOrderId(orderId);
     res.json({
       success: true,
       data: refunds

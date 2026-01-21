@@ -5,7 +5,7 @@ import { outboxService } from '../services/outbox.service';
 
 export class AdminController {
   // Payment Management
-  getAllPayments = async (req: Request, res: Response) => {
+  getAllPayments = async (req: Request, res: Response): Promise<void> => {
     try {
       const { status, userId, paymentMethod, startDate, endDate } = req.query;
       const page = parseInt(req.query.page as string) || 1;
@@ -45,7 +45,7 @@ export class AdminController {
     }
   };
 
-  getPaymentDetails = async (req: Request, res: Response) => {
+  getPaymentDetails = async (req: Request, res: Response): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -58,7 +58,8 @@ export class AdminController {
       });
 
       if (!payment) {
-        return res.status(404).json({ error: 'Payment not found' });
+        res.status(404).json({ error: 'Payment not found' });
+        return;
       }
 
       res.json({ data: payment });
@@ -68,7 +69,7 @@ export class AdminController {
   };
 
   // Refund Management
-  getAllRefunds = async (req: Request, res: Response) => {
+  getAllRefunds = async (req: Request, res: Response): Promise<void> => {
     try {
       const { status, userId } = req.query;
       const page = parseInt(req.query.page as string) || 1;
@@ -101,11 +102,12 @@ export class AdminController {
     }
   };
 
-  processRefund = async (req: Request, res: Response) => {
+  processRefund = async (req: Request, res: Response): Promise<void> => {
     try {
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        return res.status(400).json({ errors: errors.array() });
+        res.status(400).json({ errors: errors.array() });
+        return;
       }
 
       const { id } = req.params;
@@ -117,7 +119,8 @@ export class AdminController {
         include: { payment: { select: { orderId: true } } }
       });
       if (!refund) {
-        return res.status(404).json({ error: 'Refund not found' });
+        res.status(404).json({ error: 'Refund not found' });
+        return;
       }
 
       const orderId = refund.payment.orderId;
@@ -186,7 +189,7 @@ export class AdminController {
   };
 
   // Analytics
-  getPaymentAnalytics = async (req: Request, res: Response) => {
+  getPaymentAnalytics = async (req: Request, res: Response): Promise<void> => {
     try {
       const { startDate, endDate } = req.query;
 

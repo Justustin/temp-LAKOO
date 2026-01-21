@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { body, param, query } from 'express-validator';
 import { AdminController } from '../controllers/admin.controller';
 import { gatewayAuth, requireRole } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 
-const router = Router();
+const router: ExpressRouter = Router();
 const controller = new AdminController();
 
 // All admin routes require gateway auth + admin role

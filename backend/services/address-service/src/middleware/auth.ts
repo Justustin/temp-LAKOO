@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
+import { verifyServiceToken } from '../utils/serviceAuth';
 
 // Extend Express Request type
 declare global {
@@ -67,12 +68,13 @@ export const gatewayAuth = (req: Request, res: Response, next: NextFunction) => 
  */
 export const gatewayOrInternalAuth = (req: Request, res: Response, next: NextFunction) => {
   const expectedGatewayKey = process.env.GATEWAY_SECRET_KEY;
-  const expectedInternalKey = process.env.INTERNAL_API_KEY;
   const gatewayKey = req.headers['x-gateway-key'] as string | undefined;
-  const internalKey = req.headers['x-internal-api-key'] as string | undefined;
+  const tokenHeader = req.headers['x-service-auth'];
+  const serviceNameHeader = req.headers['x-service-name'];
+  const serviceSecret = process.env.SERVICE_SECRET;
 
   // Development mode bypass
-  if (process.env.NODE_ENV === 'development' && !expectedGatewayKey && !expectedInternalKey) {
+  if (process.env.NODE_ENV === 'development' && !expectedGatewayKey && !serviceSecret) {
     req.user = {
       id: (req.headers['x-user-id'] as string) || 'dev-user',
       role: (req.headers['x-user-role'] as string) || 'user'
@@ -90,13 +92,30 @@ export const gatewayOrInternalAuth = (req: Request, res: Response, next: NextFun
     return next();
   }
 
-  // Check internal API key
-  if (internalKey && internalKey === expectedInternalKey) {
-    req.user = {
-      id: (req.headers['x-user-id'] as string) || 'internal-service',
-      role: 'internal'
-    };
-    return next();
+  // Check internal service auth (HMAC token)
+  if (tokenHeader && serviceNameHeader) {
+    if (Array.isArray(tokenHeader) || Array.isArray(serviceNameHeader)) {
+      return next(new UnauthorizedError('Invalid service auth header format'));
+    }
+
+    // Dev fallback
+    if (process.env.NODE_ENV === 'development' && !serviceSecret) {
+      req.user = { id: serviceNameHeader, role: 'internal' };
+      return next();
+    }
+
+    if (!serviceSecret) {
+      return next(new UnauthorizedError('SERVICE_SECRET not configured'));
+    }
+
+    try {
+      // Source-of-truth verification logic synced from backend/shared/typescript/utils/serviceAuth.ts
+      verifyServiceToken(tokenHeader, serviceSecret);
+      req.user = { id: serviceNameHeader, role: 'internal' };
+      return next();
+    } catch (err) {
+      return next(new UnauthorizedError(err instanceof Error ? err.message : 'Invalid service token'));
+    }
   }
 
   return next(new UnauthorizedError('Invalid authentication'));

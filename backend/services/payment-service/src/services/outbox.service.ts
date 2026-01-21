@@ -143,13 +143,21 @@ export class OutboxService {
     payload: Record<string, any>,
     metadata?: Record<string, any>
   ): Promise<void> {
+    const data: any = {
+      aggregateType,
+      aggregateId,
+      eventType,
+      payload
+    };
+
+    // Prisma JSON fields accept undefined (omit), but not raw null unless using Prisma.JsonNull/DbNull.
+    if (metadata !== undefined) {
+      data.metadata = metadata;
+    }
+
     await prisma.serviceOutbox.create({
       data: {
-        aggregateType,
-        aggregateId,
-        eventType,
-        payload,
-        metadata: metadata || null
+        ...data
       }
     });
   }

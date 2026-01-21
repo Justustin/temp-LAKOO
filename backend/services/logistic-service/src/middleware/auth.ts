@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { UnauthorizedError, ForbiddenError } from './error-handler';
+import { verifyServiceToken } from '../utils/serviceAuth';
 
 /**
  * User info forwarded by API Gateway
@@ -9,6 +10,35 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     role?: string;
   };
+}
+
+const SERVICE_AUTH_HEADER = 'x-service-auth';
+const SERVICE_NAME_HEADER = 'x-service-name';
+
+function tryServiceAuth(req: AuthenticatedRequest): boolean {
+  const tokenHeader = req.headers[SERVICE_AUTH_HEADER];
+  const serviceNameHeader = req.headers[SERVICE_NAME_HEADER];
+
+  if (!tokenHeader || !serviceNameHeader) return false;
+  if (Array.isArray(tokenHeader) || Array.isArray(serviceNameHeader)) {
+    throw new UnauthorizedError('Invalid service auth header format');
+  }
+
+  const serviceSecret = process.env.SERVICE_SECRET;
+
+  if (process.env.NODE_ENV === 'development' && !serviceSecret) {
+    req.user = { id: serviceNameHeader, role: 'service' };
+    return true;
+  }
+
+  if (!serviceSecret) {
+    throw new UnauthorizedError('SERVICE_SECRET not configured');
+  }
+
+  // Source-of-truth verification logic synced from backend/shared/typescript/utils/serviceAuth.ts
+  verifyServiceToken(tokenHeader, serviceSecret);
+  req.user = { id: serviceNameHeader, role: 'service' };
+  return true;
 }
 
 /**
@@ -115,19 +145,15 @@ export const internalServiceAuth = (
   res: Response,
   next: NextFunction
 ) => {
-  const apiKey = req.headers['x-internal-api-key'] as string;
-  const expectedKey = process.env.INTERNAL_API_KEY;
-
-  if (!expectedKey) {
-    console.warn('INTERNAL_API_KEY not configured');
-    return next(new UnauthorizedError('Internal API key not configured'));
+  try {
+    const ok = tryServiceAuth(req as AuthenticatedRequest);
+    if (!ok) {
+      return next(new UnauthorizedError('Service authentication required'));
+    }
+    return next();
+  } catch (err) {
+    return next(err);
   }
-
-  if (!apiKey || apiKey !== expectedKey) {
-    return next(new UnauthorizedError('Invalid internal API key'));
-  }
-
-  next();
 };
 
 /**
@@ -139,17 +165,15 @@ export const gatewayOrInternalAuth = (
   res: Response,
   next: NextFunction
 ) => {
-  const apiKey = req.headers['x-internal-api-key'] as string;
   const gatewayKey = req.headers['x-gateway-key'] as string;
 
-  // Try internal API key first
-  if (apiKey && apiKey === process.env.INTERNAL_API_KEY) {
-    // For internal calls, user might be passed in header or body
-    req.user = {
-      id: (req.headers['x-user-id'] as string) || 'internal-service',
-      role: 'service'
-    };
-    return next();
+  // Try internal service auth first
+  try {
+    if (tryServiceAuth(req)) {
+      return next();
+    }
+  } catch (err) {
+    return next(err);
   }
 
   // Try gateway auth

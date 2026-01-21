@@ -5,6 +5,7 @@ import { CreateInvoiceRequest } from 'xendit-node/invoice/models';
 import { notificationClient } from '../clients/notification.client';
 import { outboxService } from './outbox.service';
 import axios from 'axios';
+import { getServiceAuthHeaders } from '../utils/serviceAuth';
 
 const AUTH_SERVICE_URL = process.env.AUTH_SERVICE_URL || 'http://localhost:3001';
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3005';
@@ -21,7 +22,9 @@ export class PaymentService {
    */
   private async fetchUser(userId: string): Promise<any> {
     try {
-      const response = await axios.get(`${AUTH_SERVICE_URL}/api/auth/users/${userId}`);
+      const response = await axios.get(`${AUTH_SERVICE_URL}/api/auth/users/${userId}`, {
+        headers: getServiceAuthHeaders()
+      });
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to fetch user');
       }
@@ -39,7 +42,9 @@ export class PaymentService {
    */
   private async fetchOrder(orderId: string): Promise<any> {
     try {
-      const response = await axios.get(`${ORDER_SERVICE_URL}/api/orders/${orderId}`);
+      const response = await axios.get(`${ORDER_SERVICE_URL}/api/orders/${orderId}`, {
+        headers: getServiceAuthHeaders()
+      });
       if (!response.data.success) {
         throw new Error(response.data.error || 'Failed to fetch order');
       }
@@ -57,9 +62,11 @@ export class PaymentService {
    */
   private async updateOrderStatus(orderId: string, newStatus: string): Promise<void> {
     try {
-      await axios.put(`${ORDER_SERVICE_URL}/api/orders/${orderId}/status`, {
-        newStatus
-      });
+      await axios.put(
+        `${ORDER_SERVICE_URL}/api/orders/${orderId}/status`,
+        { newStatus },
+        { headers: getServiceAuthHeaders() }
+      );
     } catch (error: any) {
       console.error(`Failed to update order ${orderId} status:`, error.message);
       throw error;

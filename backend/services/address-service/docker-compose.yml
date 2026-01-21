@@ -19,7 +19,7 @@ services:
       - PORT=3010
       - ADDRESS_DATABASE_URL=postgresql://postgres:postgres@address-db:5432/address_db?schema=public
       - GATEWAY_SECRET_KEY=${GATEWAY_SECRET_KEY}
-      - INTERNAL_API_KEY=${INTERNAL_API_KEY}
+      - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}
     depends_on:
       address-db:
         condition: service_healthy

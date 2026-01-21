@@ -1,14 +1,18 @@
-# Service Standardization Guide
+# Service Standardization Guide (LAKOO)
 
-This document outlines the patterns and fixes to apply to all microservices in this monorepo. These patterns were established in `payment-service` and should be replicated across other services.
+This document is the **source-of-truth** for how each Node/TypeScript microservice should be structured in this repo.
+If a service drifts, use the checklists here to bring it back to the standard.
 
-## Overview of Changes
+## Overview (what must be uniform)
 
-1. **Local Prisma Client** - Replace `@repo/database` imports with local prisma
-2. **Gateway Trust Authentication** - Simplified auth that trusts API Gateway
-3. **Validation Middleware** - Wire up express-validator properly
-4. **Outbox Events** - Domain events for event-driven architecture
-5. **Consistent Error Handling** - asyncHandler pattern
+1. **Bootstrap (`src/index.ts`)**: helmet + morgan, strict CORS via `ALLOWED_ORIGINS`, swagger, `/health`, consistent 404 + error handler, graceful shutdown, `x-powered-by` disabled.
+2. **Prisma (`src/lib/prisma.ts`)**: per-service Prisma client singleton (generated client), consistent logging, `beforeExit` disconnect.
+3. **Auth (`src/middleware/auth.ts`)**:
+   - **Gateway trust** for user traffic (`x-gateway-key`, `x-user-id`, `x-user-role`)
+   - **Service-to-service token auth** for internal traffic (`X-Service-Auth`, `X-Service-Name`, `SERVICE_SECRET`)
+4. **Validation (`src/middleware/validation.ts`)**: `express-validator` + `validateRequest` always wired after validators.
+5. **Outbox (`src/services/outbox.service.ts`)**: domain events written to `ServiceOutbox` (transactional when possible).
+6. **Errors (`src/middleware/error-handler.ts`)**: centralized handler with `AppError` + Prisma error mapping + safe defaults.
 
 ---
 
@@ -18,21 +22,33 @@ This document outlines the patterns and fixes to apply to all microservices in t
 Services import from `@repo/database` which causes "Cannot find module '.prisma/client/default'" errors.
 
 ### Solution
-Each service should have its own Prisma client at `src/lib/prisma.ts`:
+Each service should have its own Prisma client at `src/lib/prisma.ts` (using the service's generated client):
 
 ```typescript
 // src/lib/prisma.ts
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../generated/prisma';
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+declare global {
+  // eslint-disable-next-line no-var
+  var prisma: PrismaClient | undefined;
+}
+
+const prismaClientSingleton = () => {
+  return new PrismaClient({
+    log:
+      process.env.NODE_ENV === 'development'
+        ? ['query', 'error', 'warn']
+        : ['error'],
+  });
 };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient();
+export const prisma = globalThis.prisma ?? prismaClientSingleton();
 
-if (process.env.NODE_ENV !== 'production') {
-  globalForPrisma.prisma = prisma;
-}
+if (process.env.NODE_ENV !== 'production') globalThis.prisma = prisma;
+
+process.on('beforeExit', async () => {
+  await prisma.$disconnect();
+});
 ```
 
 ### Migration Steps
@@ -61,7 +77,10 @@ if (process.env.NODE_ENV !== 'production') {
 - API Gateway (Kong/nginx) handles JWT validation at the edge
 - Services trust requests that come through the gateway
 - Gateway forwards user info via headers: `x-user-id`, `x-user-role`
-- Internal service-to-service calls use `x-internal-api-key`
+- Internal service-to-service calls are **direct** (do not go through the gateway) and use:
+  - `X-Service-Auth`: `serviceName:timestamp:signature`
+  - `X-Service-Name`: `serviceName`
+  - `SERVICE_SECRET`: shared secret used to verify HMAC tokens
 
 ### Implementation
 
@@ -137,12 +156,13 @@ export const gatewayAuth = (req: Request, res: Response, next: NextFunction) => 
  */
 export const gatewayOrInternalAuth = (req: Request, res: Response, next: NextFunction) => {
   const expectedGatewayKey = process.env.GATEWAY_SECRET_KEY;
-  const expectedInternalKey = process.env.INTERNAL_API_KEY;
   const gatewayKey = req.headers['x-gateway-key'] as string | undefined;
-  const internalKey = req.headers['x-internal-api-key'] as string | undefined;
+  const token = req.headers['x-service-auth'] as string | undefined;
+  const serviceName = req.headers['x-service-name'] as string | undefined;
+  const serviceSecret = process.env.SERVICE_SECRET;
 
   // Development mode bypass
-  if (process.env.NODE_ENV === 'development' && !expectedGatewayKey && !expectedInternalKey) {
+  if (process.env.NODE_ENV === 'development' && !expectedGatewayKey && !serviceSecret) {
     req.user = {
       id: (req.headers['x-user-id'] as string) || 'dev-user',
       role: (req.headers['x-user-role'] as string) || 'user'
@@ -160,12 +180,10 @@ export const gatewayOrInternalAuth = (req: Request, res: Response, next: NextFun
     return next();
   }
 
-  // Check internal API key
-  if (internalKey && internalKey === expectedInternalKey) {
-    req.user = {
-      id: (req.headers['x-user-id'] as string) || 'internal-service',
-      role: 'internal'
-    };
+  // Check internal service token
+  if (token && serviceName && serviceSecret) {
+    // verifyServiceToken(token, serviceSecret)  // see src/utils/serviceAuth.ts for the canonical implementation
+    req.user = { id: serviceName, role: 'internal' };
     return next();
   }
 
@@ -295,7 +313,8 @@ export class OutboxService {
         aggregateId,
         eventType,
         payload,
-        metadata: metadata || null
+        // NOTE: For Prisma JSON fields, prefer "omit" over raw null unless you intentionally store JsonNull/DbNull.
+        ...(metadata !== undefined ? { metadata } : {})
       }
     });
   }
@@ -368,30 +387,10 @@ export const asyncHandler = (fn: RequestHandler): RequestHandler => {
 };
 ```
 
-### Centralized Error Handler
+### Centralized Error Handler (standard)
 
-```typescript
-// src/middleware/errorHandler.ts
-import { Request, Response, NextFunction } from 'express';
-
-export const errorHandler = (
-  err: any,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  console.error('Error:', err);
-
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Internal server error';
-
-  res.status(statusCode).json({
-    success: false,
-    error: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
-};
-```
+Create `src/middleware/error-handler.ts` and mount it as the last middleware.
+This is the standard pattern used across services (AppError + Prisma error mapping + safe defaults).
 
 ### Usage
 
@@ -423,7 +422,10 @@ DATABASE_URL="postgresql://user:pass@localhost:5432/dbname"
 
 # Authentication (Gateway Trust Model)
 GATEWAY_SECRET_KEY=your-gateway-secret
-INTERNAL_API_KEY=your-internal-api-key
+
+# Internal service-to-service auth (HMAC token)
+SERVICE_SECRET=your-service-secret
+SERVICE_NAME=your-service-name  # optional, defaults to "<service>-service" in code
 
 # Service-specific
 # ... add service-specific vars
@@ -437,6 +439,8 @@ INTERNAL_API_KEY=your-internal-api-key
 - [ ] Replace all `@repo/database` imports with local prisma
 - [ ] Run `npx prisma generate`
 - [ ] Update `src/middleware/auth.ts` with gateway trust model
+- [ ] Ensure service-to-service auth uses `X-Service-Auth` + `X-Service-Name` and `SERVICE_SECRET` (no `x-internal-api-key`)
+- [ ] Ensure outgoing service-to-service calls attach the headers (use a helper like `src/utils/serviceAuth.ts`)
 - [ ] Create `validateRequest` in `src/middleware/validation.ts`
 - [ ] Wire up auth middleware to routes (`router.use(gatewayOrInternalAuth)`)
 - [ ] Add `validateRequest` after validators on each route
@@ -444,7 +448,8 @@ INTERNAL_API_KEY=your-internal-api-key
 - [ ] Add outbox events to service methods
 - [ ] Verify error handling with asyncHandler
 - [ ] Update `.env.example` with correct variables
-- [ ] Test the service: `pnpm run dev`
+- [ ] Verify `src/index.ts` matches the standard bootstrap template (helmet, morgan, strict CORS, swagger, health, 404, error handler, graceful shutdown)
+- [ ] Test the service: `pnpm run dev` / `pnpm run build`
 
 ---
 
@@ -459,7 +464,7 @@ src/
 ├── middleware/
 │   ├── auth.ts                # Gateway trust auth
 │   ├── validation.ts          # Validators + validateRequest
-│   └── errorHandler.ts        # Centralized error handling
+│   └── error-handler.ts       # Centralized error handling (AppError + Prisma mapping)
 ├── repositories/
 │   └── *.repository.ts
 ├── routes/
@@ -468,7 +473,8 @@ src/
 │   ├── outbox.service.ts      # Domain events
 │   └── *.service.ts
 └── utils/
-    └── asyncHandler.ts
+    ├── asyncHandler.ts
+    └── serviceAuth.ts          # HMAC token generator/verifier + getServiceAuthHeaders()
 ```
 
 ---

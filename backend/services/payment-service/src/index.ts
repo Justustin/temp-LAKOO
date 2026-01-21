@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import helmet from 'helmet';
+import morgan from 'morgan';
 import cron from 'node-cron';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './config/swagger';
@@ -16,26 +18,28 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 3006;
 
+app.disable('x-powered-by');
+
+// Security headers
+app.use(helmet());
+
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',');
-// app.use(cors({
-//   origin: allowedOrigins,
-//   credentials: true
-// }));
+// CORS
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const duration = Date.now() - start;
-    console.log(`${req.method} ${req.path} - ${res.statusCode} - ${duration}ms`);
-  });
-  next();
-});
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 
 
@@ -74,10 +78,12 @@ app.use((req, res) => {
 // Global Error Handler (handles AppError, Prisma, Zod errors)
 app.use(errorHandler);
 
+// Graceful shutdown
+let server: ReturnType<typeof app.listen> | undefined;
 const gracefulShutdown = () => {
   console.log('Received shutdown signal, closing server gracefully...');
   
-  server.close(() => {
+  server?.close(() => {
     console.log('Server closed');
     process.exit(0);
   });
@@ -113,7 +119,7 @@ if (enableExpiration) {
   console.log(`⏰ Payment expiration check scheduled: ${expirationSchedule}`);
 }
 
-const server = app.listen(PORT, () => {
+server = app.listen(PORT, () => {
   console.log('='.repeat(50));
   console.log(`Payment Service`);
   console.log(`Running on port ${PORT}`);

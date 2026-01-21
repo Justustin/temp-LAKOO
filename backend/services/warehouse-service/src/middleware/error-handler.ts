@@ -66,6 +66,17 @@ export const errorHandler = (
     });
   }
 
+  // Support custom errors that define `statusCode` (common in some services)
+  const anyErr = err as any;
+  if (typeof anyErr.statusCode === 'number') {
+    return res.status(anyErr.statusCode).json({
+      success: false,
+      error: err.message,
+      code: anyErr.code,
+      ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
+    });
+  }
+
   // Prisma errors
   if (err.name === 'PrismaClientKnownRequestError') {
     const prismaError = err as any;

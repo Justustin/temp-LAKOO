@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { param, query } from 'express-validator';
 import { TransactionController } from '../controllers/transaction.controller';
 import { gatewayOrInternalAuth } from '../middleware/auth';
 import { validateRequest } from '../middleware/validation';
 
-const router = Router();
+const router: ExpressRouter = Router();
 const transactionController = new TransactionController();
 
 // All transaction routes require authentication

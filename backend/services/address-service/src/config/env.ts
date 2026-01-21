@@ -13,7 +13,7 @@ interface EnvConfig {
 
   // Auth (required in production)
   gatewaySecretKey?: string;
-  internalApiKey?: string;
+  serviceSecret?: string;
 }
 
 function getRequiredEnv(key: string): string {
@@ -37,18 +37,18 @@ function validateConfig(): EnvConfig {
 
   // Auth keys required in production
   let gatewaySecretKey: string | undefined;
-  let internalApiKey: string | undefined;
+  let serviceSecret: string | undefined;
 
   if (isProduction) {
     gatewaySecretKey = getRequiredEnv('GATEWAY_SECRET_KEY');
-    internalApiKey = getRequiredEnv('INTERNAL_API_KEY');
+    serviceSecret = getRequiredEnv('SERVICE_SECRET');
   } else {
     gatewaySecretKey = getOptionalEnv('GATEWAY_SECRET_KEY');
-    internalApiKey = getOptionalEnv('INTERNAL_API_KEY');
+    serviceSecret = getOptionalEnv('SERVICE_SECRET');
 
-    if (!gatewaySecretKey && !internalApiKey) {
+    if (!gatewaySecretKey && !serviceSecret) {
       console.warn(
-        'WARNING: Running without GATEWAY_SECRET_KEY and INTERNAL_API_KEY. ' +
+        'WARNING: Running without GATEWAY_SECRET_KEY and SERVICE_SECRET. ' +
         'Authentication is bypassed in development mode.'
       );
     }
@@ -59,7 +59,7 @@ function validateConfig(): EnvConfig {
     nodeEnv,
     databaseUrl,
     gatewaySecretKey,
-    internalApiKey
+    serviceSecret
   };
 }
 

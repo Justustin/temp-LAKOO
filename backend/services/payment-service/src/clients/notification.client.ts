@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getServiceAuthHeaders } from '../utils/serviceAuth';
 
 // Notification type enum (mirrors notification-service schema)
 type NotificationType =
@@ -12,6 +13,7 @@ type NotificationType =
   | 'payment_pending'
   | 'refund_initiated'
   | 'refund_completed'
+  | 'refund_failed'
   | 'product_review'
   | 'price_drop'
   | 'back_in_stock'
@@ -42,7 +44,7 @@ export class NotificationClient {
         `${NOTIFICATION_SERVICE_URL}/api/notifications`,
         payload,
         {
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getServiceAuthHeaders() },
           timeout: 5000 // 5 second timeout
         }
       );
