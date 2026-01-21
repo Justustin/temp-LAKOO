@@ -1,0 +1,151 @@
+// =============================================================================
+// BRAND SERVICE DATABASE SCHEMA
+// Service: brand-service (Port 3004)
+// Database: brand_db
+// Owner: 15 LAKOO brands, product assignments, brand-specific pricing
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// BRANDS (15 Official LAKOO Brands)
+// =============================================================================
+
+model brands {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_code             String    @unique @db.VarChar(50)
+  brand_name             String    @db.VarChar(255)
+  slug                   String    @unique @db.VarChar(255)
+  tagline                String?   @db.VarChar(255)
+  brand_story            String?
+  logo_url               String?   @db.VarChar(500)
+  banner_url             String?   @db.VarChar(500)
+  primary_color          String?   @default("#000000") @db.VarChar(7)
+  secondary_color        String?   @default("#FFFFFF") @db.VarChar(7)
+  target_audience        String?   @db.VarChar(100)
+  style_category         String?   @db.VarChar(100)
+  default_margin_percent Decimal?  @default(50.00) @db.Decimal(5, 2)
+  display_order          Int       @default(0)
+  status                 String    @default("draft") @db.VarChar(20)
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime  @updatedAt @db.Timestamptz(6)
+
+  brand_products brand_products[]
+
+  @@index([brand_code])
+  @@index([slug])
+  @@index([status])
+}
+
+// =============================================================================
+// BRAND-PRODUCT ASSIGNMENTS (Same product, different brand pricing)
+// =============================================================================
+
+model brand_products {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  brand_id           String    @db.Uuid
+  product_id         String    @db.Uuid
+  brand_price        Decimal   @db.Decimal(15, 2)
+  brand_compare_price Decimal? @db.Decimal(15, 2)
+  discount_percent   Decimal?  @db.Decimal(5, 2)
+  brand_product_name String?   @db.VarChar(255)
+  brand_description  String?
+  display_order      Int       @default(0)
+  is_featured        Boolean   @default(false)
+  is_bestseller      Boolean   @default(false)
+  is_new_arrival     Boolean   @default(false)
+  is_active          Boolean   @default(true)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @updatedAt @db.Timestamptz(6)
+
+  brands   brands    @relation(fields: [brand_id], references: [id], onDelete: Cascade)
+  products products? @relation(fields: [product_id], references: [id])
+
+  @@unique([brand_id, product_id])
+  @@index([brand_id])
+  @@index([product_id])
+  @@index([is_featured])
+  @@index([is_active])
+}
+
+// =============================================================================
+// PRODUCTS (Reference table from Product Service)
+// =============================================================================
+
+model products {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sku               String    @unique @db.VarChar(100)
+  name              String    @db.VarChar(500)
+  slug              String    @unique @db.VarChar(500)
+  description       String?
+  primary_image_url String?   @db.VarChar(500)
+  cost_price        Decimal?  @db.Decimal(15, 2)
+  weight_grams      Int?
+  category_id       String?   @db.Uuid
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
+
+  brand_products brand_products[]
+  categories     categories?      @relation(fields: [category_id], references: [id])
+  product_images product_images[]
+}
+
+// =============================================================================
+// CATEGORIES (Reference table from Product Service)
+// =============================================================================
+
+model categories {
+  id         String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String     @db.VarChar(255)
+  slug       String     @unique @db.VarChar(255)
+  created_at DateTime   @default(now()) @db.Timestamptz(6)
+  updated_at DateTime   @updatedAt @db.Timestamptz(6)
+
+  products products[]
+}
+
+// =============================================================================
+// PRODUCT IMAGES (Reference table from Product Service)
+// =============================================================================
+
+model product_images {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id    String   @db.Uuid
+  image_url     String   @db.VarChar(500)
+  display_order Int      @default(0)
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  products products @relation(fields: [product_id], references: [id], onDelete: Cascade)
+
+  @@index([product_id])
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For Kafka event messaging)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @db.VarChar(100)
+  aggregateId   String    @db.VarChar(100)
+  eventType     String    @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime? @db.Timestamptz(6)
+  retryCount    Int       @default(0)
+  lastError     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}

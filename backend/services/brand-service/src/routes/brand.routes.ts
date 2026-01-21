@@ -1,7 +1,21 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { BrandController } from '../controllers/brand.controller';
+import { gatewayOrInternalAuth, requireRole } from '../middleware/auth';
+import {
+  validateRequest,
+  createBrandValidators,
+  updateBrandValidators,
+  brandIdValidator,
+  brandSlugValidator,
+  getBrandsQueryValidators,
+  addBrandProductValidators,
+  updateBrandProductValidators,
+  brandProductParamsValidators,
+  getBrandProductsQueryValidators,
+  limitQueryValidator
+} from '../middleware/validation';
 
-const router = Router();
+const router: ExpressRouter = Router();
 const controller = new BrandController();
 
 /**
@@ -81,9 +95,243 @@ const controller = new BrandController();
  *           type: boolean
  *         is_active:
  *           type: boolean
+ *   securitySchemes:
+ *     GatewayAuth:
+ *       type: apiKey
+ *       in: header
+ *       name: x-gateway-key
+ *     ServiceAuth:
+ *       type: apiKey
+ *       in: header
+ *       name: x-service-auth
  */
 
-// ==================== Brand Routes ====================
+// ==================== Public Routes (with optional auth) ====================
+
+/**
+ * @swagger
+ * /api/brands:
+ *   get:
+ *     summary: Get all brands
+ *     tags: [Brands]
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [active, inactive, draft]
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of brands
+ */
+router.get('/', getBrandsQueryValidators, validateRequest, controller.getBrands);
+
+/**
+ * @swagger
+ * /api/brands/slug/{slug}:
+ *   get:
+ *     summary: Get brand by slug
+ *     tags: [Brands]
+ *     parameters:
+ *       - in: path
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Brand details
+ *       404:
+ *         description: Brand not found
+ */
+router.get('/slug/:slug', brandSlugValidator, validateRequest, controller.getBrandBySlug);
+
+/**
+ * @swagger
+ * /api/brands/{id}:
+ *   get:
+ *     summary: Get brand by ID
+ *     tags: [Brands]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Brand details
+ *       404:
+ *         description: Brand not found
+ */
+router.get('/:id', brandIdValidator, validateRequest, controller.getBrandById);
+
+// ==================== Brand Product Public Routes ====================
+
+/**
+ * @swagger
+ * /api/brands/{brandId}/products:
+ *   get:
+ *     summary: Get all products in a brand
+ *     tags: [Brand Products]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: isFeatured
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: isBestseller
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: isNewArrival
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: isActive
+ *         schema:
+ *           type: boolean
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: List of brand products
+ *       404:
+ *         description: Brand not found
+ */
+router.get('/:brandId/products', getBrandProductsQueryValidators, validateRequest, controller.getBrandProducts);
+
+/**
+ * @swagger
+ * /api/brands/{brandId}/products/featured:
+ *   get:
+ *     summary: Get featured products for a brand
+ *     tags: [Brand Products]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Featured products
+ *       404:
+ *         description: Brand not found
+ */
+router.get('/:brandId/products/featured', limitQueryValidator, validateRequest, controller.getFeaturedProducts);
+
+/**
+ * @swagger
+ * /api/brands/{brandId}/products/bestsellers:
+ *   get:
+ *     summary: Get bestseller products for a brand
+ *     tags: [Brand Products]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Bestseller products
+ *       404:
+ *         description: Brand not found
+ */
+router.get('/:brandId/products/bestsellers', limitQueryValidator, validateRequest, controller.getBestsellers);
+
+/**
+ * @swagger
+ * /api/brands/{brandId}/products/new-arrivals:
+ *   get:
+ *     summary: Get new arrival products for a brand
+ *     tags: [Brand Products]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: New arrival products
+ *       404:
+ *         description: Brand not found
+ */
+router.get('/:brandId/products/new-arrivals', limitQueryValidator, validateRequest, controller.getNewArrivals);
+
+/**
+ * @swagger
+ * /api/brands/{brandId}/products/{productId}:
+ *   get:
+ *     summary: Get a specific brand product
+ *     tags: [Brand Products]
+ *     parameters:
+ *       - in: path
+ *         name: brandId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Brand product details
+ *       404:
+ *         description: Brand product not found
+ */
+router.get('/:brandId/products/:productId', brandProductParamsValidators, validateRequest, controller.getBrandProduct);
+
+// ==================== Protected Routes (require auth) ====================
+
+// All routes below require authentication
+router.use(gatewayOrInternalAuth);
 
 /**
  * @swagger
@@ -91,6 +339,9 @@ const controller = new BrandController();
  *   post:
  *     summary: Create a new brand
  *     tags: [Brands]
+ *     security:
+ *       - GatewayAuth: []
+ *       - ServiceAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -131,78 +382,7 @@ const controller = new BrandController();
  *       409:
  *         description: Brand code already exists
  */
-router.post('/', controller.createBrand);
-
-/**
- * @swagger
- * /api/brands:
- *   get:
- *     summary: Get all brands
- *     tags: [Brands]
- *     parameters:
- *       - in: query
- *         name: status
- *         schema:
- *           type: string
- *           enum: [active, inactive, draft]
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: List of brands
- */
-router.get('/', controller.getBrands);
-
-/**
- * @swagger
- * /api/brands/slug/{slug}:
- *   get:
- *     summary: Get brand by slug
- *     tags: [Brands]
- *     parameters:
- *       - in: path
- *         name: slug
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Brand details
- *       404:
- *         description: Brand not found
- */
-router.get('/slug/:slug', controller.getBrandBySlug);
-
-/**
- * @swagger
- * /api/brands/{id}:
- *   get:
- *     summary: Get brand by ID
- *     tags: [Brands]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: Brand details
- *       404:
- *         description: Brand not found
- */
-router.get('/:id', controller.getBrandById);
+router.post('/', createBrandValidators, validateRequest, controller.createBrand);
 
 /**
  * @swagger
@@ -210,6 +390,9 @@ router.get('/:id', controller.getBrandById);
  *   patch:
  *     summary: Update a brand
  *     tags: [Brands]
+ *     security:
+ *       - GatewayAuth: []
+ *       - ServiceAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -254,7 +437,7 @@ router.get('/:id', controller.getBrandById);
  *       404:
  *         description: Brand not found
  */
-router.patch('/:id', controller.updateBrand);
+router.patch('/:id', updateBrandValidators, validateRequest, controller.updateBrand);
 
 /**
  * @swagger
@@ -262,6 +445,9 @@ router.patch('/:id', controller.updateBrand);
  *   delete:
  *     summary: Delete a brand (soft delete)
  *     tags: [Brands]
+ *     security:
+ *       - GatewayAuth: []
+ *       - ServiceAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -275,9 +461,9 @@ router.patch('/:id', controller.updateBrand);
  *       404:
  *         description: Brand not found
  */
-router.delete('/:id', controller.deleteBrand);
+router.delete('/:id', brandIdValidator, validateRequest, controller.deleteBrand);
 
-// ==================== Brand Products Routes ====================
+// ==================== Brand Products Protected Routes ====================
 
 /**
  * @swagger
@@ -285,6 +471,9 @@ router.delete('/:id', controller.deleteBrand);
  *   post:
  *     summary: Add a product to a brand
  *     tags: [Brand Products]
+ *     security:
+ *       - GatewayAuth: []
+ *       - ServiceAuth: []
  *     parameters:
  *       - in: path
  *         name: brandId
@@ -331,154 +520,7 @@ router.delete('/:id', controller.deleteBrand);
  *       409:
  *         description: Product already exists in brand
  */
-router.post('/:brandId/products', controller.addProductToBrand);
-
-/**
- * @swagger
- * /api/brands/{brandId}/products:
- *   get:
- *     summary: Get all products in a brand
- *     tags: [Brand Products]
- *     parameters:
- *       - in: path
- *         name: brandId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *       - in: query
- *         name: isFeatured
- *         schema:
- *           type: boolean
- *       - in: query
- *         name: isBestseller
- *         schema:
- *           type: boolean
- *       - in: query
- *         name: isNewArrival
- *         schema:
- *           type: boolean
- *       - in: query
- *         name: isActive
- *         schema:
- *           type: boolean
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: List of brand products
- *       404:
- *         description: Brand not found
- */
-router.get('/:brandId/products', controller.getBrandProducts);
-
-/**
- * @swagger
- * /api/brands/{brandId}/products/featured:
- *   get:
- *     summary: Get featured products for a brand
- *     tags: [Brand Products]
- *     parameters:
- *       - in: path
- *         name: brandId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Featured products
- *       404:
- *         description: Brand not found
- */
-router.get('/:brandId/products/featured', controller.getFeaturedProducts);
-
-/**
- * @swagger
- * /api/brands/{brandId}/products/bestsellers:
- *   get:
- *     summary: Get bestseller products for a brand
- *     tags: [Brand Products]
- *     parameters:
- *       - in: path
- *         name: brandId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: Bestseller products
- *       404:
- *         description: Brand not found
- */
-router.get('/:brandId/products/bestsellers', controller.getBestsellers);
-
-/**
- * @swagger
- * /api/brands/{brandId}/products/new-arrivals:
- *   get:
- *     summary: Get new arrival products for a brand
- *     tags: [Brand Products]
- *     parameters:
- *       - in: path
- *         name: brandId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *     responses:
- *       200:
- *         description: New arrival products
- *       404:
- *         description: Brand not found
- */
-router.get('/:brandId/products/new-arrivals', controller.getNewArrivals);
-
-/**
- * @swagger
- * /api/brands/{brandId}/products/{productId}:
- *   get:
- *     summary: Get a specific brand product
- *     tags: [Brand Products]
- *     parameters:
- *       - in: path
- *         name: brandId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *       - in: path
- *         name: productId
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *     responses:
- *       200:
- *         description: Brand product details
- *       404:
- *         description: Brand product not found
- */
-router.get('/:brandId/products/:productId', controller.getBrandProduct);
+router.post('/:brandId/products', addBrandProductValidators, validateRequest, controller.addProductToBrand);
 
 /**
  * @swagger
@@ -486,6 +528,9 @@ router.get('/:brandId/products/:productId', controller.getBrandProduct);
  *   patch:
  *     summary: Update a brand product
  *     tags: [Brand Products]
+ *     security:
+ *       - GatewayAuth: []
+ *       - ServiceAuth: []
  *     parameters:
  *       - in: path
  *         name: brandId
@@ -531,7 +576,7 @@ router.get('/:brandId/products/:productId', controller.getBrandProduct);
  *       404:
  *         description: Brand product not found
  */
-router.patch('/:brandId/products/:productId', controller.updateBrandProduct);
+router.patch('/:brandId/products/:productId', updateBrandProductValidators, validateRequest, controller.updateBrandProduct);
 
 /**
  * @swagger
@@ -539,6 +584,9 @@ router.patch('/:brandId/products/:productId', controller.updateBrandProduct);
  *   delete:
  *     summary: Remove a product from a brand
  *     tags: [Brand Products]
+ *     security:
+ *       - GatewayAuth: []
+ *       - ServiceAuth: []
  *     parameters:
  *       - in: path
  *         name: brandId
@@ -558,6 +606,6 @@ router.patch('/:brandId/products/:productId', controller.updateBrandProduct);
  *       404:
  *         description: Brand product not found
  */
-router.delete('/:brandId/products/:productId', controller.removeProductFromBrand);
+router.delete('/:brandId/products/:productId', brandProductParamsValidators, validateRequest, controller.removeProductFromBrand);
 
 export default router;

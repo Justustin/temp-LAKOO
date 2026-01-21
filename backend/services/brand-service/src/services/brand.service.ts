@@ -1,4 +1,6 @@
 import { BrandRepository } from '../repositories/brand.repository';
+import { outboxService } from './outbox.service';
+import { NotFoundError, ConflictError } from '../middleware/error-handler';
 import {
   CreateBrandDTO,
   UpdateBrandDTO,
@@ -21,10 +23,15 @@ export class BrandService {
     // Check if brand code already exists
     const existing = await this.repository.findByCode(data.brandCode);
     if (existing) {
-      throw new Error('Brand code already exists');
+      throw new ConflictError('Brand code already exists');
     }
 
-    return this.repository.create(data);
+    const brand = await this.repository.create(data);
+
+    // Publish outbox event
+    await outboxService.brandCreated(brand);
+
+    return brand;
   }
 
   async getBrands(query: BrandQuery) {
@@ -34,7 +41,7 @@ export class BrandService {
   async getBrandById(id: string) {
     const brand = await this.repository.findById(id);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
     return brand;
   }
@@ -42,7 +49,7 @@ export class BrandService {
   async getBrandBySlug(slug: string) {
     const brand = await this.repository.findBySlug(slug);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
     return brand;
   }
@@ -50,19 +57,53 @@ export class BrandService {
   async updateBrand(id: string, data: UpdateBrandDTO) {
     const existing = await this.repository.findById(id);
     if (!existing) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
 
-    return this.repository.update(id, data);
+    // Track if status is changing
+    const oldStatus = existing.status;
+    const newStatus = data.status;
+
+    const brand = await this.repository.update(id, data);
+
+    // Determine which fields were updated
+    const updatedFields: string[] = [];
+    if (data.brandName !== undefined) updatedFields.push('brandName');
+    if (data.logoUrl !== undefined) updatedFields.push('logoUrl');
+    if (data.bannerUrl !== undefined) updatedFields.push('bannerUrl');
+    if (data.primaryColor !== undefined) updatedFields.push('primaryColor');
+    if (data.secondaryColor !== undefined) updatedFields.push('secondaryColor');
+    if (data.brandStory !== undefined) updatedFields.push('brandStory');
+    if (data.tagline !== undefined) updatedFields.push('tagline');
+    if (data.targetAudience !== undefined) updatedFields.push('targetAudience');
+    if (data.styleCategory !== undefined) updatedFields.push('styleCategory');
+    if (data.defaultMarginPercent !== undefined) updatedFields.push('defaultMarginPercent');
+    if (data.status !== undefined) updatedFields.push('status');
+    if (data.displayOrder !== undefined) updatedFields.push('displayOrder');
+
+    // Publish outbox events
+    await outboxService.brandUpdated(brand, updatedFields);
+
+    // If status changed, also publish a status change event
+    if (newStatus && oldStatus !== newStatus) {
+      await outboxService.brandStatusChanged(brand, oldStatus, newStatus);
+    }
+
+    return brand;
   }
 
   async deleteBrand(id: string) {
     const existing = await this.repository.findById(id);
     if (!existing) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
 
-    return this.repository.delete(id);
+    const result = await this.repository.delete(id);
+
+    // Publish outbox event
+    await outboxService.brandDeleted(existing);
+
+    return result;
   }
 
   // ==================== Brand Product Operations ====================
@@ -71,23 +112,28 @@ export class BrandService {
     // Verify brand exists
     const brand = await this.repository.findById(brandId);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
 
     // Check if product is already in this brand
     const existing = await this.repository.findBrandProduct(brandId, data.productId);
     if (existing) {
-      throw new Error('Product already exists in this brand');
+      throw new ConflictError('Product already exists in this brand');
     }
 
-    return this.repository.addProduct(brandId, data);
+    const brandProduct = await this.repository.addProduct(brandId, data);
+
+    // Publish outbox event
+    await outboxService.brandProductAdded(brandProduct);
+
+    return brandProduct;
   }
 
   async getBrandProducts(brandId: string, query: BrandProductQuery) {
     // Verify brand exists
     const brand = await this.repository.findById(brandId);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
 
     return this.repository.findBrandProducts(brandId, query);
@@ -96,7 +142,7 @@ export class BrandService {
   async getBrandProduct(brandId: string, productId: string) {
     const brandProduct = await this.repository.findBrandProduct(brandId, productId);
     if (!brandProduct) {
-      throw new Error('Brand product not found');
+      throw new NotFoundError('Brand product not found');
     }
     return brandProduct;
   }
@@ -104,26 +150,58 @@ export class BrandService {
   async updateBrandProduct(brandId: string, productId: string, data: UpdateBrandProductDTO) {
     const existing = await this.repository.findBrandProduct(brandId, productId);
     if (!existing) {
-      throw new Error('Brand product not found');
+      throw new NotFoundError('Brand product not found');
     }
 
-    return this.repository.updateBrandProduct(brandId, productId, data);
+    // Track price change for special event
+    const oldPrice = Number(existing.brand_price);
+    const newPrice = data.brandPrice;
+
+    const brandProduct = await this.repository.updateBrandProduct(brandId, productId, data);
+
+    // Determine which fields were updated
+    const updatedFields: string[] = [];
+    if (data.brandPrice !== undefined) updatedFields.push('brandPrice');
+    if (data.brandComparePrice !== undefined) updatedFields.push('brandComparePrice');
+    if (data.discountPercent !== undefined) updatedFields.push('discountPercent');
+    if (data.brandProductName !== undefined) updatedFields.push('brandProductName');
+    if (data.brandDescription !== undefined) updatedFields.push('brandDescription');
+    if (data.displayOrder !== undefined) updatedFields.push('displayOrder');
+    if (data.isFeatured !== undefined) updatedFields.push('isFeatured');
+    if (data.isBestseller !== undefined) updatedFields.push('isBestseller');
+    if (data.isNewArrival !== undefined) updatedFields.push('isNewArrival');
+    if (data.isActive !== undefined) updatedFields.push('isActive');
+
+    // Publish outbox events
+    await outboxService.brandProductUpdated(brandId, productId, updatedFields);
+
+    // If price changed, also publish a price change event
+    if (newPrice !== undefined && oldPrice !== newPrice) {
+      await outboxService.brandProductPriceChanged(brandId, productId, oldPrice, newPrice);
+    }
+
+    return brandProduct;
   }
 
   async removeProductFromBrand(brandId: string, productId: string) {
     const existing = await this.repository.findBrandProduct(brandId, productId);
     if (!existing) {
-      throw new Error('Brand product not found');
+      throw new NotFoundError('Brand product not found');
     }
 
-    return this.repository.removeBrandProduct(brandId, productId);
+    const result = await this.repository.removeBrandProduct(brandId, productId);
+
+    // Publish outbox event
+    await outboxService.brandProductRemoved(brandId, productId);
+
+    return result;
   }
 
   async getFeaturedProducts(brandId: string, limit?: number) {
     // Verify brand exists
     const brand = await this.repository.findById(brandId);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
 
     return this.repository.getFeaturedProducts(brandId, limit);
@@ -133,7 +211,7 @@ export class BrandService {
     // Verify brand exists
     const brand = await this.repository.findById(brandId);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
 
     return this.repository.getBestsellers(brandId, limit);
@@ -143,7 +221,7 @@ export class BrandService {
     // Verify brand exists
     const brand = await this.repository.findById(brandId);
     if (!brand) {
-      throw new Error('Brand not found');
+      throw new NotFoundError('Brand not found');
     }
 
     return this.repository.getNewArrivals(brandId, limit);
