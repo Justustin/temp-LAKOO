@@ -1,20 +1,16 @@
 import { Router } from 'express';
-import {
-  getShippingRates,
-  getAvailableCouriers,
-  getQuickEstimate
-} from '../controllers/rate.controller';
+import { rateController } from '../controllers/rate.controller';
 import { validate, getRatesSchema } from '../middleware/validation';
 
 const router: import('express').Router = Router();
 
 // Get shipping rates
-router.post('/', validate(getRatesSchema), getShippingRates);
+router.post('/', validate(getRatesSchema), rateController.getShippingRates);
 
 // Get available couriers
-router.get('/couriers', getAvailableCouriers);
+router.get('/couriers', rateController.getAvailableCouriers);
 
 // Get quick estimate
-router.post('/estimate', validate(getRatesSchema), getQuickEstimate);
+router.post('/estimate', validate(getRatesSchema), rateController.getQuickEstimate);
 
 export default router;

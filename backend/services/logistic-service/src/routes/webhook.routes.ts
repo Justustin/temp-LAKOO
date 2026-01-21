@@ -1,15 +1,12 @@
 import { Router } from 'express';
-import {
-  handleBiteshipWebhook,
-  testBiteshipWebhook
-} from '../controllers/webhook.controller';
+import { webhookController } from '../controllers/webhook.controller';
 
 const router: import('express').Router = Router();
 
 // Biteship webhooks
-router.post('/biteship', handleBiteshipWebhook);
+router.post('/biteship', webhookController.handleBiteshipWebhook);
 
 // Test endpoint (dev only)
-router.post('/biteship/test', testBiteshipWebhook);
+router.post('/biteship/test', webhookController.testBiteshipWebhook);
 
 export default router;

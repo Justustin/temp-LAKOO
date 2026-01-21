@@ -28,7 +28,7 @@ function tryServiceAuth(req: AuthenticatedRequest): boolean {
 
   // Dev fallback (mirrors existing "no key in dev" behavior)
   if (process.env.NODE_ENV === 'development' && !serviceSecret) {
-    req.user = { id: serviceNameHeader, role: 'service' };
+    req.user = { id: serviceNameHeader, role: 'internal' };
     return true;
   }
 
@@ -38,7 +38,7 @@ function tryServiceAuth(req: AuthenticatedRequest): boolean {
 
   // Source-of-truth verification logic synced from backend/shared/typescript/utils/serviceAuth.ts
   verifyServiceToken(tokenHeader, serviceSecret);
-  req.user = { id: serviceNameHeader, role: 'service' };
+  req.user = { id: serviceNameHeader, role: 'internal' };
   return true;
 }
 

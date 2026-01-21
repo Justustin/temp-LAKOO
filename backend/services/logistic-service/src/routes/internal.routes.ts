@@ -1,11 +1,6 @@
 import { Router } from 'express';
-import {
-  createShipmentInternal,
-  bookShipmentInternal,
-  updateStatusInternal,
-  getByOrderIdInternal
-} from '../controllers/shipment.controller';
-import { getShippingRatesInternal } from '../controllers/rate.controller';
+import { shipmentController } from '../controllers/shipment.controller';
+import { rateController } from '../controllers/rate.controller';
 import { requireInternalAuth } from '../middleware/auth';
 import { validate, createShipmentSchema, getRatesSchema } from '../middleware/validation';
 
@@ -19,22 +14,22 @@ router.use(requireInternalAuth);
 // =============================================================================
 
 // Create shipment for an order
-router.post('/shipments', validate(createShipmentSchema), createShipmentInternal);
+router.post('/shipments', validate(createShipmentSchema), shipmentController.createShipmentInternal);
 
 // Book shipment with courier
-router.post('/shipments/:id/book', bookShipmentInternal);
+router.post('/shipments/:id/book', shipmentController.bookShipmentInternal);
 
 // Update shipment status
-router.put('/shipments/:id/status', updateStatusInternal);
+router.put('/shipments/:id/status', shipmentController.updateStatusInternal);
 
 // Get shipment by order ID
-router.get('/shipments/order/:orderId', getByOrderIdInternal);
+router.get('/shipments/order/:orderId', shipmentController.getByOrderIdInternal);
 
 // =============================================================================
 // Rate Routes (for Checkout Service)
 // =============================================================================
 
 // Get shipping rates
-router.post('/rates', validate(getRatesSchema), getShippingRatesInternal);
+router.post('/rates', validate(getRatesSchema), rateController.getShippingRatesInternal);
 
 export default router;

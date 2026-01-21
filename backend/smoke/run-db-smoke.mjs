@@ -341,7 +341,124 @@ async function runDbSmoke() {
       await assert(release.json?.success === true, 'warehouse-service: release expected success=true');
     }
 
-    log('\n✅ DB smoke suite passed (address + warehouse flows + db push)');
+    // -------------------------------------------------------------------------
+    // Payment-service functional tests
+    // -------------------------------------------------------------------------
+    {
+      const base = 'http://localhost:3007';
+      const userId = '00000000-0000-0000-0000-000000000001';
+      const orderId = '00000000-0000-0000-0000-000000000100';
+      const headers = gatewayHeaders(gatewayKey, userId, 'user');
+
+      // Create payment via internal endpoint (service-to-service)
+      const serviceName = 'order-service';
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = crypto
+        .createHmac('sha256', serviceSecret)
+        .update(`${serviceName}:${timestamp}`)
+        .digest('hex');
+      const internalHeaders = {
+        'x-service-auth': `${serviceName}:${timestamp}:${signature}`,
+        'x-service-name': serviceName
+      };
+
+      const createPayment = await fetchJson(`${base}/api/payments`, {
+        method: 'POST',
+        headers: internalHeaders,
+        body: JSON.stringify({
+          orderId,
+          userId,
+          amount: 150000,
+          paymentMethod: 'bank_transfer',
+          idempotencyKey: `smoke-test-${Date.now()}`
+        })
+      });
+      await assert([200, 201].includes(createPayment.status), `payment-service: createPayment expected 200/201, got ${createPayment.status}`);
+      await assert(createPayment.json?.success === true, 'payment-service: createPayment expected success=true');
+      const paymentId = createPayment.json?.data?.id || createPayment.json?.data?.payment?.id;
+      await assert(paymentId, 'payment-service: createPayment missing data.id');
+
+      // Get payment by order ID
+      const getByOrder = await fetchJson(`${base}/api/payments/order/${orderId}`, { headers: internalHeaders });
+      await assert(getByOrder.status === 200, `payment-service: getByOrder expected 200, got ${getByOrder.status}`);
+      await assert(getByOrder.json?.success === true, 'payment-service: getByOrder expected success=true');
+
+      // Get payment by ID
+      const getById = await fetchJson(`${base}/api/payments/${paymentId}`, { headers: internalHeaders });
+      await assert(getById.status === 200, `payment-service: getById expected 200, got ${getById.status}`);
+      await assert(getById.json?.success === true, 'payment-service: getById expected success=true');
+
+      // Get user payments (via gateway auth)
+      const getUserPayments = await fetchJson(`${base}/api/payments/user/${userId}`, { headers });
+      await assert(getUserPayments.status === 200, `payment-service: getUserPayments expected 200, got ${getUserPayments.status}`);
+      await assert(getUserPayments.json?.success === true, 'payment-service: getUserPayments expected success=true');
+    }
+
+    // -------------------------------------------------------------------------
+    // Logistic-service functional tests
+    // -------------------------------------------------------------------------
+    {
+      const base = 'http://localhost:3009';
+      const userId = '00000000-0000-0000-0000-000000000001';
+      const orderId = '00000000-0000-0000-0000-000000000200';
+      const headers = gatewayHeaders(gatewayKey, userId, 'user');
+
+      // Get available couriers (public endpoint)
+      const couriers = await fetchJson(`${base}/api/rates/couriers`);
+      await assert(couriers.status === 200, `logistic-service: getCouriers expected 200, got ${couriers.status}`);
+      await assert(couriers.json?.success === true, 'logistic-service: getCouriers expected success=true');
+
+      // Create shipment via internal endpoint (service-to-service)
+      const serviceName = 'order-service';
+      const timestamp = Math.floor(Date.now() / 1000);
+      const signature = crypto
+        .createHmac('sha256', serviceSecret)
+        .update(`${serviceName}:${timestamp}`)
+        .digest('hex');
+      const internalHeaders = {
+        'x-service-auth': `${serviceName}:${timestamp}:${signature}`,
+        'x-service-name': serviceName
+      };
+
+      const createShipment = await fetchJson(`${base}/api/internal/shipments`, {
+        method: 'POST',
+        headers: internalHeaders,
+        body: JSON.stringify({
+          orderId,
+          userId,
+          courier: 'jne',
+          courierName: 'JNE',
+          serviceType: 'REG',
+          serviceName: 'Regular',
+          shippingCost: 15000,
+          weightGrams: 500,
+          destination: {
+            name: 'Smoke Test User',
+            phone: '081234567890',
+            address: 'Jl. Smoke Test No. 1',
+            city: 'Jakarta',
+            province: 'DKI Jakarta',
+            postalCode: '10310'
+          }
+        })
+      });
+      await assert([200, 201].includes(createShipment.status), `logistic-service: createShipment expected 200/201, got ${createShipment.status}`);
+      await assert(createShipment.json?.success === true, 'logistic-service: createShipment expected success=true');
+      const shipmentId = createShipment.json?.data?.id;
+      await assert(shipmentId, 'logistic-service: createShipment missing data.id');
+
+      // Get shipment by order ID (internal)
+      const getByOrder = await fetchJson(`${base}/api/internal/shipments/order/${orderId}`, { headers: internalHeaders });
+      await assert(getByOrder.status === 200, `logistic-service: getByOrder expected 200, got ${getByOrder.status}`);
+      await assert(getByOrder.json?.success === true, 'logistic-service: getByOrder expected success=true');
+
+      // Get user shipments (via gateway auth)
+      const getUserShipments = await fetchJson(`${base}/api/shipments/user`, { headers });
+      await assert(getUserShipments.status === 200, `logistic-service: getUserShipments expected 200, got ${getUserShipments.status}`);
+      await assert(getUserShipments.json?.success === true, 'logistic-service: getUserShipments expected success=true');
+    }
+
+    log('\n✅ DB smoke suite passed (address + warehouse + payment + logistic flows + db push)');
   } finally {
     log('\nStopping services...');
     for (const { child, svc } of procs) {

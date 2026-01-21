@@ -1,13 +1,5 @@
 import { Router } from 'express';
-import {
-  trackShipment,
-  createShipment,
-  getUserShipments,
-  getShipmentById,
-  getShipmentByOrderId,
-  getTrackingHistory,
-  cancelShipment
-} from '../controllers/shipment.controller';
+import { shipmentController } from '../controllers/shipment.controller';
 import { authenticate } from '../middleware/auth';
 import { validate, createShipmentSchema } from '../middleware/validation';
 
@@ -18,7 +10,7 @@ const router: import('express').Router = Router();
 // =============================================================================
 
 // Track shipment by tracking number (no auth required)
-router.get('/track/:trackingNumber', trackShipment);
+router.get('/track/:trackingNumber', shipmentController.trackShipment);
 
 // =============================================================================
 // Authenticated Routes
@@ -29,22 +21,22 @@ router.post(
   '/',
   authenticate,
   validate(createShipmentSchema),
-  createShipment
+  shipmentController.createShipment
 );
 
 // Get user's shipments
-router.get('/user', authenticate, getUserShipments);
+router.get('/user', authenticate, shipmentController.getUserShipments);
 
 // Get shipment by ID
-router.get('/:id', authenticate, getShipmentById);
+router.get('/:id', authenticate, shipmentController.getShipmentById);
 
 // Get shipment by order ID
-router.get('/order/:orderId', authenticate, getShipmentByOrderId);
+router.get('/order/:orderId', authenticate, shipmentController.getShipmentByOrderId);
 
 // Get tracking history
-router.get('/:id/tracking', authenticate, getTrackingHistory);
+router.get('/:id/tracking', authenticate, shipmentController.getTrackingHistory);
 
 // Cancel shipment
-router.post('/:id/cancel', authenticate, cancelShipment);
+router.post('/:id/cancel', authenticate, shipmentController.cancelShipment);
 
 export default router;

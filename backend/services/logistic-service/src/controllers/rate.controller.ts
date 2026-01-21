@@ -1,7 +1,6 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response } from 'express';
 import { RateService } from '../services/rate.service';
-
-const rateService = new RateService();
+import { asyncHandler } from '../middleware/error-handler';
 
 /**
  * @swagger
@@ -22,87 +21,85 @@ const rateService = new RateService();
  *           type: string
  */
 
-/**
- * @swagger
- * /api/rates:
- *   post:
- *     summary: Get shipping rates for a route
- *     tags: [Rates]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - originPostalCode
- *               - destPostalCode
- *               - weightGrams
- *             properties:
- *               originPostalCode:
- *                 type: string
- *               destPostalCode:
- *                 type: string
- *               weightGrams:
- *                 type: integer
- *               lengthCm:
- *                 type: number
- *               widthCm:
- *                 type: number
- *               heightCm:
- *                 type: number
- *               itemValue:
- *                 type: number
- *               couriers:
- *                 type: array
- *                 items:
- *                   type: string
- */
-export async function getShippingRates(req: Request, res: Response, next: NextFunction) {
-  try {
-    const rates = await rateService.getRates(req.body);
+export class RateController {
+  private service: RateService;
+
+  constructor() {
+    this.service = new RateService();
+  }
+
+  /**
+   * @swagger
+   * /api/rates:
+   *   post:
+   *     summary: Get shipping rates for a route
+   *     tags: [Rates]
+   *     requestBody:
+   *       required: true
+   *       content:
+   *         application/json:
+   *           schema:
+   *             type: object
+   *             required:
+   *               - originPostalCode
+   *               - destPostalCode
+   *               - weightGrams
+   *             properties:
+   *               originPostalCode:
+   *                 type: string
+   *               destPostalCode:
+   *                 type: string
+   *               weightGrams:
+   *                 type: integer
+   *               lengthCm:
+   *                 type: number
+   *               widthCm:
+   *                 type: number
+   *               heightCm:
+   *                 type: number
+   *               itemValue:
+   *                 type: number
+   *               couriers:
+   *                 type: array
+   *                 items:
+   *                   type: string
+   */
+  getShippingRates = asyncHandler(async (req: Request, res: Response) => {
+    const rates = await this.service.getRates(req.body);
 
     res.json({
       success: true,
       data: rates
     });
-  } catch (error) {
-    next(error);
-  }
-}
+  });
 
-/**
- * @swagger
- * /api/rates/couriers:
- *   get:
- *     summary: Get available couriers
- *     tags: [Rates]
- */
-export async function getAvailableCouriers(req: Request, res: Response, next: NextFunction) {
-  try {
-    const couriers = await rateService.getActiveCouriers();
+  /**
+   * @swagger
+   * /api/rates/couriers:
+   *   get:
+   *     summary: Get available couriers
+   *     tags: [Rates]
+   */
+  getAvailableCouriers = asyncHandler(async (_req: Request, res: Response) => {
+    const couriers = await this.service.getActiveCouriers();
 
     res.json({
       success: true,
       data: couriers
     });
-  } catch (error) {
-    next(error);
-  }
-}
+  });
 
-/**
- * @swagger
- * /api/rates/estimate:
- *   post:
- *     summary: Get quick rate estimate
- *     tags: [Rates]
- */
-export async function getQuickEstimate(req: Request, res: Response, next: NextFunction) {
-  try {
+  /**
+   * @swagger
+   * /api/rates/estimate:
+   *   post:
+   *     summary: Get quick rate estimate
+   *     tags: [Rates]
+   */
+  getQuickEstimate = asyncHandler(async (req: Request, res: Response) => {
     const { originPostalCode, destPostalCode, weightGrams } = req.body;
 
-    const rates = await rateService.getRates({
+    const rates = await this.service.getRates({
       originPostalCode,
       destPostalCode,
       weightGrams
@@ -124,27 +121,23 @@ export async function getQuickEstimate(req: Request, res: Response, next: NextFu
         allRates: rates
       }
     });
-  } catch (error) {
-    next(error);
-  }
-}
+  });
 
-/**
- * @swagger
- * /api/internal/rates:
- *   post:
- *     summary: Get shipping rates (internal service call)
- *     tags: [Internal]
- */
-export async function getShippingRatesInternal(req: Request, res: Response, next: NextFunction) {
-  try {
-    const rates = await rateService.getRates(req.body);
+  /**
+   * @swagger
+   * /api/internal/rates:
+   *   post:
+   *     summary: Get shipping rates (internal service call)
+   *     tags: [Internal]
+   */
+  getShippingRatesInternal = asyncHandler(async (req: Request, res: Response) => {
+    const rates = await this.service.getRates(req.body);
 
     res.json({
       success: true,
       data: rates
     });
-  } catch (error) {
-    next(error);
-  }
+  });
 }
+
+export const rateController = new RateController();
