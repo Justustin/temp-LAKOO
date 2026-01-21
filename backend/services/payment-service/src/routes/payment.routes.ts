@@ -53,7 +53,7 @@ router.get('/user/:userId',
 
 // Get payments eligible for settlement (admin only)
 router.post('/eligible-for-settlement',
-  requireRole('admin', 'service'),
+  requireRole('admin', 'internal'),
   [
     body('periodStart').isISO8601().withMessage('periodStart must be ISO8601 date'),
     body('periodEnd').isISO8601().withMessage('periodEnd must be ISO8601 date')
@@ -64,7 +64,7 @@ router.post('/eligible-for-settlement',
 
 // Get payment statistics (admin only)
 router.post('/stats',
-  requireRole('admin', 'service'),
+  requireRole('admin', 'internal'),
   [
     body('startDate').isISO8601().withMessage('startDate must be ISO8601 date'),
     body('endDate').isISO8601().withMessage('endDate must be ISO8601 date')
