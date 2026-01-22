@@ -1,0 +1,269 @@
+// =============================================================================
+// REVIEW SERVICE DATABASE SCHEMA
+// Service: review-service (Port 3016)
+// Database: review_db
+// Owner: Product reviews, review images, votes, moderation, review requests
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// PRODUCT REVIEWS
+// =============================================================================
+
+model product_reviews {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id       String    @db.Uuid
+  variant_id       String?   @db.Uuid
+  user_id          String    @db.Uuid
+  order_id         String?   @db.Uuid
+  order_item_id    String?   @db.Uuid
+  seller_id        String?   @db.Uuid
+  brand_id         String?   @db.Uuid
+  product_name     String    @db.VarChar(255)
+  variant_name     String?   @db.VarChar(255)
+  product_image_url String?
+  reviewer_name    String    @db.VarChar(255)
+  reviewer_image_url String?
+  rating           Int
+  title            String?   @db.VarChar(255)
+  review_text      String?
+  quality_rating   Int?
+  value_rating     Int?
+  fit_rating       Int?
+  is_verified      Boolean   @default(false)
+  helpful_count    Int       @default(0)
+  unhelpful_count  Int       @default(0)
+  report_count     Int       @default(0)
+  reply_count      Int       @default(0)
+  status           String    @default("pending") @db.VarChar(20)
+  moderated_at     DateTime? @db.Timestamptz(6)
+  moderated_by     String?   @db.Uuid
+  moderation_notes String?   @db.VarChar(500)
+  rejection_reason String?   @db.VarChar(255)
+  is_visible       Boolean   @default(false)
+  is_featured      Boolean   @default(false)
+  is_pinned        Boolean   @default(false)
+  view_count       Int       @default(0)
+  is_edited        Boolean   @default(false)
+  edited_at        DateTime? @db.Timestamptz(6)
+  edit_count       Int       @default(0)
+  purchased_at     DateTime? @db.Timestamptz(6)
+  delivered_at     DateTime? @db.Timestamptz(6)
+  created_at       DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at       DateTime? @db.Timestamptz(6)
+
+  images  review_images[]
+  votes   review_votes[]
+  reports review_reports[]
+  replies review_replies[]
+
+  @@unique([order_id, product_id, variant_id])
+  @@index([product_id])
+  @@index([user_id])
+  @@index([seller_id])
+  @@index([brand_id])
+  @@index([rating])
+  @@index([status])
+  @@index([is_visible])
+  @@index([created_at])
+  @@index([deleted_at])
+}
+
+model review_images {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  review_id     String   @db.Uuid
+  image_url     String
+  thumbnail_url String?
+  alt_text      String?  @db.VarChar(255)
+  display_order Int      @default(0)
+  width         Int?
+  height        Int?
+  size_bytes    Int?
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+
+  review product_reviews @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@index([review_id])
+}
+
+// =============================================================================
+// REVIEW VOTES (Helpful / Not Helpful)
+// =============================================================================
+
+model review_votes {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  review_id  String   @db.Uuid
+  user_id    String   @db.Uuid
+  vote_type  String   @db.VarChar(20)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+
+  review product_reviews @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@unique([review_id, user_id])
+  @@index([review_id])
+  @@index([user_id])
+}
+
+// =============================================================================
+// REVIEW REPORTS (Flagging inappropriate reviews)
+// =============================================================================
+
+model review_reports {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  review_id    String    @db.Uuid
+  reporter_id  String    @db.Uuid
+  reason       String    @db.VarChar(50)
+  description  String?   @db.VarChar(500)
+  status       String    @default("pending") @db.VarChar(20)
+  resolved_at  DateTime? @db.Timestamptz(6)
+  resolved_by  String?   @db.Uuid
+  resolution   String?   @db.VarChar(255)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  review product_reviews @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@unique([review_id, reporter_id])
+  @@index([review_id])
+  @@index([status])
+}
+
+// =============================================================================
+// REVIEW REPLIES (Seller/Brand responses)
+// =============================================================================
+
+model review_replies {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  review_id      String    @db.Uuid
+  responder_type String    @db.VarChar(20)
+  responder_id   String    @db.Uuid
+  responder_name String    @db.VarChar(255)
+  reply_text     String
+  status         String    @default("visible") @db.VarChar(20)
+  is_edited      Boolean   @default(false)
+  edited_at      DateTime? @db.Timestamptz(6)
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime  @updatedAt @db.Timestamptz(6)
+  deleted_at     DateTime? @db.Timestamptz(6)
+
+  review product_reviews @relation(fields: [review_id], references: [id], onDelete: Cascade)
+
+  @@index([review_id])
+}
+
+// =============================================================================
+// REVIEW REQUESTS (Prompting customers to leave reviews)
+// =============================================================================
+
+model review_requests {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id           String    @db.Uuid
+  order_id          String    @db.Uuid
+  order_item_id     String?   @db.Uuid
+  product_id        String    @db.Uuid
+  variant_id        String?   @db.Uuid
+  product_name      String    @db.VarChar(255)
+  product_image_url String?
+  channel           String    @default("in_app") @db.VarChar(20)
+  status            String    @default("pending") @db.VarChar(20)
+  sent_at           DateTime? @db.Timestamptz(6)
+  opened_at         DateTime? @db.Timestamptz(6)
+  completed_at      DateTime? @db.Timestamptz(6)
+  review_id         String?   @db.Uuid
+  send_count        Int       @default(0)
+  max_send_count    Int       @default(3)
+  last_sent_at      DateTime? @db.Timestamptz(6)
+  next_send_at      DateTime? @db.Timestamptz(6)
+  eligible_at       DateTime  @db.Timestamptz(6)
+  expires_at        DateTime  @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @updatedAt @db.Timestamptz(6)
+
+  @@unique([order_id, product_id, variant_id])
+  @@index([user_id])
+  @@index([order_id])
+  @@index([product_id])
+  @@index([status])
+  @@index([eligible_at])
+}
+
+// =============================================================================
+// MODERATION QUEUE
+// =============================================================================
+
+model moderation_queue {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  review_id    String    @unique @db.Uuid
+  auto_score   Decimal?  @db.Decimal(5, 2)
+  auto_flags   String[]
+  priority     String    @default("normal") @db.VarChar(20)
+  assigned_to  String?   @db.Uuid
+  assigned_at  DateTime? @db.Timestamptz(6)
+  status       String    @default("pending") @db.VarChar(20)
+  processed_at DateTime? @db.Timestamptz(6)
+  processed_by String?   @db.Uuid
+  decision     String?   @db.VarChar(20)
+  notes        String?   @db.VarChar(500)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([status])
+  @@index([priority])
+  @@index([assigned_to])
+}
+
+// =============================================================================
+// PRODUCT REVIEW SUMMARY (Aggregated per product)
+// =============================================================================
+
+model product_review_summaries {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id         String    @unique @db.Uuid
+  total_reviews      Int       @default(0)
+  total_with_photos  Int       @default(0)
+  total_verified     Int       @default(0)
+  avg_rating         Decimal?  @db.Decimal(3, 2)
+  rating_5_count     Int       @default(0)
+  rating_4_count     Int       @default(0)
+  rating_3_count     Int       @default(0)
+  rating_2_count     Int       @default(0)
+  rating_1_count     Int       @default(0)
+  avg_quality_rating Decimal?  @db.Decimal(3, 2)
+  avg_value_rating   Decimal?  @db.Decimal(3, 2)
+  avg_fit_rating     Decimal?  @db.Decimal(3, 2)
+  top_keywords       String[]
+  last_review_at     DateTime? @db.Timestamptz(6)
+  recalculated_at    DateTime  @default(now()) @db.Timestamptz(6)
+  created_at         DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime  @updatedAt @db.Timestamptz(6)
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For Kafka event messaging)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @db.VarChar(100)
+  aggregateId   String    @db.VarChar(100)
+  eventType     String    @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime? @db.Timestamptz(6)
+  retryCount    Int       @default(0)
+  lastError     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}
