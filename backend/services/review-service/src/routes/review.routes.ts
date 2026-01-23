@@ -105,7 +105,7 @@ router.use(gatewayOrInternalAuth);
  *     summary: Create a new review
  *     tags: [Reviews]
  *     security:
- *       - bearerAuth: []
+ *       - GatewayAuth: []
  */
 router.post(
   '/',
@@ -121,7 +121,7 @@ router.post(
  *     summary: Update a review
  *     tags: [Reviews]
  *     security:
- *       - bearerAuth: []
+ *       - GatewayAuth: []
  */
 router.patch(
   '/:id',
@@ -138,7 +138,7 @@ router.patch(
  *     summary: Delete a review
  *     tags: [Reviews]
  *     security:
- *       - bearerAuth: []
+ *       - GatewayAuth: []
  */
 router.delete(
   '/:id',

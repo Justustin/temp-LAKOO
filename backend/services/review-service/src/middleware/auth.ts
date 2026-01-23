@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyServiceToken } from '../utils/serviceAuth';
+import { UnauthorizedError, ForbiddenError } from './error-handler';
 
 // Extend Express Request type
 export interface AuthenticatedRequest extends Request {
@@ -7,22 +8,6 @@ export interface AuthenticatedRequest extends Request {
     id: string;
     role: string;
   };
-}
-
-export class UnauthorizedError extends Error {
-  statusCode = 401;
-  constructor(message = 'Unauthorized') {
-    super(message);
-    this.name = 'UnauthorizedError';
-  }
-}
-
-export class ForbiddenError extends Error {
-  statusCode = 403;
-  constructor(message = 'Forbidden') {
-    super(message);
-    this.name = 'ForbiddenError';
-  }
 }
 
 /**

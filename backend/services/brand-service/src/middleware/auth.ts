@@ -36,8 +36,11 @@ function tryServiceAuth(req: AuthenticatedRequest): boolean {
     throw new UnauthorizedError('SERVICE_SECRET not configured');
   }
 
-  // Source-of-truth verification logic
-  verifyServiceToken(tokenHeader, serviceSecret);
+  // Source-of-truth verification logic: validate token and ensure serviceName matches header
+  const { serviceName: tokenServiceName } = verifyServiceToken(tokenHeader, serviceSecret);
+  if (tokenServiceName !== serviceNameHeader) {
+    throw new UnauthorizedError('Service name mismatch');
+  }
   req.user = { id: serviceNameHeader, role: 'internal' };
   return true;
 }

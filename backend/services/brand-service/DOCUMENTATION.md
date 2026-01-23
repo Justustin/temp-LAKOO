@@ -1,130 +1,164 @@
-# Brand Service
+# Brand Service Documentation (`backend/services/brand-service`)
 
-Multi-brand marketplace management service for LAKOO. Handles brand creation, configuration, and product curation across 15 official LAKOO brands.
+## 1) Purpose
+- Owns brand state (`Brand`, `BrandProduct`, brand configuration) and exposes brand/product curation APIs.
+- Manages the 15 official LAKOO brands plus third-party brand partnerships.
+- Emits integration events via **`ServiceOutbox`** (transactional outbox pattern).
+- Does **not** own products directly (references via `product_id`), user identities, or orders.
 
-## Architecture
+## 2) Architecture (layers & request flow)
+- **Routes** (`src/routes/*.routes.ts`): endpoints + `express-validator` rules + `validateRequest`.
+- **Controllers** (`src/controllers/*.controller.ts`): HTTP handlers (should be thin).
+- **Services** (`src/services/*.service.ts`): business logic + outbox.
+- **Repositories** (`src/repositories/*.repository.ts`): Prisma reads/writes.
+- **DB schema** (`prisma/schema.prisma`): data model + outbox table.
 
-This service follows the standardized service patterns:
+Typical request flow:
+1. Route validates input → `validateRequest`.
+2. Auth middleware sets `req.user`.
+3. Controller calls service method.
+4. Service uses repositories, returns result (errors bubble to `errorHandler`).
 
-- **Local Prisma Client**: `src/lib/prisma.ts` - Service-specific database connection
-- **Gateway Trust Auth**: `src/middleware/auth.ts` - Authentication via API Gateway headers
-- **Validation Middleware**: `src/middleware/validation.ts` - Request validation with express-validator
-- **Error Handling**: `src/middleware/error-handler.ts` - Centralized error handling with asyncHandler
-- **Outbox Events**: `src/services/outbox.service.ts` - Domain events for eventual consistency
-- **Service Auth**: `src/utils/serviceAuth.ts` - Service-to-service HMAC authentication
+## 3) Runtime contracts
 
-## API Endpoints
+### Environment variables
+- **`PORT`**: listen port (default `3015`).
+- **`NODE_ENV`**: `development|test|production` (affects logging + dev auth bypass).
+- **`DATABASE_URL`**: Postgres connection string for Prisma.
+- **`GATEWAY_SECRET_KEY`**: verifies gateway traffic (`x-gateway-key`).
+- **`SERVICE_SECRET`**: verifies service-to-service HMAC tokens (`x-service-auth` + `x-service-name`).
+- **`PRODUCT_SERVICE_URL`**: upstream Product Service base URL.
+- **`ALLOWED_ORIGINS`**: CORS allowlist.
 
-### Brands
+### Authentication & authorization (gateway + service-to-service)
+Gateway-trust (external client traffic via API Gateway):
+- Gateway must inject:
+  - `x-gateway-key` (must equal `GATEWAY_SECRET_KEY`)
+  - `x-user-id` (required)
+  - `x-user-role` (optional; `admin`, `user`, `brand_owner`)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/brands` | Public | List all brands with pagination |
-| GET | `/api/brands/:id` | Public | Get brand by ID |
-| GET | `/api/brands/slug/:slug` | Public | Get brand by slug |
-| POST | `/api/brands` | Required | Create a new brand |
-| PATCH | `/api/brands/:id` | Required | Update a brand |
-| DELETE | `/api/brands/:id` | Required | Soft delete a brand |
+Service-to-service (internal traffic, no gateway):
+- Caller must send:
+  - `x-service-auth`: `serviceName:timestamp:signature`
+  - `x-service-name`: `serviceName`
+- Service verifies token using **`SERVICE_SECRET`** and validates `x-service-name` matches token's serviceName.
+- Sets `req.user = { id: <serviceName>, role: 'internal' }`
 
-### Brand Products
+Role values:
+- Use **`internal`** consistently for internal calls (service-to-service).
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/brands/:brandId/products` | Public | List brand products |
-| GET | `/api/brands/:brandId/products/featured` | Public | Get featured products |
-| GET | `/api/brands/:brandId/products/bestsellers` | Public | Get bestsellers |
-| GET | `/api/brands/:brandId/products/new-arrivals` | Public | Get new arrivals |
-| GET | `/api/brands/:brandId/products/:productId` | Public | Get specific brand product |
-| POST | `/api/brands/:brandId/products` | Required | Add product to brand |
-| PATCH | `/api/brands/:brandId/products/:productId` | Required | Update brand product |
-| DELETE | `/api/brands/:brandId/products/:productId` | Required | Remove product from brand |
+### Response format
+- Most success responses: `200/201` with `{ success: true, data: ... }`
+- Delete actions respond `204` with no body.
+- Errors are formatted by `src/middleware/error-handler.ts`:
+  - `{ success: false, error: string, details?: any }`
 
-## Authentication
+## 4) Endpoint map (route → controller → service/repo)
+Base route: **`/api/brands`** → `src/routes/brand.routes.ts`
 
-### Gateway Authentication
-Protected routes require the API Gateway to forward:
-- `x-gateway-key`: Shared secret verifying request came from gateway
-- `x-user-id`: Authenticated user's ID
-- `x-user-role`: User's role (optional)
+**Brands (CRUD)**:
+- `GET /` → `getBrands` (public, paginated)
+- `GET /:id` → `getBrandById` (public)
+- `GET /slug/:slug` → `getBrandBySlug` (public)
+- `POST /` → `createBrand` (gatewayAuth, admin/brand_owner)
+- `PATCH /:id` → `updateBrand` (gatewayAuth, admin/brand_owner)
+- `DELETE /:id` → `deleteBrand` (gatewayAuth, admin only)
 
-### Service-to-Service Authentication
-Internal services use HMAC-based authentication:
-- `x-service-auth`: `serviceName:timestamp:signature`
-- `x-service-name`: Calling service name
+**Brand Products**:
+- `GET /:brandId/products` → `getBrandProducts` (public, paginated)
+- `GET /:brandId/products/featured` → `getFeaturedProducts` (public)
+- `GET /:brandId/products/bestsellers` → `getBestsellers` (public)
+- `GET /:brandId/products/new-arrivals` → `getNewArrivals` (public)
+- `GET /:brandId/products/:productId` → `getBrandProduct` (public)
+- `POST /:brandId/products` → `addBrandProduct` (gatewayAuth, admin/brand_owner)
+- `PATCH /:brandId/products/:productId` → `updateBrandProduct` (gatewayAuth)
+- `DELETE /:brandId/products/:productId` → `removeBrandProduct` (gatewayAuth)
 
-## Domain Events
+**Internal**:
+- `GET /internal/:id` → `getBrandInternal` (internalServiceAuth)
 
-Events published to the outbox for other services:
+## 5) Middleware
+Files under `src/middleware/`.
 
-### Brand Events
-- `brand.created` - New brand created
-- `brand.updated` - Brand details updated
-- `brand.deleted` - Brand soft deleted
-- `brand.status_changed` - Brand status changed (active/inactive/draft)
+- **`auth.ts`**
+  - `gatewayAuth`: verifies gateway headers; sets `req.user`.
+  - `gatewayOrInternalAuth`: accepts gateway OR service-to-service HMAC; sets `req.user`.
+  - `internalServiceAuth`: service-to-service only (HMAC), validates serviceName matches token.
+  - `optionalGatewayAuth`: doesn't fail if no gateway headers.
+  - `requireRole(...roles)`: checks `req.user.role`.
+- **`validation.ts`**
+  - `validateRequest`: checks `express-validator` results and returns `400` on failure.
+  - Validators for brands, brand products.
+- **`error-handler.ts`**
+  - `AppError` subclasses (`ValidationError`, `NotFoundError`, `UnauthorizedError`, `ForbiddenError`, `ConflictError`).
+  - Global `errorHandler` middleware.
+  - `asyncHandler` wrapper for async controllers.
 
-### Brand Product Events
-- `brand_product.added` - Product added to brand
-- `brand_product.updated` - Brand product details updated
-- `brand_product.removed` - Product removed from brand
-- `brand_product.price_changed` - Brand product price changed
+## 6) Database & Prisma
+- Schema: `prisma/schema.prisma`
+- Prisma client is generated into `src/generated/prisma`.
+- Build copies it into `dist/generated/prisma` using `scripts/copy-generated-prisma.mjs` so `node dist/index.js` works.
 
-## Environment Variables
+Tables:
+- `brands`: brand entity (name, slug, description, logo, status, metadata)
+- `brand_products`: products curated for a brand (pricing overrides, featured flags)
+- `ServiceOutbox`: integration events
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Service port | 3004 |
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `NODE_ENV` | Environment mode | development |
-| `GATEWAY_SECRET_KEY` | Gateway authentication key | None (dev bypass) |
-| `SERVICE_SECRET` | Service-to-service auth secret | None (dev bypass) |
-| `ALLOWED_ORIGINS` | CORS allowed origins | http://localhost:3000 |
+Schema changes:
+- MVP/local: `pnpm -C backend/services/brand-service db:push`
+- Production-grade: prefer migrations (`db:migrate` → generate migration files, `db:migrate:prod` → apply)
 
-## Development
+## 7) Outbox events
+- Table: `ServiceOutbox` (in Prisma schema).
+- Writer: `src/services/outbox.service.ts`.
+- Emitted events:
+  - `brand.created` - new brand created
+  - `brand.updated` - brand details updated
+  - `brand.deleted` - brand soft deleted
+  - `brand.status_changed` - brand status changed (active/inactive/draft)
+  - `brand_product.added` - product added to brand
+  - `brand_product.updated` - brand product details updated
+  - `brand_product.removed` - product removed from brand
+  - `brand_product.price_changed` - brand product price changed
 
-```bash
-# Install dependencies
-pnpm install
+## 8) Local development & scripts
+From repo root:
+- Install: `pnpm -C backend/services/brand-service install`
+- Dev: `pnpm -C backend/services/brand-service dev`
+- Build: `pnpm -C backend/services/brand-service build`
+- Start built: `pnpm -C backend/services/brand-service start`
+- Prisma:
+  - `db:generate`, `db:push`, `db:migrate`, `db:migrate:prod`, `db:studio`, `db:reset`
+- Quality:
+  - `lint`, `lint:fix`, `format`
 
-# Generate Prisma client
-pnpm prisma:generate
+## 9) Docker
+- `Dockerfile`: multi-stage image (build + production) using pnpm.
+- `docker-compose.yml`: app + db + one-shot db init container (uses `prisma db push`).
 
-# Run in development mode
-pnpm dev
+## 10) Tests
+- Unit tests exist for services (Jest).
+- Run: `pnpm -C backend/services/brand-service test`
+- Coverage: `pnpm -C backend/services/brand-service test:coverage`
 
-# Build for production
-pnpm build
+## 11) Future-me problems / tech debt
+- **Product sync**: currently stores `product_id` only; consider caching product details for performance.
+- **Brand analytics**: no analytics tracking yet; consider integrating with analytics service.
+- **Image upload**: currently stores URLs only; consider integrating with storage service for brand logos.
+- **Outbox transactionality**: ideally write domain updates + outbox rows in the same Prisma transaction.
 
-# Run production
-pnpm start
-```
-
-## File Structure
-
-```
-src/
-├── config/
-│   └── swagger.ts          # Swagger/OpenAPI configuration
-├── controllers/
-│   └── brand.controller.ts # Request handlers
-├── lib/
-│   └── prisma.ts           # Local Prisma client singleton
-├── middleware/
-│   ├── auth.ts             # Gateway trust & service auth
-│   ├── error-handler.ts    # Error classes & handler
-│   └── validation.ts       # Request validators
-├── repositories/
-│   └── brand.repository.ts # Database operations
-├── routes/
-│   └── brand.routes.ts     # Route definitions
-├── services/
-│   ├── brand.service.ts    # Business logic
-│   └── outbox.service.ts   # Domain event publishing
-├── types/
-│   └── index.ts            # TypeScript interfaces
-├── utils/
-│   └── serviceAuth.ts      # Service auth utilities
-└── index.ts                # Application entry point
-```
+## 12) File-by-file
+- `src/index.ts`: Express bootstrap, routes, health, swagger, error handler, shutdown.
+- `src/lib/prisma.ts`: Prisma singleton client.
+- `src/middleware/*`: auth/validation/error-handler.
+- `src/routes/*`: HTTP routes + validators.
+- `src/controllers/*`: request handlers.
+- `src/services/*`: business logic + outbox publishing.
+- `src/repositories/*`: Prisma access layer.
+- `src/types/*`: DTOs and interfaces.
+- `src/utils/*`: shared helpers (serviceAuth).
+- `src/config/swagger.ts`: OpenAPI configuration.
+- `scripts/copy-generated-prisma.mjs`: copies generated Prisma client into `dist/`.
 
 ## LAKOO Brands
 
