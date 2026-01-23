@@ -1,237 +1,191 @@
-# Review Service
+# Review Service Documentation (`backend/services/review-service`)
 
-Product review and rating service for LAKOO e-commerce platform. Handles customer reviews, ratings, images, votes, reports, seller/brand replies, review requests, and moderation.
+## 1) Purpose
+- Owns product reviews, ratings, images, votes, reports, replies, review requests, and moderation state.
+- Maintains review summaries (average rating, rating distribution) per product.
+- Emits integration events via **`ServiceOutbox`** (transactional outbox pattern).
+- Does **not** own orders, products, or user identities (consumes events from ORDER_SERVICE, PRODUCT_SERVICE, AUTH_SERVICE when needed).
 
-## Architecture
+## 2) Architecture (layers & request flow)
+- **Routes** (`src/routes/*.routes.ts`): endpoints + `express-validator` rules + `validateRequest`.
+- **Controllers** (`src/controllers/*.controller.ts`): HTTP handlers (should be thin).
+- **Services** (`src/services/*.service.ts`): business logic + outbox.
+- **Repositories** (`src/repositories/*.repository.ts`): Prisma reads/writes.
+- **DB schema** (`prisma/schema.prisma`): data model + outbox table.
 
-This service follows the standardized service patterns:
+Typical request flow:
+1. Route validates input → `validateRequest`.
+2. Auth middleware sets `req.user`.
+3. Controller calls service method.
+4. Service uses repositories, returns result (errors bubble to `errorHandler`).
 
-- **Local Prisma Client**: `src/lib/prisma.ts` - Service-specific database connection
-- **Gateway Trust Auth**: `src/middleware/auth.ts` - Authentication via API Gateway headers
-- **Validation Middleware**: `src/middleware/validation.ts` - Request validation with express-validator
-- **Error Handling**: `src/middleware/error-handler.ts` - Centralized error handling with asyncHandler
-- **Outbox Events**: `src/services/outbox.service.ts` - Domain events for eventual consistency
-- **Service Auth**: `src/utils/serviceAuth.ts` - Service-to-service HMAC authentication
+## 3) Runtime contracts
 
-## API Endpoints
+### Environment variables
+- **`PORT`**: listen port (default `3016`).
+- **`NODE_ENV`**: `development|test|production` (affects logging + dev auth bypass).
+- **`DATABASE_URL`**: Postgres connection string for Prisma.
+- **`GATEWAY_SECRET_KEY`**: verifies gateway traffic (`x-gateway-key`).
+- **`SERVICE_SECRET`**: verifies service-to-service HMAC tokens (`x-service-auth` + `x-service-name`).
+- **`ORDER_SERVICE_URL`**, **`PRODUCT_SERVICE_URL`**, **`NOTIFICATION_SERVICE_URL`**: upstream service base URLs.
+- **`ALLOWED_ORIGINS`**: CORS allowlist.
 
-### Reviews
+### Authentication & authorization (gateway + service-to-service)
+Gateway-trust (external client traffic via API Gateway):
+- Gateway must inject:
+  - `x-gateway-key` (must equal `GATEWAY_SECRET_KEY`)
+  - `x-user-id` (required)
+  - `x-user-role` (optional; `admin`, `user`, `seller`, `brand_owner`)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/reviews/:id` | Public | Get review by ID |
-| GET | `/api/reviews/products/:productId` | Public | Get reviews for a product |
-| GET | `/api/reviews/products/:productId/summary` | Public | Get review summary |
-| POST | `/api/reviews` | User | Create a new review |
-| PATCH | `/api/reviews/:id` | Owner | Update a review |
-| DELETE | `/api/reviews/:id` | Owner/Admin | Delete a review |
-| GET | `/api/reviews/users/:userId` | User | Get user's reviews |
+Service-to-service (internal traffic, no gateway):
+- Caller must send:
+  - `x-service-auth`: `serviceName:timestamp:signature`
+  - `x-service-name`: `serviceName`
+- Service verifies token using **`SERVICE_SECRET`** and validates `x-service-name` matches token's serviceName.
+- Sets `req.user = { id: <serviceName>, role: 'internal' }`
 
-### Review Images
+Role values:
+- Use **`internal`** consistently for internal calls (service-to-service).
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/reviews/:id/images` | Owner | Add image to review |
-| DELETE | `/api/reviews/:id/images/:imageId` | Owner | Remove image |
+### Response format
+- Most success responses: `200/201` with `{ success: true, data: ... }`
+- Delete/remove actions respond `204` with no body.
+- Errors are formatted by `src/middleware/error-handler.ts`:
+  - `{ success: false, error: string, details?: any }`
 
-### Votes
+## 4) Endpoint map (route → controller → service/repo)
+Base route: **`/api/reviews`** → `src/routes/review.routes.ts`
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/reviews/:id/vote` | User | Vote helpful/unhelpful |
-| DELETE | `/api/reviews/:id/vote` | User | Remove vote |
+**Reviews (CRUD)**:
+- `POST /` → `createReview` (gatewayAuth, user only)
+- `GET /:id` → `getReviewById` (gatewayOrInternalAuth)
+- `GET /product/:productId` → `getReviewsByProduct` (gatewayOrInternalAuth)
+- `GET /user/:userId` → `getReviewsByUser` (gatewayAuth)
+- `PUT /:id` → `updateReview` (gatewayAuth, owner only)
+- `DELETE /:id` → `deleteReview` (gatewayAuth, owner or admin)
 
-### Reports
+**Images**:
+- `POST /:id/images` → `addImage` (gatewayAuth, owner only)
+- `DELETE /:id/images/:imageId` → `deleteImage` (gatewayAuth, owner only)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/reviews/:id/report` | User | Report a review |
+**Votes**:
+- `POST /:id/vote` → `voteReview` (gatewayAuth)
+- `DELETE /:id/vote` → `removeVote` (gatewayAuth)
 
-### Replies
+**Reports**:
+- `POST /:id/report` → `reportReview` (gatewayAuth)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/reviews/:id/replies` | Seller/Brand/Admin | Reply to review |
-| PATCH | `/api/reviews/:id/replies/:replyId` | Owner | Update reply |
-| DELETE | `/api/reviews/:id/replies/:replyId` | Owner/Admin | Delete reply |
+**Replies** (seller/brand/admin):
+- `POST /:id/replies` → `createReply` (gatewayAuth, seller/brand_owner/admin)
+- `PUT /:id/replies/:replyId` → `updateReply` (gatewayAuth, owner)
+- `DELETE /:id/replies/:replyId` → `deleteReply` (gatewayAuth, owner or admin)
 
-### Review Requests
+**Review Requests** (internal):
+- `POST /requests` → `createReviewRequest` (internalAuth)
+- `GET /requests/pending` → `getReviewRequests` (gatewayAuth)
+- `POST /requests/:id/skip` → `skipReviewRequest` (gatewayAuth)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/reviews/review-requests` | User | Get pending review requests |
-| POST | `/api/reviews/review-requests/:id/skip` | User | Skip a review request |
-| POST | `/api/reviews/internal/review-requests` | Internal | Create review request (from Order Service) |
+**Moderation** (admin only):
+- `GET /moderation/queue` → `getModerationQueue` (gatewayAuth + admin)
+- `POST /moderation/:id/approve` → `approveReview` (gatewayAuth + admin)
+- `POST /moderation/:id/reject` → `rejectReview` (gatewayAuth + admin)
 
-### Moderation (Admin)
+**Summary**:
+- `GET /summary/:productId` → `getReviewSummary` (gatewayOrInternalAuth)
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/reviews/admin/moderation/queue` | Admin | Get moderation queue |
-| POST | `/api/reviews/admin/reviews/:id/approve` | Admin | Approve a review |
-| POST | `/api/reviews/admin/reviews/:id/reject` | Admin | Reject a review |
+## 5) Middleware
+Files under `src/middleware/`.
 
-## Authentication
+- **`auth.ts`**
+  - `gatewayAuth`: verifies gateway headers; sets `req.user`.
+  - `gatewayOrInternalAuth`: accepts gateway OR service-to-service HMAC; sets `req.user`.
+  - `internalAuth`: service-to-service only (HMAC), validates serviceName matches token.
+  - `requireRole(...roles)`: checks `req.user.role`.
+  - `requireOwnership(fn)`: checks if user owns the resource (bypassed for admin/internal).
+- **`validation.ts`**
+  - `validateRequest`: checks `express-validator` results and returns `400` on failure.
+  - Validators for reviews, images, votes, reports, replies, moderation.
+- **`error-handler.ts`**
+  - `AppError` subclasses (`ValidationError`, `NotFoundError`, `UnauthorizedError`, `ForbiddenError`, `ConflictError`).
+  - Global `errorHandler` middleware.
+  - `asyncHandler` wrapper for async controllers.
 
-### Gateway Authentication
-Protected routes require the API Gateway to forward:
-- `x-gateway-key`: Shared secret verifying request came from gateway
-- `x-user-id`: Authenticated user's ID
-- `x-user-role`: User's role (user/seller/brand_manager/admin)
+## 6) Database & Prisma
+- Schema: `prisma/schema.prisma`
+- Prisma client is generated into `src/generated/prisma`.
+- Build copies it into `dist/generated/prisma` using `scripts/copy-generated-prisma.mjs` so `node dist/index.js` works.
 
-### Service-to-Service Authentication
-Internal services use HMAC-based authentication:
-- `x-service-auth`: `serviceName:timestamp:signature`
-- `x-service-name`: Calling service name
+Tables:
+- `product_reviews`: main review data (rating, title, body, status, verified purchase)
+- `review_images`: photos attached to reviews (max 10 per review)
+- `review_votes`: helpful/unhelpful votes
+- `review_reports`: abuse reports
+- `review_replies`: seller/brand/admin responses
+- `review_requests`: post-delivery prompts for customers
+- `moderation_queue`: items pending admin review
+- `product_review_summaries`: cached aggregates per product
+- `ServiceOutbox`: integration events
 
-## Domain Events
+Schema changes:
+- MVP/local: `pnpm -C backend/services/review-service db:push`
+- Production-grade: prefer migrations (`db:migrate` → generate migration files, `db:migrate:prod` → apply)
 
-Events published to the outbox for other services:
+## 7) Outbox events
+- Table: `ServiceOutbox` (in Prisma schema).
+- Writer: `src/services/outbox.service.ts`.
+- Emitted events:
+  - `review.created` - new review submitted
+  - `review.updated` - review edited
+  - `review.deleted` - review removed
+  - `review.approved` - moderation approved
+  - `review.rejected` - moderation rejected
+  - `review.reported` - review flagged for abuse
+  - `review.voted` - helpful/unhelpful vote cast
+  - `review.reply.created` - seller/brand replied
+  - `review.request.created` - prompt sent to customer
+  - `review.summary.updated` - product rating recalculated
 
-### Review Events
-| Event | Description | Consumers |
-|-------|-------------|-----------|
-| `review.created` | New review submitted | Product, Seller, Brand, Notification |
-| `review.updated` | Review edited | Product |
-| `review.approved` | Review passed moderation | Product |
-| `review.rejected` | Review failed moderation | Notification |
-| `review.deleted` | Review removed | Product |
-| `review.voted` | User voted helpful/unhelpful | Analytics |
-| `review.reported` | Review flagged | Moderation |
-| `review.replied` | Seller/brand responded | Notification |
+## 8) Local development & scripts
+From repo root:
+- Install: `pnpm -C backend/services/review-service install`
+- Dev: `pnpm -C backend/services/review-service dev`
+- Build: `pnpm -C backend/services/review-service build`
+- Start built: `pnpm -C backend/services/review-service start`
+- Prisma:
+  - `db:generate`, `db:push`, `db:migrate`, `db:migrate:prod`, `db:studio`, `db:reset`
+- Quality:
+  - `lint`, `lint:fix`, `format`
 
-### Review Request Events
-| Event | Description | Consumers |
-|-------|-------------|-----------|
-| `review_request.created` | Request created after delivery | Notification |
-| `review_request.sent` | Request sent to user | Analytics |
-| `review_request.completed` | User submitted review | Analytics |
+## 9) Docker
+- `Dockerfile`: multi-stage image (build + production).
+- `docker-compose.yml`: app + db + redis + one-shot db init container (uses `prisma db push`).
 
-## Events Consumed
+Known caveat:
+- This service has a **`pnpm-lock.yaml`**, but the `Dockerfile` currently uses **`npm ci`**. `npm ci` requires a `package-lock.json`. Either:
+  - switch Dockerfile to pnpm, or
+  - add and maintain `package-lock.json`.
 
-| Event | Source | Action |
-|-------|--------|--------|
-| `order.delivered` | Order Service | Create review request |
+## 10) Tests
+- Unit tests exist for services (Jest).
+- Run: `pnpm -C backend/services/review-service test`
+- Coverage: `pnpm -C backend/services/review-service test:coverage`
 
-## Environment Variables
+## 11) Future-me problems / tech debt
+- **Verified purchase check**: currently trusts client; should verify against ORDER_SERVICE on review creation.
+- **Image upload**: currently stores URLs only; consider integrating with storage service for actual file uploads.
+- **Rate limiting**: no per-user rate limits on voting/reporting; could be abused.
+- **Summary recalculation**: done synchronously; consider async job for high-volume products.
+- **Outbox transactionality**: ideally write domain updates + outbox rows in the same Prisma transaction.
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Service port | 3016 |
-| `DATABASE_URL` | PostgreSQL connection string | Required |
-| `NODE_ENV` | Environment mode | development |
-| `GATEWAY_SECRET_KEY` | Gateway authentication key | None (dev bypass) |
-| `SERVICE_SECRET` | Service-to-service auth secret | None (dev bypass) |
-| `ALLOWED_ORIGINS` | CORS allowed origins | http://localhost:3000 |
-
-## Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Generate Prisma client
-pnpm db:generate
-
-# Run in development mode
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Run production
-pnpm start
-```
-
-## File Structure
-
-```
-src/
-├── config/
-│   └── swagger.ts          # Swagger/OpenAPI configuration
-├── controllers/
-│   └── review.controller.ts # Request handlers
-├── lib/
-│   └── prisma.ts           # Local Prisma client singleton
-├── middleware/
-│   ├── auth.ts             # Gateway trust & service auth
-│   ├── error-handler.ts    # Error classes & handler
-│   └── validation.ts       # Request validators
-├── repositories/
-│   └── review.repository.ts # Database operations
-├── routes/
-│   └── review.routes.ts    # Route definitions
-├── services/
-│   ├── review.service.ts   # Business logic
-│   └── outbox.service.ts   # Domain event publishing
-├── types/
-│   └── index.ts            # TypeScript interfaces
-├── utils/
-│   └── serviceAuth.ts      # Service auth utilities
-└── index.ts                # Application entry point
-```
-
-## Database Models
-
-### product_reviews
-Main review table with rating, text, verification status, moderation status, and engagement metrics.
-
-### review_images
-Images attached to reviews (max 10 per review).
-
-### review_votes
-User votes (helpful/unhelpful) on reviews.
-
-### review_reports
-Reports for inappropriate reviews.
-
-### review_replies
-Seller/brand/admin responses to reviews.
-
-### review_requests
-Prompts sent to customers after delivery to leave a review.
-
-### moderation_queue
-Queue for admin review moderation.
-
-### product_review_summaries
-Aggregated review statistics per product for fast retrieval.
-
-## Integration with Other Services
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                     REVIEW SERVICE INTEGRATIONS                      │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  CONSUMES FROM:                    PUBLISHES TO:                    │
-│  ─────────────                     ─────────────                    │
-│  • Order Service                   • Product Service                │
-│    └─ order.delivered →              └─ review.approved →           │
-│       Create review request            Update product rating        │
-│                                                                     │
-│  QUERIES:                          • Notification Service           │
-│  ────────                            └─ review_request.created →    │
-│  • Product Service →                   Send review reminder         │
-│    Product details                                                  │
-│  • Brand Service →                 • Seller Service                 │
-│    Brand details                     └─ review.created →            │
-│  • Seller Service →                    Notify seller                │
-│    Seller details                                                   │
-│                                    • Analytics Service              │
-│                                      └─ review.voted →              │
-│                                         Track engagement            │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-## Review Lifecycle
-
-1. **Customer purchases product** → Order Service
-2. **Order delivered** → Order Service publishes `order.delivered`
-3. **Review request created** → Review Service creates request
-4. **Notification sent** → Notification Service sends email/push
-5. **Customer submits review** → Review Service creates review
-6. **Auto-moderation** → Review added to moderation queue
-7. **Admin approves** → Review visible on product page
-8. **Product rating updated** → Product Service recalculates rating
+## 12) File-by-file
+- `src/index.ts`: Express bootstrap, routes, health, swagger, error handler, shutdown.
+- `src/lib/prisma.ts`: Prisma singleton client.
+- `src/middleware/*`: auth/validation/error-handler.
+- `src/routes/*`: HTTP routes + validators.
+- `src/controllers/*`: request handlers.
+- `src/services/*`: business logic + outbox publishing.
+- `src/repositories/*`: Prisma access layer.
+- `src/types/*`: DTOs and interfaces.
+- `src/utils/*`: shared helpers (serviceAuth).
+- `src/config/swagger.ts`: OpenAPI configuration.
+- `scripts/copy-generated-prisma.mjs`: copies generated Prisma client into `dist/`.

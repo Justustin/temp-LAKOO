@@ -49,10 +49,39 @@ const options: swaggerJsdoc.Options = {
     ],
     components: {
       securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT'
+        GatewayAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-gateway-key',
+          description: 'Gateway secret key for external requests via API Gateway'
+        },
+        ServiceAuth: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-service-auth',
+          description: 'Service-to-service HMAC token (format: serviceName:timestamp:signature)'
+        },
+        ServiceName: {
+          type: 'apiKey',
+          in: 'header',
+          name: 'x-service-name',
+          description: 'Calling service name (must match serviceName in x-service-auth token)'
+        }
+      },
+      parameters: {
+        XUserId: {
+          name: 'x-user-id',
+          in: 'header',
+          required: true,
+          schema: { type: 'string', format: 'uuid' },
+          description: 'User ID forwarded by API Gateway'
+        },
+        XUserRole: {
+          name: 'x-user-role',
+          in: 'header',
+          required: false,
+          schema: { type: 'string', enum: ['user', 'seller', 'brand_owner', 'admin'] },
+          description: 'User role forwarded by API Gateway'
         }
       }
     }

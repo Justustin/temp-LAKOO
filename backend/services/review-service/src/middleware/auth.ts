@@ -91,7 +91,11 @@ export const gatewayOrInternalAuth = (req: AuthenticatedRequest, res: Response, 
   // Check internal service token
   if (token && serviceName && serviceSecret) {
     try {
-      verifyServiceToken(token, serviceSecret);
+      const { serviceName: tokenServiceName } = verifyServiceToken(token, serviceSecret);
+      // Validate that x-service-name header matches the serviceName in the token
+      if (tokenServiceName !== serviceName) {
+        return next(new UnauthorizedError('Service name mismatch'));
+      }
       req.user = { id: serviceName, role: 'internal' };
       return next();
     } catch {
@@ -124,7 +128,11 @@ export const internalAuth = (req: AuthenticatedRequest, res: Response, next: Nex
   }
 
   try {
-    verifyServiceToken(token, serviceSecret);
+    const { serviceName: tokenServiceName } = verifyServiceToken(token, serviceSecret);
+    // Validate that x-service-name header matches the serviceName in the token
+    if (tokenServiceName !== serviceName) {
+      return next(new UnauthorizedError('Service name mismatch'));
+    }
     req.user = { id: serviceName, role: 'internal' };
     next();
   } catch {
