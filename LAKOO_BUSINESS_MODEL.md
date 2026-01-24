@@ -1,7 +1,7 @@
-# LAKOO E-COMMERCE PLATFORM - BUSINESS MODEL
+# LAKOO - SOCIAL COMMERCE PLATFORM FOR INDONESIAN FASHION
 
-**Last Updated:** January 2026  
-**Status:** Active Development  
+**Last Updated:** January 2026
+**Status:** Active Development
 **Document Purpose:** New Employee Onboarding Guide
 
 ---
@@ -12,16 +12,18 @@
 2. [Business Model Overview](#business-model-overview)
 3. [Core Entities](#core-entities)
 4. [Revenue Model](#revenue-model)
-5. [The 15 LAKOO Brands](#the-15-lakoo-brands)
-6. [How Orders Work](#how-orders-work)
-7. [Warehouse & Inventory System](#warehouse--inventory-system)
-8. [Third-Party Seller Marketplace](#third-party-seller-marketplace)
-9. [Advertising System](#advertising-system)
-10. [Platform Features](#platform-features)
-11. [Marketing Strategy](#marketing-strategy)
-12. [Technology Stack](#technology-stack)
-13. [Team Structure](#team-structure)
-14. [Success Metrics](#success-metrics)
+5. [Social Features & Content Discovery](#social-features--content-discovery)
+6. [Bazaar Sponsorship Program](#bazaar-sponsorship-program)
+7. [Quality Control & Draft Approval](#quality-control--draft-approval)
+8. [LAKOO House Brands (Filler)](#lakoo-house-brands-filler)
+9. [How Orders Work](#how-orders-work)
+10. [Warehouse & Inventory System](#warehouse--inventory-system)
+11. [Advertising System](#advertising-system)
+12. [Platform Features](#platform-features)
+13. [Marketing Strategy](#marketing-strategy)
+14. [Technology Stack](#technology-stack)
+15. [Team Structure](#team-structure)
+16. [Success Metrics](#success-metrics)
 
 ---
 
@@ -29,308 +31,760 @@
 
 **What is LAKOO?**
 
-LAKOO is an Indonesian fashion e-commerce platform operating a **Shein-style multi-brand model** combined with an **advertising-based third-party marketplace**.
+LAKOO is Indonesia's **social commerce platform for fashion discovery** - combining the visual inspiration of Pinterest, the content-driven shopping of Xiaohongshu (Little Red Book), and the trusted recommendations of Dianping, with **seamless integrated checkout**.
+
+Think: *"Where do I find the best Indonesian fashion brands?"* → LAKOO
 
 **Key Differentiators:**
-- **15 Official Brands** - Multiple brand identities (like Shein has ROMWE, SHEIN X, etc.)
-- **Centralized Warehouse** - All brands pull from one inventory pool
-- **0% Commission Marketplace** - Third-party sellers list for free, pay only for advertising
-- **Professional Presentation** - Standardized photography, packaging, and storefront design
-- **Live Commerce** - Daily live streaming with influencers and celebrities
+- **Pinterest-style Discovery** - Visual, browsable, inspirational feed (not transactional like Shopee)
+- **Content + Commerce** - Every post is shoppable with seamless checkout (no external links like Instagram)
+- **Community-Driven** - Real Indonesian brands, authentic user reviews, community trust
+- **0.5% Commission** - Lowest in market (vs. Shopee 5-15%, Tokopedia 5-10%)
+- **Curated Quality** - All products go through draft approval (no fake photos, no fake products)
+- **Bazaar Brand Acquisition** - We sponsor local bazaars to onboard community-heavy brands
 
-**Target Market:** Indonesian consumers aged 18-40, fashion-conscious, value-seeking
+**Target Market:** Indonesian women aged 18-40, fashion-conscious, community-oriented, seeking discovery and inspiration
 
-**Business Stage:** Development/Pre-Launch (transitioning from previous group buying model)
+**Business Stage:** Development/Pre-Launch (pivoting to social commerce model)
+
+**Positioning:** We don't compete on price with Shopee. We compete on **experience, discovery, and trust**. Even if users discover on LAKOO and buy elsewhere initially, our 0.5% commission will attract sellers when traffic grows.
 
 ---
 
 ## BUSINESS MODEL OVERVIEW
 
-### The Three-Layer Model
+### The Social Commerce Model
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    CUSTOMERS                                 │
-│                 (Browse & Buy)                               │
+│                      USERS                                   │
+│            (Discover, Browse, Save, Follow, Buy)             │
+└────────────────────┬────────────────────────────────────────┘
+                     │
+                     ▼
+┌─────────────────────────────────────────────────────────────┐
+│              CONTENT DISCOVERY FEED                          │
+│                                                              │
+│  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐        │
+│  │ Brand   │  │ User    │  │ Brand   │  │ Review  │        │
+│  │ Post    │  │ Review  │  │ Post    │  │ + Photo │        │
+│  │ [Shop]  │  │ [Shop]  │  │ [Shop]  │  │ [Shop]  │        │
+│  └─────────┘  └─────────┘  └─────────┘  └─────────┘        │
+│                                                              │
+│  Pinterest-style visual grid • Algorithm-driven             │
+│  Like, Save, Comment, Follow • Seamless checkout            │
 └────────────────────┬────────────────────────────────────────┘
                      │
         ┌────────────┴─────────────┐
         │                          │
 ┌───────▼──────────┐      ┌────────▼──────────┐
-│  LAKOO BRANDS    │      │  THIRD-PARTY      │
-│   (15 Brands)    │      │    SELLERS        │
+│  COMMUNITY       │      │  LAKOO HOUSE      │
+│  BRANDS          │      │  BRANDS (Filler)  │
 │                  │      │                   │
-│ • LAKOO Elite    │      │ • Pay 0% fees     │
-│ • LAKOO Street   │      │ • Pay for ads     │
-│ • LAKOO Classic  │      │ • Own inventory   │
-│ • ... (12 more)  │      │                   │
-└───────┬──────────┘      └───────────────────┘
-        │
-        │ (Pull from)
-        │
-┌───────▼──────────────────────────────────────┐
-│         LAKOO WAREHOUSE                       │
-│                                               │
-│ • Owns all inventory for 15 brands           │
-│ • Orders from factories in bulk              │
-│ • Manages grosir bundle constraints          │
-│ • Fulfills all brand orders                  │
-└───────────────────────────────────────────────┘
+│ • From bazaars   │      │ • Fill gaps only  │
+│ • 0.5% commission│      │ • No competition  │
+│ • Own inventory  │      │ • e.g., hats if   │
+│ • Create content │      │   no one sells    │
+└──────────────────┘      └───────────────────┘
 ```
+
+### The Core Concept
+
+**Discovery Platform, Not Shopping App**
+
+Users come to LAKOO to:
+1. **Discover** - "What are the trending hijab brands?"
+2. **Get Inspired** - Browse outfit ideas, styling tips
+3. **Save & Follow** - Build collections, follow favorite brands
+4. **Buy Seamlessly** - One-tap checkout without leaving the app
+
+This is different from Shopee/Tokopedia where users search for specific products. LAKOO is for **exploration and discovery**.
 
 ### Why This Model Works
 
-**For Customers:**
-- Wide variety (15 different brand styles + third-party sellers)
-- Professional quality control
-- Fast shipping (centralized warehouse)
-- Trusted platform
+**For Users:**
+- Beautiful, inspiring content (not cluttered product listings)
+- Discover new Indonesian brands they'd never find on Shopee
+- Trust through community reviews and curated quality
+- Seamless checkout (unlike Instagram's external links)
+
+**For Community Brands:**
+- Lowest commission in market (0.5% vs 5-15% elsewhere)
+- Content-first discovery (not buried in search results)
+- Community of engaged fashion enthusiasts
+- We help set up their store and migrate their IG content
 
 **For LAKOO:**
-- Control over quality (official brands)
-- High margins (50-60% on brands)
-- Additional revenue from ads (third-party sellers)
-- Brand equity (multiple brand identities)
+- Cheap acquisition via bazaar sponsorship (~Rp 1M per brand)
+- 0.5% commission on all transactions
+- Sponsored post revenue (brands pay for feed visibility)
+- Traffic-first approach attracts investors and sellers
 
-**For Sellers:**
-- No commission fees (vs. 10-15% on other platforms)
-- Access to LAKOO's customer base
-- Professional tools (page builder, photography studio)
-- Optional advertising for growth
+### Competitive Positioning
+
+| Platform | Content | Commerce | Checkout | Our Advantage |
+|----------|---------|----------|----------|---------------|
+| **Instagram** | Yes | Limited | External links (friction) | Seamless checkout |
+| **TikTok Shop** | Video only | Yes | In-app | Pinterest-style (not video) |
+| **Lemon8** | Yes | No | None | Integrated commerce |
+| **Shopee** | No | Yes | In-app | Discovery & inspiration |
+| **Pinterest** | Yes | Limited | External | Full commerce + local brands |
+| **LAKOO** | **Yes** | **Yes** | **Seamless** | **All combined** |
 
 ---
 
 ## CORE ENTITIES
 
-### 1. LAKOO WAREHOUSE
+### 1. USERS (Content Consumers & Creators)
 
-**Function:** Inventory owner and fulfillment center
+**Function:** The heart of the platform - they discover, create content, and buy
 
-**Key Responsibilities:**
-- Purchase inventory from factories in bulk (grosir bundles)
-- Store all products for 15 official brands
-- Quality control and inspection
-- Order fulfillment and shipping
-- Inventory forecasting and reordering
+**User Types:**
 
-**Critical System: Grosir Bundle Allocation**
-- Factories ship in fixed bundles (e.g., 2S + 5M + 4L + 1XL = 12 units)
-- Warehouse tracks tolerance levels per size (max excess allowed)
-- Real-time constraint checking prevents overstock of unpopular sizes
-- Proactive ordering based on demand forecasting
+**Browsers/Shoppers:**
+- Discover new brands through the feed
+- Save products to collections
+- Follow favorite brands
+- Read reviews before buying
+- Purchase with seamless checkout
 
-**Location:** TBD (ideally 500-1000m² near Jakarta)
+**Content Creators (Reviewers):**
+- Post outfit photos and styling ideas
+- Write product reviews with photos
+- Earn through affiliate links
+- Build following within the platform
 
-**Staff:**
-- Warehouse Manager
-- 5-10 Warehouse Workers
-- 2-3 Quality Control Inspectors
-- 1 Inventory Manager
+**Behaviors We're Designing For:**
+- "I'm bored, let me scroll LAKOO for fashion inspiration"
+- "I'm going to a wedding, what should I wear?" → Search LAKOO
+- "My friend posted this outfit, I want to buy it" → Tap to shop
 
 ---
 
-### 2. LAKOO PLATFORM
+### 2. COMMUNITY BRANDS
 
-**Function:** E-commerce platform operator and brand manager
+**Function:** Independent Indonesian fashion brands acquired through bazaar sponsorship
+
+**Characteristics:**
+- Onboarded via bazaar sponsorship program (Rp 1M sponsorship)
+- Own their inventory and handle fulfillment
+- Pay only 0.5% commission (lowest in market)
+- Create content (posts) to appear in discovery feed
+- All products go through draft approval before listing
+
+**How They Join:**
+1. LAKOO sponsors their physical bazaar (Rp 1M cash)
+2. Brand agrees to set up store on LAKOO
+3. LAKOO team sets up their store and migrates their last 10 IG posts
+4. Brand continues posting and selling on the platform
+
+**Target Brands:**
+- Community-heavy women's fashion brands
+- Hijab/modest fashion (Wearing Klamby, etc.)
+- Local streetwear with engaged communities
+- Sustainable/artisan fashion brands
+- Brands with strong Instagram following
+
+**Brand Tools Provided:**
+- Brand dashboard (products, orders, analytics)
+- Content posting (photos, descriptions, shoppable tags)
+- Analytics (views, saves, follows, conversions)
+- Sponsored post campaigns (pay for feed visibility)
+
+---
+
+### 3. LAKOO HOUSE BRANDS (Filler)
+
+**Function:** Fill product gaps that community brands don't cover
+
+**Key Principle:** LAKOO House Brands do NOT compete with community brands. They only exist to fill gaps.
+
+**Example:**
+- If no community brand sells hats → LAKOO sells hats
+- If no community brand sells basic tees → LAKOO sells basic tees
+- Once a community brand starts selling hats → LAKOO stops
+
+**Characteristics:**
+- Pull inventory from LAKOO warehouse
+- Managed by internal team
+- Reduced from original 15 brands to gap-filler role only
+- May maintain 2-3 house brands maximum (e.g., LAKOO Basics, LAKOO Modest)
+
+**Warehouse (for House Brands only):**
+- Location: TBD (smaller footprint needed now)
+- Manages grosir bundle constraints for house brand inventory
+- Quality control and fulfillment
+
+---
+
+### 4. LAKOO PLATFORM
+
+**Function:** Social commerce platform operator
 
 **Key Responsibilities:**
-- Operate website and mobile apps
-- Manage 15 brand storefronts
+- Operate PWA (MVP) and native mobile apps (launch)
+- Manage content discovery feed algorithm
 - Process customer payments
 - Handle customer service
-- Marketing and advertising
+- Quality control (draft approval for all products)
+- Bazaar sponsorship outreach
 - Technology development
 
 **Revenue Sources:**
-- **Brand Sales:** "Buy" from warehouse at transfer price, sell to customers at retail price (50-60% margin)
-- **Advertising:** Third-party sellers pay for product promotion
-- **Live Streaming:** Direct sales during live events
+- **Commission:** 0.5% on all community brand transactions
+- **Sponsored Posts:** Brands pay for visibility in feed
+- **House Brand Sales:** Margin on filler products
+- **Live Streaming:** Direct sales during live events (future)
 
 **Team:** See [Team Structure](#team-structure) section
 
 ---
 
-### 3. THIRD-PARTY SELLERS
-
-**Function:** Independent merchants selling on LAKOO marketplace
-
-**Characteristics:**
-- Own their inventory (not from LAKOO warehouse)
-- Manage their own fulfillment
-- Pay 0% commission on sales
-- Pay for advertising if they want visibility
-
-**Seller Tools Provided:**
-- Seller dashboard (manage products, orders)
-- Drag-and-drop page builder (create professional storefront)
-- Analytics (sales, traffic, conversion)
-- Access to photography studio (optional, paid)
-- Advertising campaign manager
-
-**Target Sellers:**
-- Small/medium fashion brands
-- Individual designers
-- Boutique owners
-- Resellers with unique products
-
----
-
 ## REVENUE MODEL
 
-### Revenue Breakdown (Projected Monthly)
+### Revenue Streams
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    REVENUE SOURCES                           │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  1. COMMISSION (0.5%)                                        │
+│     └─ On every community brand transaction                  │
+│     └─ Lowest in market (Shopee 5-15%, Tokopedia 5-10%)     │
+│                                                              │
+│  2. SPONSORED POSTS                                          │
+│     └─ Brands pay for visibility in discovery feed           │
+│     └─ Similar to Instagram sponsored posts                  │
+│     └─ CPC (cost per click) or CPM (cost per impression)    │
+│                                                              │
+│  3. HOUSE BRAND MARGINS                                      │
+│     └─ 50-60% margin on filler products                     │
+│     └─ Reduced role (gap-filler only)                       │
+│                                                              │
+│  4. FUTURE: AFFILIATE PROGRAM                                │
+│     └─ Users earn % on referred sales                       │
+│     └─ LAKOO takes small cut of affiliate fees              │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Revenue Projections (Year 1 Targets)
+
+**Phase 1: Traffic Building (Month 1-6)**
+- Focus: User acquisition, brand onboarding
+- Revenue: Minimal (not the priority)
+- Goal: 100+ community brands, 50K+ MAU
+
+**Phase 2: Monetization (Month 7-12)**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ REVENUE SOURCE           │ AMOUNT (Rp)     │ % OF TOTAL    │
 ├─────────────────────────────────────────────────────────────┤
-│ 1. LAKOO Official Brands │ 4,500,000,000   │ 93%           │
-│    (15 brands × Rp 300M) │                 │               │
+│ 1. Commission (0.5%)     │ 250,000,000     │ 40%           │
+│    (GMV Rp 50B × 0.5%)   │                 │               │
 │                          │                 │               │
-│ 2. Third-Party Ads       │ 350,000,000     │ 7%            │
-│    (70 advertisers       │                 │               │
-│     × Rp 5M/month)       │                 │               │
+│ 2. Sponsored Posts       │ 300,000,000     │ 48%           │
+│    (100 brands × Rp 3M)  │                 │               │
 │                          │                 │               │
-│ TOTAL MONTHLY REVENUE    │ 4,850,000,000   │ 100%          │
+│ 3. House Brand Margins   │ 75,000,000      │ 12%           │
+│    (gap-filler only)     │                 │               │
+│                          │                 │               │
+│ MONTHLY REVENUE (M12)    │ 625,000,000     │ 100%          │
 └─────────────────────────────────────────────────────────────┘
-
-ANNUAL REVENUE: Rp 58.2 Billion
 ```
 
-### Cost Structure (Estimated Monthly)
+### Cost Structure (Estimated Monthly at Scale)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ COST ITEM                │ AMOUNT (Rp)     │ % OF REVENUE  │
+│ COST ITEM                │ AMOUNT (Rp)     │ NOTES         │
 ├─────────────────────────────────────────────────────────────┤
-│ Cost of Goods (from      │ 1,800,000,000   │ 37%           │
-│ factories)               │                 │               │
+│ Bazaar Sponsorships      │ 100,000,000     │ 100 brands/mo │
+│ (Brand Acquisition)      │ (Rp 1M × 100)   │               │
 │                          │                 │               │
-│ Salaries & Staff         │ 1,200,000,000   │ 25%           │
+│ Salaries & Staff         │ 300,000,000     │ Leaner team   │
 │                          │                 │               │
-│ Marketing & Content      │ 500,000,000     │ 10%           │
+│ Technology & Hosting     │ 50,000,000      │ PWA + cloud   │
 │                          │                 │               │
-│ Warehouse Operations     │ 200,000,000     │ 4%            │
+│ Content Moderation       │ 30,000,000      │ Draft review  │
+│ (Quality Control)        │                 │               │
 │                          │                 │               │
-│ Technology & Hosting     │ 100,000,000     │ 2%            │
+│ Marketing (non-bazaar)   │ 50,000,000      │ Digital ads   │
 │                          │                 │               │
-│ TOTAL MONTHLY COSTS      │ 3,800,000,000   │ 78%           │
+│ TOTAL MONTHLY COSTS      │ 530,000,000     │               │
 ├─────────────────────────────────────────────────────────────┤
-│ NET PROFIT               │ 1,050,000,000   │ 22%           │
+│ NET PROFIT (at scale)    │ 95,000,000      │ ~15% margin   │
 └─────────────────────────────────────────────────────────────┘
-
-ANNUAL PROFIT: Rp 12.6 Billion
 ```
+
+### Unit Economics
+
+**Per Brand Acquisition:**
+```
+Cost to acquire brand:     Rp 1,000,000 (bazaar sponsorship)
+Expected brand GMV/month:  Rp 10,000,000
+Commission earned:         Rp 50,000 (0.5%)
+Months to payback:         20 months
+
+BUT: The real value is TRAFFIC, not commission
+     - Each brand brings their community
+     - More traffic = more investors
+     - More traffic = more brands want to join
+```
+
+**Why 0.5% Commission Works:**
+- We're not trying to profit from commission (yet)
+- 0.5% is essentially "payment processing pass-through"
+- Real monetization is sponsored posts + future scale
+- Low commission attracts brands away from Shopee/Tokopedia
 
 ---
 
-## THE 15 LAKOO BRANDS
+## SOCIAL FEATURES & CONTENT DISCOVERY
 
-Each brand has its own identity, target audience, and aesthetic. Same products can appear in multiple brands with different pricing.
+### The Pinterest-Style Feed
 
-### Brand Portfolio
+LAKOO's core experience is a visual discovery feed - not a product catalog.
 
-| # | Brand Name | Target Audience | Price Range | Style |
-|---|------------|----------------|-------------|-------|
-| 1 | **LAKOO Elite** | Young professionals, 25-35 | Rp 200K-500K | Professional, elegant, premium |
-| 2 | **LAKOO Street** | Gen Z, streetwear fans, 18-25 | Rp 100K-300K | Urban, edgy, bold graphics |
-| 3 | **LAKOO Classic** | All ages, timeless style | Rp 150K-350K | Minimalist, neutral colors |
-| 4 | **LAKOO Active** | Fitness enthusiasts | Rp 100K-400K | Sportswear, athleisure |
-| 5 | **LAKOO Kids** | Parents buying for children | Rp 80K-200K | Fun, durable, comfortable |
-| 6 | **LAKOO Modest** | Modest fashion seekers | Rp 150K-400K | Hijabs, long dresses, modest |
-| 7 | **LAKOO Curve** | Plus-size customers | Rp 150K-400K | Trendy, flattering cuts |
-| 8 | **LAKOO Luxe** | High-income shoppers | Rp 400K-1M | Premium materials, designer-inspired |
-| 9 | **LAKOO Casual** | Everyday comfort | Rp 80K-250K | Relaxed, comfortable, basics |
-| 10 | **LAKOO Party** | Social events, nightlife | Rp 200K-600K | Bold, glamorous, statement |
-| 11 | **LAKOO Bohemian** | Free-spirited, artistic | Rp 150K-400K | Flowy, patterns, earthy tones |
-| 12 | **LAKOO Minimalist** | Clean aesthetic lovers | Rp 150K-350K | Simple, neutral, quality fabrics |
-| 13 | **LAKOO Vintage** | Retro fashion enthusiasts | Rp 150K-400K | 70s/80s/90s inspired |
-| 14 | **LAKOO Sustainable** | Eco-conscious shoppers | Rp 200K-500K | Eco-friendly materials |
-| 15 | **LAKOO X** | Trend followers | Rp 100K-300K | Fast fashion, trend-driven |
+```
+┌─────────────────────────────────────────────────────────────┐
+│  LAKOO FEED (Algorithm-Driven)                              │
+│                                                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ [Image]     │  │ [Image]     │  │ [Image]     │         │
+│  │             │  │             │  │             │         │
+│  │ Brand Post  │  │ User Review │  │ Outfit Idea │         │
+│  │ @hijabbrand │  │ @sarah_style│  │ @modestlook │         │
+│  │ ♡ 234  💬 12│  │ ♡ 89   💬 5 │  │ ♡ 456  💬 23│         │
+│  │ [Shop Now]  │  │ [Shop Item] │  │ [Shop Look] │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+│                                                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ [Sponsored] │  │ [Image]     │  │ [Image]     │         │
+│  │ Brand Post  │  │ ...         │  │ ...         │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+```
 
-### Brand Management
+### Content Types
 
-**Each Brand Has:**
-- Dedicated Brand Account Manager
-- Own Instagram/TikTok accounts
-- Unique brand storefront page
-- Distinct visual identity (colors, fonts, photography style)
-- Curated product selection from warehouse
-- Independent pricing strategy
-- Own marketing campaigns
+**1. Brand Posts**
+- Product photos with styling
+- New collection announcements
+- Behind-the-scenes content
+- Can be boosted as Sponsored Posts
 
-**How Products Are Assigned:**
-1. Product arrives at warehouse (e.g., "White T-Shirt")
-2. Brand managers review new products
-3. Multiple brands can "claim" the same product
-4. Each brand sets their own price (within guidelines)
-5. Example:
-   - LAKOO Classic sells it for Rp 120K
-   - LAKOO Elite sells same shirt for Rp 180K (premium positioning)
-   - LAKOO Casual sells it for Rp 99K (value positioning)
+**2. User Reviews**
+- Post-purchase photo reviews
+- Outfit of the day (OOTD) with tagged products
+- Honest feedback and recommendations
+
+**3. Style Inspiration**
+- Outfit ideas (multiple products tagged)
+- Styling tips and tutorials
+- Trend reports
+
+### User Interactions
+
+| Action | Description |
+|--------|-------------|
+| **Like (♡)** | Show appreciation, saves to algorithm |
+| **Save** | Add to personal collections for later |
+| **Comment** | Ask questions, share thoughts |
+| **Follow** | Follow brands or users for updates |
+| **Share** | Share to WhatsApp, Instagram, etc. |
+| **Shop** | Tap product tag → seamless checkout |
+
+### Feed Algorithm
+
+The algorithm prioritizes:
+1. **Relevance** - Based on user's past likes, saves, purchases
+2. **Engagement** - Posts with high engagement get boosted
+3. **Freshness** - Recent content preferred
+4. **Diversity** - Mix of brands, users, content types
+5. **Sponsored** - Paid posts inserted naturally
+
+**Personalization Signals:**
+- Categories browsed
+- Brands followed
+- Products purchased
+- Content saved
+- Search history
+- Time spent on posts
+
+### Collections (Pinterest Boards)
+
+Users can create collections to save content:
+- "Wedding Guest Outfits"
+- "Daily Hijab Looks"
+- "Wishlist"
+- "Outfit Inspo"
+
+Collections can be:
+- Private (only you)
+- Public (others can follow)
+- Collaborative (invite friends)
+
+### Creator/Affiliate Program (Phase 2)
+
+**For Users Who Post:**
+- Earn affiliate commission when someone buys through your post
+- Commission: 2-5% of sale (paid by LAKOO, not brand)
+- Track earnings in dashboard
+- Minimum payout: Rp 100,000
+
+**Creator Tiers:**
+| Tier | Requirements | Benefits |
+|------|--------------|----------|
+| **Starter** | 0+ followers | Basic affiliate links |
+| **Rising** | 500+ followers | Higher commission (3%) |
+| **Verified** | 2000+ followers, quality content | Verified badge, 5% commission, brand deals |
+
+---
+
+## BAZAAR SPONSORSHIP PROGRAM
+
+### The Acquisition Strategy
+
+Instead of paying for digital ads to acquire brands, LAKOO sponsors physical bazaars to onboard community-heavy brands directly.
+
+### How It Works
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  BAZAAR SPONSORSHIP FLOW                                     │
+│                                                              │
+│  1. IDENTIFY                                                 │
+│     └─ Find upcoming bazaars in Jakarta/Java                │
+│     └─ Target: Women's fashion, community brands            │
+│                                                              │
+│  2. APPROACH                                                 │
+│     └─ Contact brand owners at bazaar                       │
+│     └─ Offer: Rp 1,000,000 cash sponsorship                 │
+│                                                              │
+│  3. AGREEMENT                                                │
+│     └─ Brand agrees to:                                     │
+│        • Set up store on LAKOO                              │
+│        • Allow LAKOO to migrate last 10 IG posts            │
+│        • Continue selling on LAKOO                          │
+│                                                              │
+│  4. ONBOARDING                                               │
+│     └─ LAKOO team sets up their store                       │
+│     └─ LAKOO team migrates their IG content                 │
+│     └─ Brand reviews and approves                           │
+│                                                              │
+│  5. LIVE                                                     │
+│     └─ Brand is now on LAKOO                                │
+│     └─ Brand's community discovers LAKOO                    │
+│     └─ Brand continues posting (optional but encouraged)    │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Sponsorship Details
+
+**What LAKOO Provides:**
+- Rp 1,000,000 cash payment
+- Full store setup (free)
+- Migration of last 10 Instagram posts
+- Training on how to use the platform
+- Ongoing support
+
+**What Brand Provides:**
+- Agreement to have store on LAKOO
+- Permission to migrate their IG content
+- Basic product information (prices, sizes, etc.)
+- Continued engagement (encouraged, not required)
+
+### Target Bazaars
+
+**Jakarta:**
+- JCC Fashion Bazaars
+- Mall pop-up events
+- Community fashion markets
+- Ramadan bazaars (seasonal)
+- University fashion events
+
+**Java:**
+- Bandung creative markets
+- Surabaya fashion bazaars
+- Yogyakarta artisan markets
+
+### Target Brand Profile
+
+**Ideal Brands:**
+- Women's fashion focus
+- Active Instagram presence (1K-100K followers)
+- Community-heavy (engaged followers, not just numbers)
+- Products priced Rp 50K-500K
+- Owns inventory, can fulfill orders
+
+**Examples:**
+- Local hijab brands
+- Modest fashion designers
+- Sustainable/artisan fashion
+- Indie streetwear for women
+- Handmade accessories
+
+### Economics
+
+**Per Bazaar Event:**
+```
+Brands approached:        10-20
+Expected conversion:      50% (5-10 brands)
+Cost per brand:           Rp 1,000,000
+Total spend per event:    Rp 5,000,000 - 10,000,000
+```
+
+**Monthly Targets:**
+```
+Bazaar events attended:   10-15
+Brands onboarded:         50-100
+Monthly acquisition cost: Rp 50,000,000 - 100,000,000
+```
+
+**Why This Works:**
+- Rp 1M is meaningful for small brands
+- Face-to-face builds trust
+- We see their products in person (quality check)
+- Their community is proven (they're at bazaar)
+- Much cheaper than digital CAC
+
+---
+
+## QUALITY CONTROL & DRAFT APPROVAL
+
+### The Promise
+
+**"If it's on LAKOO, it's real."**
+
+Every product on LAKOO goes through draft approval before going live. This ensures:
+- No fake product photos
+- No stolen images
+- Accurate descriptions
+- Real, legitimate products
+
+### Draft Approval Flow
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  PRODUCT LISTING FLOW                                        │
+│                                                              │
+│  1. BRAND UPLOADS DRAFT                                      │
+│     └─ Product photos                                       │
+│     └─ Product name & description                           │
+│     └─ Price & variants (size, color)                       │
+│     └─ Inventory count                                      │
+│                                                              │
+│  2. LAKOO REVIEWS (24-48 hours)                             │
+│     └─ Photo quality check                                  │
+│     └─ Photo authenticity (not stolen)                      │
+│     └─ Description accuracy                                 │
+│     └─ Price reasonableness                                 │
+│     └─ Category correctness                                 │
+│                                                              │
+│  3. DECISION                                                 │
+│     ├─ ✓ APPROVED → Product goes live                       │
+│     └─ ✗ REJECTED → Feedback sent to brand                  │
+│                     Brand can revise and resubmit           │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Review Criteria
+
+**Photo Requirements:**
+| Criteria | Requirement |
+|----------|-------------|
+| **Authenticity** | Must be brand's own photos (not stolen from internet) |
+| **Quality** | Minimum 800x800px, clear, well-lit |
+| **Accuracy** | Photo must match actual product |
+| **Appropriateness** | No offensive content |
+| **Quantity** | Minimum 3 photos per product |
+
+**Description Requirements:**
+- Accurate product name
+- Honest material/fabric description
+- Correct sizing information
+- No misleading claims
+
+**Price Requirements:**
+- Within reasonable market range
+- Consistent with brand's other products
+- Not suspiciously low (counterfeit signal)
+
+### Rejection Reasons
+
+Common rejection reasons with feedback:
+1. "Photo appears to be from another source. Please upload original photos."
+2. "Image quality too low. Please upload higher resolution photos."
+3. "Description doesn't match visible product. Please correct."
+4. "Missing size chart. Please add sizing information."
+5. "Price seems inconsistent. Please verify."
+
+### Turnaround Time
+
+- **Standard:** 24-48 hours
+- **Priority (for active sellers):** 12-24 hours
+- **Rejection resubmission:** 24 hours
+
+### Quality Control Team
+
+**Staffing (at scale):**
+- 2-3 Content Moderators
+- Reviewing ~100-200 products/day per person
+- Total capacity: 300-600 products/day
+
+**Tools:**
+- Reverse image search (detect stolen photos)
+- AI-assisted quality scoring (future)
+- Brand history tracking (trusted brands = faster approval)
+
+### Why This Matters
+
+**For Users:**
+- Trust that products are real
+- Photos represent actual items
+- No bait-and-switch
+
+**For Brands:**
+- Level playing field (no fake competitors)
+- Platform credibility helps their sales
+- Quality association
+
+**For LAKOO:**
+- Differentiation from Shopee's chaos
+- Premium positioning
+- Reduced disputes and returns
+
+---
+
+## LAKOO HOUSE BRANDS (FILLER)
+
+### New Role: Gap Fillers Only
+
+**Important:** LAKOO House Brands have been reduced from 15 competing brands to a minimal gap-filler role.
+
+**Core Principle:** House brands exist ONLY to fill gaps that community brands don't cover. They do NOT compete with community brands.
+
+### Active House Brands (Reduced)
+
+| Brand | Purpose | When Active |
+|-------|---------|-------------|
+| **LAKOO Basics** | Essential basics (plain tees, basic hijabs) | Only if no community brand covers basics |
+| **LAKOO Modest** | Modest fashion essentials | Only for categories not covered |
+
+*Other house brands (Elite, Street, Classic, etc.) are DEPRECATED and will be phased out.*
+
+### How Gap-Filling Works
+
+```
+Scenario: No community brand sells plain white t-shirts
+
+1. LAKOO identifies gap in catalog
+2. LAKOO Basics sources plain white t-shirts
+3. LAKOO Basics lists them on platform
+4. Users can buy basics alongside community brand products
+
+Scenario: Community brand "BasicWear" joins and sells white t-shirts
+
+1. LAKOO sees overlap
+2. LAKOO Basics stops selling white t-shirts
+3. Community brand takes over that category
+4. LAKOO Basics focuses on other gaps
+```
+
+### Why This Change?
+
+**Old Model Problems:**
+- 15 house brands competed with potential partners
+- Community brands wouldn't join if LAKOO was a competitor
+- High inventory risk and warehouse costs
+
+**New Model Benefits:**
+- Community brands are partners, not competitors
+- Lower inventory risk (only stock gaps)
+- Focus resources on brand acquisition
+- Warehouse needs reduced significantly
+
+### House Brand Management
+
+**Team:**
+- 1 House Brand Manager (down from 15 brand managers)
+- Identifies catalog gaps
+- Sources products for gaps only
+- Monitors when to exit categories
+
+**Warehouse:**
+- Smaller footprint needed
+- Focus on basics and gap-fillers
+- Grosir bundle system still applies for stocked items
 
 ---
 
 ## HOW ORDERS WORK
 
-### Customer Journey: LAKOO Brand Purchase
+### Customer Journey: Discovery to Purchase
 
 ```
-1. BROWSE
-   Customer visits LAKOO Street brand page
+1. DISCOVER
+   User scrolling feed sees outfit post from @hijabbrand
    ↓
-2. SELECT
-   Chooses "Black Hoodie" - Size M
+2. ENGAGE
+   Likes post, taps product tag to see details
    ↓
-3. ADD TO CART
-   System checks grosir availability in real-time:
-   ✓ M size available (not locked)
-   ✓ Added to cart
+3. BROWSE
+   Views product page (photos, description, reviews)
+   Checks other products from same brand
    ↓
-4. CHECKOUT
+4. ADD TO CART
+   Selects size/color, adds to cart
+   ↓
+5. CHECKOUT
    Enters shipping address
    Selects payment method
    ↓
-5. PAYMENT
+6. PAYMENT
    Pays Rp 250,000 via Xendit (e-wallet/bank transfer/credit card)
    Order status: "Pending Payment"
    ↓
-6. PAYMENT CONFIRMED
+7. PAYMENT CONFIRMED
    Xendit webhook confirms payment received
    Order status: "Processing"
-   Inventory reserved in warehouse
+   Order sent to brand's dashboard
+   Commission (0.5%) = Rp 1,250 recorded
    ↓
-7. FULFILLMENT
-   Warehouse picks, packs, and ships
-   Order status: "Shipped"
+8. BRAND FULFILLMENT
+   Brand packs and ships from their location
+   Uploads tracking number (24-hour SLA)
    ↓
-8. LOGISTICS
-   Biteship generates tracking number
-   Customer receives tracking link
+9. LOGISTICS
+   Biteship tracking activated
+   Customer receives tracking link via WhatsApp/app
    ↓
-9. DELIVERY
-   Product delivered (2-5 days)
-   Order status: "Delivered"
-   ↓
-10. REVIEW
-    Customer can leave review with photos
+10. DELIVERY
+    Product delivered (2-5 days depending on location)
+    Order status: "Delivered"
+    ↓
+11. REVIEW PROMPT
+    App prompts: "How was your purchase? Post a review!"
+    Customer posts photo review → Appears in feed
+    (Affiliate link attached if review drives future sales)
 ```
 
-### Customer Journey: Third-Party Seller Purchase
+### LAKOO House Brand Purchase (Gap-Filler Products)
 
 ```
-1. BROWSE → 2. SELECT → 3. ADD TO CART → 4. CHECKOUT → 5. PAYMENT
-   (Same as above)
+Steps 1-6: Same as above
    ↓
-6. PAYMENT CONFIRMED
-   Order sent to seller dashboard
-   Seller has 24 hours to confirm
+7. PAYMENT CONFIRMED
+   Order sent to LAKOO warehouse
    ↓
-7. SELLER FULFILLMENT
-   Seller packs and ships from their location
-   Uploads tracking number
+8. WAREHOUSE FULFILLMENT
+   LAKOO warehouse picks, packs, ships
    ↓
-8. DELIVERY → 9. REVIEW
-   (Same as above)
+9-11: Same as above
 ```
 
 ### Payment Flow
@@ -492,81 +946,80 @@ If S drops to 3:
 
 ---
 
-## THIRD-PARTY SELLER MARKETPLACE
+## COMMUNITY BRANDS (FORMERLY THIRD-PARTY SELLERS)
 
-### Why Sellers Choose LAKOO
+### Why Brands Choose LAKOO
 
 **Competitive Comparison:**
 
-| Platform | Commission | Advertising |
-|----------|-----------|-------------|
-| Tokopedia | 5-10% | Pay extra for ads |
-| Shopee | 5-15% | Pay extra for ads |
-| Instagram | 0% | No built-in ads |
-| **LAKOO** | **0%** | **Optional, pay only if want** |
+| Platform | Commission | Content/Discovery | Checkout |
+|----------|-----------|-------------------|----------|
+| Tokopedia | 5-10% | No feed | In-app |
+| Shopee | 5-15% | No feed | In-app |
+| Instagram | 0% | Great feed | External links |
+| TikTok Shop | 5-8% | Video feed | In-app |
+| **LAKOO** | **0.5%** | **Pinterest-style feed** | **Seamless** |
 
-### Seller Onboarding
+**Key Differentiators:**
+- Lowest commission in market (0.5%)
+- Content-first discovery (not buried in search)
+- Seamless checkout (unlike Instagram)
+- Curated platform (quality brands only)
+- We help set up your store
 
-**Step 1: Registration**
-- Create account
-- Shop name, logo, description
-- Business details (optional: business license, tax ID)
+### Brand Onboarding (via Bazaar Sponsorship)
 
-**Step 2: Verification**
-- Admin reviews application
-- Checks shop legitimacy
-- Approves/rejects (typically within 24 hours)
+**Primary Path: Bazaar Sponsorship**
 
-**Step 3: Setup**
-- Add products (name, price, images, variants, inventory)
-- Customize storefront using page builder
-- Set shipping options
-- Connect bank account for payouts
+```
+1. LAKOO approaches brand at bazaar
+2. Offers Rp 1,000,000 sponsorship
+3. Brand agrees to join LAKOO
+4. LAKOO team sets up store + migrates 10 IG posts
+5. Brand is live on LAKOO
+```
 
-**Step 4: Go Live**
-- Publish shop
-- Start selling (no fees!)
-- Optional: Create ad campaigns
+**Secondary Path: Self-Registration (Future)**
+- Brand applies online
+- LAKOO reviews application
+- If approved, brand sets up own store
+- Draft approval required for all products
 
-### Seller Tools
+### Brand Tools
 
 **Dashboard:**
 - Sales overview (today, week, month)
 - Order management (pending, shipped, delivered)
-- Product management (add, edit, delete)
+- Product management (add, edit, delete) - all drafts reviewed
 - Inventory tracking
-- Financial reports
-- Customer messages
+- Content posting (for feed)
+- Analytics and insights
 
-**Page Builder:**
-- Drag-and-drop components (banners, product grids, text)
-- Pre-built templates
-- Mobile-responsive automatically
-- No coding required
-
-**Photography Studio (Optional):**
-- Book time slots
-- Professional equipment available
-- Pay per product or per hour
-- Editing services available
+**Content Tools:**
+- Post creator (photos + product tags)
+- Content calendar
+- Performance analytics (views, saves, clicks)
+- Sponsored post campaigns
 
 **Analytics:**
+- Feed performance (impressions, engagement)
 - Traffic sources
-- Conversion rate
-- Top products
-- Customer demographics
+- Conversion funnel
+- Follower growth
+- Top performing content
 
-### Seller Payouts
+### Brand Payouts
 
 **Payout Schedule:** Weekly (every Monday)
 
 **Payout Calculation:**
 ```
 Week's sales: Rp 10,000,000
+- LAKOO commission (0.5%): Rp 50,000
 - Xendit fees (3%): Rp 300,000
-- Ad spend: Rp 500,000 (if seller ran ads)
+- Sponsored post spend: Rp 200,000 (if ran ads)
 ────────────────────────────────
-Payout to seller: Rp 9,200,000
+Payout to brand: Rp 9,450,000
 ```
 
 **Payout Methods:**
@@ -579,125 +1032,105 @@ Payout to seller: Rp 9,200,000
 
 ### Core Principle
 
-**Sellers pay ZERO commission but can pay for visibility.**
+**Brands pay 0.5% commission + can boost content for visibility.**
 
-### Ad Types Available
+Similar to Instagram's sponsored posts - brands can pay to have their content shown to more users in the discovery feed.
 
-#### 1. Sponsored Search (CPC/CPM)
+### Primary Ad Type: Sponsored Posts
 
-**What it is:** Product appears in search results with "Sponsored" badge
+**What it is:** Brand's post appears in more users' feeds with "Sponsored" label
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  DISCOVERY FEED                                              │
+│                                                              │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
+│  │ [Image]     │  │ [Image]     │  │ [Image]     │         │
+│  │             │  │ Sponsored   │  │             │         │
+│  │ Organic     │  │ @hijabbrand │  │ Organic     │         │
+│  │ @user       │  │ ♡ 234       │  │ @brand      │         │
+│  │ ♡ 89        │  │ [Shop Now]  │  │ ♡ 156       │         │
+│  └─────────────┘  └─────────────┘  └─────────────┘         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**How It Works:**
+1. Brand creates a regular post (product photos, styling content)
+2. Brand selects "Boost this post"
+3. Sets target audience (optional: age, location, interests)
+4. Sets budget and duration
+5. Post appears in more feeds with "Sponsored" label
 
 **Pricing Models:**
-- **CPC (Cost Per Click):** Rp 500-5,000 per click
-- **CPM (Cost Per 1000 Impressions):** Rp 20,000 per 1000 views
+- **CPM (Cost Per 1000 Impressions):** Rp 15,000 - 30,000
+- **CPC (Cost Per Click):** Rp 500 - 2,000
 
-**How it works:**
-```
-Customer searches "summer dress"
-    ↓
-Search results show:
-    [Sponsored Product 1] 🔸
-    [Sponsored Product 2] 🔸
-    [Sponsored Product 3] 🔸
-    ────────────────────
-    [Regular Product 1]
-    [Regular Product 2]
-    ...
-```
+**Targeting Options:**
+- Location (Jakarta, Java, All Indonesia)
+- Age range
+- Interests (hijab, streetwear, modest, etc.)
+- Similar to followers of specific brands
 
-**Seller Setup:**
-1. Select products to promote (up to 20)
-2. Choose keywords ("summer dress", "casual dress")
-3. Set bid amount (higher bid = higher position)
-4. Set daily budget (e.g., Rp 500,000/day)
-5. Campaign runs until budget depleted or end date
+### Secondary Ad Types
 
-#### 2. Homepage Banner Ads
+#### 1. Featured Brand Spot
 
-**What it is:** Large banner on LAKOO homepage
-
-**Pricing:**
-- Hero Banner (top, full-width): Rp 10M/day
-- Side Banner: Rp 3M/day
-- Bottom Banner: Rp 2M/day
-- Minimum booking: 3 days
-
-**Best for:** Big promotions, brand launches
-
-#### 3. Category Featured
-
-**What it is:** Shop appears in "Featured Sellers" section at top of category
+**What it is:** Brand appears in "Featured Brands" section on homepage/category
 
 **Pricing:** Rp 500K/week per slot
 
-**Example:**
-```
-Category: Women's Dresses
+#### 2. Search Results Boost
 
-Featured Sellers (Sponsored):
-┌─────────────┬─────────────┬─────────────┐
-│ Seller A    │ Seller B    │ Seller C    │
-│ [Shop Now]  │ [Shop Now]  │ [Shop Now]  │
-└─────────────┴─────────────┴─────────────┘
+**What it is:** Brand's products appear higher in search results
 
-All Products:
-[Regular product grid...]
-```
+**Pricing:** CPC Rp 300 - 1,000 per click
 
-#### 4. Email Newsletter
+#### 3. Collection Spotlight (Future)
 
-**What it is:** Feature in LAKOO's weekly email to 100K+ subscribers
+**What it is:** Brand's collection featured in "Collections to Explore" section
 
-**Pricing:**
-- Product spotlight (3 products): Rp 5M/campaign
-- Banner in email: Rp 2M/campaign
+**Pricing:** Rp 2M/week
 
 ### Advertising Dashboard
 
-**Seller View:**
+**Brand View:**
 ```
 Campaign Performance
 
-Active Campaigns: 2
+Active Campaigns: 1
 
 ┌─────────────────────────────────────────────┐
-│ Campaign: "Summer Sale"                     │
-│ Type: Sponsored Search (CPC)                │
+│ Boosted Post: "New Ramadan Collection"      │
 │ Status: 🟢 Active                           │
 │                                             │
-│ Today's Performance:                        │
-│ • Impressions: 12,456                       │
-│ • Clicks: 342 (CTR: 2.74%)                  │
-│ • Orders: 23 (Conversion: 6.7%)             │
-│ • Spend: Rp 171,000                         │
-│ • Revenue: Rp 2,300,000                     │
-│ • ROI: 13.5x                                │
+│ Performance (3 days):                       │
+│ • Impressions: 45,230                       │
+│ • Reach: 32,100 unique users                │
+│ • Engagement: 2,340 (5.2%)                  │
+│ • Profile visits: 890                       │
+│ • Product taps: 456                         │
+│ • Orders: 23                                │
+│ • Revenue: Rp 4,600,000                     │
 │                                             │
-│ Budget: Rp 500,000/day                      │
-│ Remaining: Rp 329,000                       │
+│ Budget: Rp 1,000,000                        │
+│ Spent: Rp 678,000                           │
+│ Remaining: Rp 322,000                       │
 │                                             │
-│ [Pause] [Edit] [View Report]                │
+│ [Pause] [Edit Targeting] [View Insights]    │
 └─────────────────────────────────────────────┘
 ```
 
-**Admin View:**
-- Review pending campaigns (manual approval)
-- Monitor platform ad revenue
-- Adjust pricing
-- Manage banner slot inventory
-- Fraud detection
-
 ### Ad Revenue Potential
 
-**Assumptions:**
-- 300 total sellers on platform
-- 25% advertise regularly (75 sellers)
-- Average spend: Rp 5M/month per seller
+**Assumptions (at scale):**
+- 300 community brands on platform
+- 30% boost posts regularly (100 brands)
+- Average spend: Rp 3M/month per brand
 
-**Monthly Ad Revenue:**
+**Monthly Sponsored Post Revenue:**
 ```
-75 sellers × Rp 5,000,000 = Rp 375,000,000/month
-Annual: Rp 4.5 Billion
+100 brands × Rp 3,000,000 = Rp 300,000,000/month
+Annual: Rp 3.6 Billion
 ```
 
 ---
@@ -1322,202 +1755,181 @@ Question 5 (Optional): Upload style photos
 
 ## MARKETING STRATEGY
 
-### 1. Content Marketing
+### 1. Primary Strategy: Bazaar Sponsorship (Brand Acquisition)
 
-#### Professional Product Photography
+**This is our main growth engine.** Instead of spending on digital ads, we acquire brands (and their communities) directly through bazaar sponsorship.
 
-**Standards:**
-- 10 photos minimum per SKU
-- 2000×2000px resolution
-- Professional lighting
-- Multiple angles (front, back, side, detail)
-- Lifestyle shots (model wearing)
-- Flat lay (packaging)
+#### How It Works
 
-**Photo Types:**
-1. Full front (mannequin/model)
-2. Full back
-3. Full side
-4. Fabric texture (macro)
-5. Detail shots (collar, buttons, stitching)
-6. Size comparison
-7. Lifestyle (styled look)
-8. Packaging
-9. Care label
-10. Color variations (if applicable)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  BAZAAR SPONSORSHIP FLYWHEEL                                 │
+│                                                              │
+│  Sponsor Bazaar (Rp 1M)                                     │
+│         ↓                                                   │
+│  Brand joins LAKOO                                          │
+│         ↓                                                   │
+│  Brand posts content                                        │
+│         ↓                                                   │
+│  Brand's community discovers LAKOO                          │
+│         ↓                                                   │
+│  Users browse, save, follow, buy                            │
+│         ↓                                                   │
+│  More traffic attracts more brands                          │
+│         ↓                                                   │
+│  More brands = more content = more users                    │
+│         ↓                                                   │
+│  Repeat (network effect)                                    │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Badges Overlay:**
-- Material ("100% Cotton")
-- Features ("Wrinkle-Free", "Breathable")
-- Sustainability ("Eco-Friendly")
-- Care ("Machine Washable")
-- Origin ("Made in Indonesia")
+#### Monthly Targets
 
-**Photography Team:**
-- 1 Lead Photographer per 3 brands
-- 1 Assistant Photographer
-- 2 Photo Editors
-- 1 Stylist
+| Month | Bazaar Events | Brands Onboarded | Total Brands | Monthly Spend |
+|-------|--------------|------------------|--------------|---------------|
+| 1 | 10 | 50 | 50 | Rp 50M |
+| 2 | 15 | 75 | 125 | Rp 75M |
+| 3 | 15 | 75 | 200 | Rp 75M |
+| 4 | 20 | 100 | 300 | Rp 100M |
+| 5 | 20 | 100 | 400 | Rp 100M |
+| 6 | 20 | 100 | 500 | Rp 100M |
 
-**Output:** 400 photos edited per day
+**6-Month Goal:** 500 community brands on LAKOO
 
-#### Packaging & Unboxing Experience
+#### Bazaar Team
 
-**Tiered Packaging:**
+**Staffing:**
+- 1 Bazaar Partnership Manager
+- 3-5 Bazaar Scouts (attend events, recruit brands)
+- 2 Onboarding Specialists (set up stores, migrate content)
 
-**LAKOO Elite (Premium):**
-- Black/gold branded boxes
-- Tissue paper wrapping
-- Personalized thank you card
-- Collectible sticker sheet
-- Mini lookbook catalog
-- Cost: Rp 15,000/package
+**Process:**
+1. Scouts identify upcoming bazaars (Jakarta/Java focus)
+2. Scouts attend and approach qualifying brands
+3. Pitch LAKOO + Rp 1M sponsorship offer
+4. If brand agrees, collect info and payment details
+5. Onboarding team sets up store within 48 hours
+6. Brand reviews and goes live
 
-**LAKOO Street (Edgy):**
-- Custom-printed mailers
-- Sticker pack (street art designs)
-- Postcard (brand story)
-- Cost: Rp 8,000/package
+### 2. Content Marketing (Platform-Level)
 
-**LAKOO Classic (Minimalist):**
-- Eco-friendly kraft boxes
-- Simple branded seal
-- Care instruction card
-- Cost: Rp 5,000/package
+#### Platform Social Media
 
-**Universal Elements:**
-- QR code (rate product, share on social, get discount)
-- Return instructions
-- Brand story insert
-- Referral code (friend gets 10% off)
+**LAKOO's own Instagram/TikTok channels** promote the platform and featured brands.
 
-**Goal:** 5% of customers share unboxing on social media (free marketing)
+**Content Types:**
+- "Brand of the Week" spotlights
+- User-generated content reposts (with permission)
+- Styling tips and trends
+- Behind-the-scenes of bazaar events
+- Success stories from brands
 
-#### Video Content
+**Goal:** Drive app downloads and brand awareness
 
-**Social Proof Marketing:**
-Showcase real people from different backgrounds buying LAKOO
+#### User-Generated Content Incentives
 
-**Video Series:**
-1. "The Student Collection" (university students, <Rp 300K outfits)
-2. "The Professional Upgrade" (young professionals, Rp 500K-1M outfits)
-3. "The Village Entrepreneur" (rural business owners, success stories)
-4. "The Working Parent" (busy parents, Rp 400-800K)
-5. "The Luxury Shopper" (high-income, LAKOO Elite)
+**Encourage users to post reviews and content:**
 
-**Format:** 60-90 second vertical videos (TikTok, Reels, Stories)
+1. **Post-Purchase Prompts**
+   - "Love your new outfit? Share a photo review!"
+   - Users who post reviews get Rp 10K wallet credit
 
-**Production:**
-- 3-4 days per video (interview, shopping, styling, reveal)
-- Participant keeps clothes + Rp 2M compensation
-- Cost: Rp 7M per video
+2. **Weekly Styling Challenges**
+   - "#LAKOOstyle of the week"
+   - Best posts featured on homepage
+   - Winner gets Rp 500K shopping credit
 
-**Distribution:**
-- Organic: All LAKOO social channels
-- Paid: Rp 2M boost per video (target similar demographics)
+3. **Affiliate Program**
+   - Users earn 2-5% on sales from their posts
+   - Tracks which posts drive purchases
+   - Paid monthly to user's wallet
 
-**Expected Performance:**
-- 500K-2M views per video
-- 3-5% CTR
-- 2-3% conversion
-- ROI: 10-20x
+### 3. Live Commerce (Phase 2)
 
-#### Transformation/Gimmick Marketing
+**Deprioritized for MVP.** Focus on feed-based discovery first.
 
-**Concept:** "Beauty Inside, Style Outside"
+**Future Implementation:**
+- Brand owners can go live from their own locations
+- Featured live streams from LAKOO studio
+- Community brands showcase products
+- Lower production cost (brands do it themselves)
 
-**Example Campaign:**
-1. Find real people (street performers, vendors, etc.)
-2. Professional makeover (makeup + hair)
-3. Dress in LAKOO clothes
-4. Professional photoshoot
-5. Before/after reveal video
-6. Share their story
+### 4. Influencer Strategy (Lean Approach)
 
-**Video Structure (3-5 minutes):**
-- Part 1: The story (who they are, struggles, dreams)
-- Part 2: The makeover (time-lapse, building anticipation)
-- Part 3: The reveal (emotional reaction, photoshoot)
-- Part 4: The message ("Everyone deserves to feel confident")
+Instead of paying influencers directly, leverage the affiliate program:
 
-**Cost:** Rp 20M per video
+**Micro-Influencers (10K-100K followers):**
+- Invite to join as creators on LAKOO
+- They earn affiliate commission on sales
+- No upfront cost to LAKOO
+- Performance-based only
 
-**Expected Reach:** 1.5-5M views per video (emotional content = shares)
+**Gifting Program:**
+- Send free products to select influencers
+- No posting requirement (but most will post)
+- Cost: Product value only
+- Target: 20-30 influencers/month
 
-**Frequency:** 1-2 videos per month
+### 5. Word of Mouth / Community
 
-### 2. Live Commerce
+**Leverage Indonesian community culture:**
 
-**Daily Live Streams:**
-- Prime time: 7-9 PM
-- Rotating brands (each brand goes live 2x/week)
-- Weekend specials (celebrity hosts)
+**Referral Program:**
+- Existing user invites friend
+- Friend gets 10% off first order
+- User gets Rp 25K credit when friend orders
+- Track referral chains
 
-**Stream Formats:**
-1. Product launch (60 min)
-2. Celebrity styling (90 min)
-3. Behind-the-scenes factory tour (45 min)
-4. Customer makeover (120 min)
+**Community Events (Future):**
+- LAKOO meetups at bazaars
+- Creator gatherings
+- Brand networking events
 
-**Host Roster:**
-- Tier 1 (Celebrities): Once/month, Rp 50-200M per appearance
-- Tier 2 (Macro Influencers): Weekly, Rp 10-30M
-- Tier 3 (Micro Influencers): Daily, Rp 2-5M
-- Tier 4 (Brand Ambassadors): Always available, salaried (Rp 15M/month)
+### Marketing Budget Allocation
 
-**Production Setup:**
-- Dedicated studio
-- 2 cameras (main + close-up)
-- Professional lighting
-- Green screen (changeable backgrounds)
-- Live chat monitor
-- Streaming software (OBS/Streamlabs)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  MONTHLY MARKETING BUDGET: Rp 150,000,000                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Bazaar Sponsorships:     Rp 100,000,000  (67%)             │
+│  └─ 100 brands × Rp 1M                                      │
+│                                                              │
+│  Digital Ads (IG/TikTok): Rp 30,000,000   (20%)             │
+│  └─ App download campaigns                                  │
+│  └─ Brand awareness                                         │
+│                                                              │
+│  Influencer Gifting:      Rp 10,000,000   (7%)              │
+│  └─ Product costs only                                      │
+│                                                              │
+│  UGC Incentives:          Rp 10,000,000   (6%)              │
+│  └─ Review credits, challenge prizes                        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Monetization:**
-- Exclusive live-only discounts (20-40% off)
-- Flash sales (100 units at massive discount)
-- Bundle deals
-- Free shipping for live viewers
+### Why This Strategy Works
 
-**Expected Performance:**
-- 10,000 viewers/stream average
-- 5% purchase during/after = 500 orders
-- Average order value: Rp 300K
-- Revenue per stream: Rp 150M
-- Monthly (30 streams): Rp 4.5B
+1. **Bazaar sponsorship is cheap CAC** - Rp 1M per brand (with community) vs. Rp 50K+ per individual user via ads
 
-**Monthly Costs:**
-- Host fees: Rp 120M
-- Production crew: Rp 240M
-- Studio overhead: Rp 20M
-- Total: Rp 380M
+2. **Brands bring their own audience** - Each brand has engaged followers who become LAKOO users
 
-**ROI:** 4.5B revenue / 380M cost = 11.8x
+3. **Content creates itself** - Brands post their own content, users post reviews
 
-### 3. Influencer & Celebrity Partnerships
+4. **Network effects** - More brands → more content → more users → more brands want to join
 
-**Influencer Tiers:**
+5. **Community trust** - Indonesian consumers trust community recommendations over ads
 
-**Mega (1M+ followers):**
-- 1-2 partnerships per quarter
-- Cost: Rp 50-100M per campaign
-- Deliverables: 3 posts, 5 stories, 1 video
+### Key Difference from Traditional Marketing
 
-**Macro (100K-1M followers):**
-- 5-10 partnerships per month
-- Cost: Rp 5-20M per campaign
-- Deliverables: 2 posts, 3 stories
+| Traditional E-commerce | LAKOO Social Commerce |
+|----------------------|----------------------|
+| Pay to acquire users | Pay to acquire brands (who bring users) |
+| Create content ourselves | Brands and users create content |
+| Push marketing | Pull discovery |
+| Fight for attention | Build community |
 
-**Micro (10K-100K followers):**
-- 20-30 partnerships per month
-- Cost: Rp 500K-2M per campaign
-- Deliverables: 1 post, 2 stories
-
-**Nano (<10K followers but high engagement):**
-- Gifting program (free products in exchange for posts)
-- 50-100 per month
-
-**Affiliate Program:**
+### 5. Partnership Marketing (Future)
 - Influencers get unique discount codes (10% off)
 - Influencer earns 5% commission on sales
 - No upfront payment
@@ -1780,134 +2192,193 @@ Showcase real people from different backgrounds buying LAKOO
 
 ## SUCCESS METRICS
 
-### North Star Metric
+### North Star Metric (Phase 1: First 6 Months)
 
-**GMV (Gross Merchandise Value):** Total value of all orders (LAKOO brands + third-party sellers)
+**TRAFFIC** - Monthly Active Users (MAU) and engagement
 
-**Target Year 1:** Rp 60 Billion
+**Why Traffic First:**
+- Traffic attracts brands ("we want to be where the users are")
+- Traffic attracts investors ("show us your growth")
+- Revenue follows traffic, not the other way around
+
+**Target Month 6:** 100,000 MAU
+
+### North Star Metric (Phase 2: Month 7-12)
+
+**GMV (Gross Merchandise Value):** Total value of all orders
+
+**Target Year 1:** Rp 50 Billion GMV
 
 ### Key Performance Indicators (KPIs)
 
-#### Customer Metrics
+#### Traffic & Engagement Metrics (PRIORITY)
 
-**Acquisition:**
-- New users per month: Target 10,000
-- Customer Acquisition Cost (CAC): Target <Rp 50,000
-- Acquisition channels: Track organic vs. paid
+**User Acquisition:**
+| Metric | Month 3 | Month 6 | Month 12 |
+|--------|---------|---------|----------|
+| MAU | 30,000 | 100,000 | 300,000 |
+| DAU | 5,000 | 20,000 | 75,000 |
+| New users/month | 15,000 | 40,000 | 80,000 |
 
-**Engagement:**
-- Monthly Active Users (MAU): Target 50,000
-- Average Session Duration: Target >5 minutes
-- Pages per Session: Target >5
+**Engagement (Social Metrics):**
+| Metric | Target |
+|--------|--------|
+| Avg. session duration | >5 minutes |
+| Posts viewed per session | >20 |
+| Likes per user per session | >5 |
+| Saves per user per week | >10 |
+| Comments per post (avg) | >3 |
+| Follow rate (users following brands) | >30% |
+
+**Content Metrics:**
+| Metric | Month 3 | Month 6 | Month 12 |
+|--------|---------|---------|----------|
+| Total posts on platform | 5,000 | 20,000 | 100,000 |
+| Posts per day (new) | 50 | 150 | 500 |
+| User-generated posts | 500 | 5,000 | 30,000 |
+| Avg. engagement rate | >3% | >4% | >5% |
+
+#### Brand Acquisition Metrics
+
+**Community Brands:**
+| Metric | Month 3 | Month 6 | Month 12 |
+|--------|---------|---------|----------|
+| Total brands | 150 | 500 | 1,000 |
+| New brands/month | 50 | 100 | 100 |
+| Active brands (posting) | 70% | 75% | 80% |
+| Brands with sales | 50% | 65% | 75% |
+
+**Brand Performance:**
+| Metric | Target |
+|--------|--------|
+| Avg. followers per brand | 500+ |
+| Avg. products per brand | 15+ |
+| Avg. posts per brand/month | 8+ |
+| Brand retention (still active after 3 months) | >80% |
+
+**Bazaar Sponsorship Efficiency:**
+| Metric | Target |
+|--------|--------|
+| Bazaar events/month | 15-20 |
+| Brands approached per event | 15 |
+| Conversion rate | 50%+ |
+| Cost per brand | Rp 1,000,000 |
+| Community value per brand (followers brought) | 1,000+ |
+
+#### Commerce Metrics (Phase 2 Focus)
 
 **Conversion:**
-- Overall Conversion Rate: Target 3-5%
-- Add-to-Cart Rate: Target 15-20%
-- Checkout Completion: Target 70%
+| Metric | Target |
+|--------|--------|
+| Browse-to-purchase rate | 2-3% |
+| Add-to-cart rate | 10-15% |
+| Cart completion rate | 60%+ |
+| Avg. order value (AOV) | Rp 200,000 |
 
-**Retention:**
-- Repeat Purchase Rate: Target 30% (within 90 days)
-- Customer Lifetime Value (LTV): Target Rp 2,000,000
-- LTV:CAC Ratio: Target >3:1
+**GMV Growth:**
+| Metric | Month 6 | Month 9 | Month 12 |
+|--------|---------|---------|----------|
+| Monthly GMV | Rp 2B | Rp 8B | Rp 20B |
+| Orders/month | 10,000 | 40,000 | 100,000 |
+| Repeat purchase rate | 15% | 25% | 35% |
 
-**Satisfaction:**
-- Average Order Rating: Target 4.5/5
-- Net Promoter Score (NPS): Target >50
-- Return Rate: Target <5%
+#### Quality Metrics
 
-#### Brand Performance (15 Brands)
+**Draft Approval:**
+| Metric | Target |
+|--------|--------|
+| Products submitted/day | 100-300 |
+| Approval rate | 85%+ |
+| Review turnaround | <48 hours |
+| Rejection reasons tracked | Yes |
 
-**Sales:**
-- Revenue per brand per month: Target Rp 300M (average)
-- Orders per brand per month: Target 1,500
-- Average Order Value per brand: Target Rp 200K
-
-**Growth:**
-- Month-over-month growth: Target 15%
-- Best performing brand revenue: Track
-- Worst performing brand: Track for improvement/discontinuation
-
-**Social Media:**
-- Followers per brand: Target 10K within 6 months
-- Engagement rate: Target >3%
-- Traffic from social to storefront: Target 20%
-
-#### Marketplace Performance (Third-Party Sellers)
-
-**Seller Acquisition:**
-- Active sellers: Target 300 within Year 1
-- New seller signups per month: Target 30
-- Seller approval rate: Target 80%
-
-**Seller Activity:**
-- Active sellers (≥1 sale/month): Target 70%
-- Average products per seller: Target 20
-- Average seller revenue: Target Rp 10M/month
-
-**Advertising:**
-- Sellers running ads: Target 25% (75 sellers)
-- Average ad spend per advertiser: Target Rp 5M/month
-- Ad revenue: Target Rp 350M/month
-
-#### Operational Metrics
-
-**Warehouse:**
-- Inventory Turnover: Target 6-8x per year
-- Order Fulfillment Time: Target <24 hours (in-stock items)
-- Grosir Bundle Efficiency: Target >90% (minimize waste)
-- Stock-Out Rate: Target <2%
-
-**Logistics:**
-- On-Time Delivery Rate: Target >95%
-- Average Delivery Time: Target 3-5 days
-- Damaged/Lost Package Rate: Target <0.5%
-
-**Customer Service:**
-- First Response Time: Target <5 minutes (chat)
-- Resolution Time: Target <24 hours
-- Customer Satisfaction (CSAT): Target >90%
-- Ticket Volume: Monitor for trends
+**Platform Trust:**
+| Metric | Target |
+|--------|--------|
+| Order fulfillment rate | >95% |
+| On-time delivery | >90% |
+| Return/refund rate | <5% |
+| Customer satisfaction (CSAT) | >85% |
 
 #### Financial Metrics
 
-**Revenue:**
-- Monthly Recurring Revenue (MRR): Track growth
-- Revenue by source (brands vs. ads): Track ratio
-- Revenue per customer: Target Rp 400K/year
+**Revenue (Phase 2):**
+| Source | Month 6 | Month 12 |
+|--------|---------|----------|
+| Commission (0.5% GMV) | Rp 10M | Rp 100M |
+| Sponsored posts | Rp 50M | Rp 300M |
+| House brand margins | Rp 20M | Rp 50M |
+| **Total Revenue** | **Rp 80M** | **Rp 450M** |
 
 **Costs:**
-- Cost of Goods Sold (COGS): Target <40% of revenue
-- Operating Expenses: Target <40% of revenue
-- Customer Acquisition Cost (CAC): Target <Rp 50K
+| Item | Monthly (at scale) |
+|------|-------------------|
+| Bazaar sponsorships | Rp 100M |
+| Team salaries | Rp 250M |
+| Technology | Rp 50M |
+| Marketing (non-bazaar) | Rp 50M |
+| **Total Costs** | **Rp 450M** |
 
-**Profitability:**
-- Gross Margin: Target 60%
-- Net Margin: Target 20%
-- Break-even: Target Month 6-12
+**Path to Profitability:**
+- Month 1-6: Investment phase (negative)
+- Month 7-12: Revenue ramp (approaching break-even)
+- Year 2: Profitability target
+
+### Fail Criteria (When to Pivot)
+
+**3-Month Check:**
+- If MAU < 10,000 → Reassess acquisition strategy
+- If brands onboarded < 50 → Reassess bazaar approach
+- If engagement rate < 1% → Reassess product/UX
+
+**6-Month Check:**
+- If MAU < 50,000 → Major pivot needed
+- If no investor interest → Reassess business model
+- If brand churn > 50% → Reassess value proposition
 
 ---
 
 ## GLOSSARY
 
-**Grosir:** Indonesian term for "wholesale" - buying in bulk from factories
+### Social Commerce Terms
 
-**Bundle:** Fixed grouping of product variants that factories ship together
+**Social Commerce:** E-commerce integrated with social media features (content, discovery, engagement)
 
-**Tolerance:** Maximum excess inventory allowed per variant before locking
+**Xiaohongshu (Little Red Book):** Chinese social commerce platform - our primary inspiration
 
-**Variant Locking:** Temporarily preventing orders of a size/variant due to grosir constraints
+**Discovery Feed:** Algorithm-driven content feed where users discover products through posts
 
-**Transfer Price:** Internal price warehouse charges platform for products
+**Sponsored Post:** Brand post boosted for additional reach (paid advertising)
+
+**Draft Approval:** Quality control process where LAKOO reviews products before they go live
+
+**Community Brand:** Independent brand onboarded through bazaar sponsorship program
+
+**House Brand:** LAKOO-owned brand that fills product gaps only
+
+**Bazaar Sponsorship:** Our acquisition strategy - pay Rp 1M to brands at bazaars to join LAKOO
+
+**Content Creator:** User who posts reviews, styling content, and earns through affiliate program
+
+**Affiliate Link:** Trackable link in user posts that earns commission on sales
+
+### Platform Metrics
+
+**MAU (Monthly Active Users):** Unique users who opened app in last 30 days
+
+**DAU (Daily Active Users):** Unique users who opened app today
+
+**Engagement Rate:** (Likes + Comments + Saves) / Impressions
 
 **GMV (Gross Merchandise Value):** Total value of all transactions (before deductions)
 
-**CPC (Cost Per Click):** Advertising model where seller pays per ad click
+### Advertising Terms
 
-**CPM (Cost Per Mille):** Advertising model where seller pays per 1000 impressions
+**CPC (Cost Per Click):** Advertising model where brand pays per ad click
 
-**SKU (Stock Keeping Unit):** Unique identifier for each product variant
+**CPM (Cost Per Mille):** Advertising model where brand pays per 1000 impressions
 
-**MOQ (Minimum Order Quantity):** Minimum units required to complete order (old model, removed)
+### Business Metrics
 
 **LTV (Lifetime Value):** Total revenue expected from a customer over their lifetime
 
@@ -1915,9 +2386,13 @@ Showcase real people from different backgrounds buying LAKOO
 
 **AOV (Average Order Value):** Average amount spent per order
 
-**NPS (Net Promoter Score):** Customer loyalty metric (-100 to +100)
+### Legacy Terms (House Brands Only)
 
-**CSAT (Customer Satisfaction Score):** % of satisfied customers
+**Grosir:** Indonesian term for "wholesale" - buying in bulk from factories
+
+**Bundle:** Fixed grouping of product variants that factories ship together
+
+**Tolerance:** Maximum excess inventory allowed per variant before locking (house brands only)
 
 ---
 
@@ -1927,65 +2402,85 @@ Showcase real people from different backgrounds buying LAKOO
 
 **Q: What makes LAKOO different from Tokopedia/Shopee?**
 
-A: LAKOO combines official curated brands (like Shein) with a 0% commission marketplace. We focus on fashion specifically, with professional photography, live shopping, and brand storytelling.
+A: LAKOO is a **social commerce platform** - think Pinterest meets Xiaohongshu with seamless checkout. Users discover fashion through a visual feed of content from brands and users, not through search results. We focus on discovery and inspiration, not just transactions.
 
-**Q: Why 15 brands instead of one?**
+**Q: What makes LAKOO different from Instagram/TikTok?**
 
-A: Different brands appeal to different customer segments. A teenager wants streetwear (LAKOO Street) while a professional wants elegant workwear (LAKOO Elite). Same warehouse, different positioning.
+A: Instagram and TikTok are content platforms with commerce bolted on (external links, friction). LAKOO is content + commerce fully integrated - tap any product in any post and buy instantly without leaving the app.
 
-**Q: How do you make money if sellers pay 0% commission?**
+**Q: How do you make money?**
 
-A: We earn from (1) our 15 official brands with 50-60% margins, and (2) advertising revenue from sellers who want visibility.
+A: We earn from:
+1. **0.5% commission** on all community brand transactions (lowest in market)
+2. **Sponsored posts** - brands pay to boost their content in the feed
+3. **House brand margins** - on gap-filler products only
 
-### For Customers
+**Q: What is Xiaohongshu and why are you copying it?**
 
-**Q: Are LAKOO brands reliable quality?**
+A: Xiaohongshu (Little Red Book) is China's most successful social commerce platform - users discover products through authentic content, not ads. We're adapting this model for Indonesian fashion, with local brands and bazaar-based acquisition.
 
-A: Yes. We control the entire supply chain: we select factories, inspect quality, and fulfill orders ourselves. Plus, 7-day returns if not satisfied.
+### For Users
 
-**Q: What if a size is "locked" when I try to order?**
+**Q: How is browsing LAKOO different from Shopee?**
 
-A: This means demand for other sizes is too low. We need balanced orders across all sizes to avoid wasting inventory. Check back in a few hours or choose another size.
+A: On Shopee, you search for what you already want. On LAKOO, you discover things you didn't know you wanted. It's like scrolling Pinterest or Instagram - you see beautiful outfits, styling ideas, and reviews, and you can tap to buy anything instantly.
+
+**Q: Can I post content on LAKOO?**
+
+A: Yes! After purchasing, you can post photo reviews. You can also post outfit photos and styling ideas. If you join our affiliate program, you earn commission when people buy through your posts.
+
+**Q: Are the products real? No fakes?**
+
+A: Yes. Every product goes through our draft approval process before listing. We verify photos are real (not stolen from internet), descriptions are accurate, and products are legitimate. "If it's on LAKOO, it's real."
 
 **Q: Can I return items?**
 
-A: Yes, 7-day return policy for LAKOO brand items. Third-party seller items depend on seller's policy (shown on product page).
+A: Return policies vary by brand (shown on product page). Most brands offer 7-day returns for unworn items with tags.
 
-### For Sellers
+### For Brands
 
-**Q: Really 0% commission?**
+**Q: How do I join LAKOO?**
 
-A: Yes, really. You keep 100% of your sales (minus payment gateway fees ~3%). We make money from advertising, not commissions.
+A: Primary way: We approach brands at bazaars and offer Rp 1,000,000 sponsorship. We set up your store and migrate your Instagram content. Secondary way (coming soon): Apply online.
 
-**Q: Do I have to pay for ads?**
+**Q: What's the commission?**
 
-A: No, advertising is completely optional. You can sell for free. But ads help you get discovered faster.
+A: Only 0.5% - the lowest in Indonesia. Compare to Shopee (5-15%) and Tokopedia (5-10%). You keep 99.5% of sales (minus payment gateway fees).
 
-**Q: Where do I ship from?**
+**Q: Do I have to pay for visibility?**
 
-A: Your own location. You manage your inventory and fulfillment. (Unlike LAKOO brand products which ship from our warehouse.)
+A: No. Your organic posts appear in users' feeds based on relevance and engagement. Sponsored posts (paid) get additional reach, but are completely optional.
 
-**Q: Can I use LAKOO's photography studio?**
+**Q: What content should I post?**
 
-A: Yes, you can book time slots (paid service). Professional equipment and editing available.
+A: Product photos, styling ideas, behind-the-scenes, new arrivals, customer photos (with permission). Think Instagram-quality content. The better your content, the more users discover you.
+
+**Q: Do I need to approve product listings?**
+
+A: Yes. You upload product drafts, and our team reviews within 24-48 hours to ensure quality. This protects you and the platform from fake products.
 
 ### For Team Members
 
-**Q: Who do I report to?**
+**Q: What's our main focus right now?**
 
-A: Check the org chart (provided separately). Generally: Devs → Team Lead → CTO. Designers → Design Lead → CTO. Brand Managers → CMO.
+A: **Traffic and brand acquisition.** Revenue comes later. In the first 6 months, we measure success by MAU (users) and number of brands onboarded, not GMV.
 
-**Q: What are the working hours?**
+**Q: What's the bazaar sponsorship program?**
 
-A: Tech team: Flexible (core hours 10 AM - 4 PM). Warehouse/CS: Shifts. Marketing: 9-6 PM with flexibility.
+A: We attend physical bazaars, identify community-heavy brands, offer them Rp 1M cash to join LAKOO. We set up their store and migrate their content. This is our primary acquisition strategy.
 
-**Q: How do we make decisions?**
+**Q: Who handles what?**
 
-A: Weekly team meetings. Major decisions (features, campaigns) go through Product/Marketing review. Urgent decisions: Slack.
+A:
+- Bazaar team: Find and onboard brands
+- Onboarding team: Set up stores, migrate content
+- Moderation team: Review product drafts
+- Tech team: Build the platform
+- Marketing team: Platform-level content and growth
 
 **Q: Where can I see our metrics?**
 
-A: Internal dashboard (link provided on Day 1). Real-time revenue, orders, traffic. Updated every hour.
+A: Internal dashboard (link provided on Day 1). Focus metrics: MAU, DAU, brands onboarded, posts per day, engagement rate.
 
 ---
 
@@ -2035,6 +2530,20 @@ A: Internal dashboard (link provided on Day 1). Real-time revenue, orders, traff
 
 ## CHANGE LOG
 
+**Version 2.0** (January 2026) - SOCIAL COMMERCE PIVOT
+- **Major pivot** from e-commerce to social commerce model
+- Added Pinterest-style discovery feed with algorithm
+- Added content creation (brand posts, user reviews)
+- Introduced bazaar sponsorship acquisition strategy (Rp 1M per brand)
+- Changed commission from 0% to 0.5% (still lowest in market)
+- Reduced 15 house brands to gap-filler role only
+- Added sponsored posts (Instagram-style boosting)
+- Added draft approval / quality control for all products
+- Added social features (like, save, comment, follow)
+- Added creator/affiliate program
+- Updated success metrics to prioritize traffic over revenue
+- New positioning: "Pinterest + Xiaohongshu + Dianping for Indonesian fashion"
+
 **Version 1.0** (January 2026)
 - Initial business model documentation
 - Transition from group buying to multi-brand model complete
@@ -2046,11 +2555,17 @@ A: Internal dashboard (link provided on Day 1). Real-time revenue, orders, traff
 
 **WELCOME TO LAKOO!**
 
-This document contains everything you need to understand our business. Read it thoroughly on your first day. If you have questions, ask your manager or post in #new-employees on Slack.
+We're building Indonesia's first social commerce platform for fashion discovery. Think Pinterest meets Xiaohongshu - where users discover beautiful fashion through content, not search.
+
+**Our mission:** Help Indonesian women discover amazing local fashion brands they'd never find on Shopee.
+
+**Our strategy:** Sponsor bazaars to onboard community-heavy brands, then let their communities discover LAKOO through their content.
+
+Read this document thoroughly on your first day. If you have questions, ask your manager or post in #new-employees on Slack.
 
 Your first week:
-- Day 1: Read this document, setup accounts, meet team
+- Day 1: Read this document, download LAKOO app, explore as a user
 - Day 2-3: Shadow a team member in your role
 - Day 4-5: Take on first tasks with guidance
 
-We're building something special. Glad you're here! 🚀
+We're building something different. Glad you're here!
