@@ -6,6 +6,43 @@
 
 ---
 
+## TL;DR - WHAT IS LAKOO? (Read This First!)
+
+**If you only have 2 minutes, read this:**
+
+🎯 **What we are:** A social commerce app for Indonesian women's fashion - like **Xiaohongshu (Little Red Book)** or **Pinterest with checkout**
+
+🛒 **How it works:**
+1. Users scroll a visual feed of fashion content (like Instagram/Pinterest)
+2. Every post can have product tags - tap to buy instantly
+3. Anyone can post content and tag products from ANY store
+4. Sellers pay only 0.5% commission (lowest in Indonesia!)
+
+💰 **How we make money:**
+- 0.5% commission on sales
+- Sponsored Posts (brands pay to boost their posts in the feed)
+
+🎪 **How we get sellers:** We sponsor local bazaars (Rp 1M cash) to onboard community fashion brands
+
+👩 **Who we serve:** Women aged 17-30 in Jakarta who want to discover trendy local fashion
+
+🔑 **Key Features:**
+- **Discovery Feed** - Pinterest-style visual browsing (not search-first like Shopee)
+- **Shoppable Posts** - Tag products in posts, buy with one tap
+- **Tag ANY Product** - Users can tag items from any store they like
+- **Reviews ≠ Posts** - Reviews are separate, tied to orders (verified purchases only)
+- **Store Page Builder** - Sellers can customize their store like Taobao
+- **Fitting Room** - Mix & match items from different stores (frontend demo)
+
+📱 **We are NOT:**
+- Shopee/Tokopedia (search-first, price-focused)
+- Instagram (can't buy in-app)
+- Just another marketplace
+
+**Read the full document for details!**
+
+---
+
 ## TABLE OF CONTENTS
 
 1. [Executive Summary](#executive-summary)
@@ -43,7 +80,9 @@ Think: *"Where do I find the best Indonesian fashion brands?"* → LAKOO
 - **Curated Quality** - All products go through draft approval (no fake photos, no fake products)
 - **Bazaar Brand Acquisition** - We sponsor local bazaars to onboard community-heavy brands
 
-**Target Market:** Indonesian women aged 18-40, fashion-conscious, community-oriented, seeking discovery and inspiration
+**Target Market:** Indonesian women aged 17-30, fashion-conscious, Jakarta-based, seeking trendy local fashion discovery
+
+**Geographic Focus:** Jakarta (initial launch) → Greater Java → Indonesia
 
 **Business Stage:** Development/Pre-Launch (pivoting to social commerce model)
 
@@ -370,19 +409,43 @@ LAKOO's core experience is a visual discovery feed - not a product catalog.
 
 ### Content Types
 
-**1. Brand Posts**
+> **Important:** Posts and Reviews are SEPARATE (like Xiaohongshu)
+> - **Posts** = General content anyone can create anytime
+> - **Reviews** = Tied to orders, only after purchase
+
+**1. Posts (Anyone Can Create)**
+
+Posts are general content that ANYONE (brands or users) can create at any time.
+
 - Product photos with styling
-- New collection announcements
+- Outfit of the day (OOTD)
+- Style inspiration and tips
+- New collection announcements (brands)
 - Behind-the-scenes content
 - Can be boosted as Sponsored Posts
 
-**2. User Reviews**
+**Key Feature: Tag ANY Product**
+- Users can tag products from ANY store (not just their own)
+- Example: A user posts an outfit photo and tags the hijab from @brand_A, blouse from @brand_B, and pants from @brand_C
+- This is a core social commerce feature - users recommend products they love
+
+**2. Reviews (Tied to Orders)**
+
+Reviews are SEPARATE from posts and can only be created AFTER purchasing a product.
+
 - Post-purchase photo reviews
-- Outfit of the day (OOTD) with tagged products
+- Verified purchase badge (shows you actually bought it)
+- Star ratings and written feedback
+- Appear on product pages AND can surface in feed
 - Honest feedback and recommendations
 
+**Why Separate?**
+- Reviews = verified, trusted feedback from actual buyers
+- Posts = general content, inspiration, recommendations
+- This follows the Xiaohongshu model where reviews are distinct
+
 **3. Style Inspiration**
-- Outfit ideas (multiple products tagged)
+- Outfit ideas (multiple products tagged from different stores)
 - Styling tips and tutorials
 - Trend reports
 
@@ -1322,7 +1385,113 @@ Question 5 (Optional): Upload style photos
 - Set reminder for upcoming streams
 - Watch replays
 
-#### 8. Customer Service
+#### 8. Fitting Room (Mix & Match) 🆕
+
+**What it is:** Users create virtual outfits by combining items from different stores on a canvas.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  FITTING ROOM                                                │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │                                                     │   │
+│  │              [Mannequin Canvas]                     │   │
+│  │                                                     │   │
+│  │    ┌─────┐   Selected: Hijab from @brand_A         │   │
+│  │    │ 👤  │   Selected: Blouse from @brand_B        │   │
+│  │    │     │   Selected: Pants from @brand_C         │   │
+│  │    │     │   Selected: Bag from @brand_D           │   │
+│  │    └─────┘                                         │   │
+│  │                                                     │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                              │
+│  Categories: [Tops] [Pants] [Hijab] [Bags] [Shoes]          │
+│                                                              │
+│  [Save Look] [Share] [Buy All Items]                        │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**How it works:**
+1. User opens Fitting Room
+2. Selects category (e.g., "Tops")
+3. Browses products across ALL stores
+4. Selects an item → appears on canvas
+5. Repeats for other categories
+6. Creates a complete outfit look
+7. Can save, share, or purchase all items
+
+**MVP Status:** Frontend demo only (no backend integration yet)
+- For MVP, this is a frontend-only feature to demonstrate the concept
+- Backend (saving looks, sharing) will be implemented in a future phase
+
+**Future Backend (Post-MVP):**
+- Save looks to user profile
+- Share looks as posts in the feed
+- Track which combinations lead to purchases
+
+---
+
+#### 9. Store Page Builder (Taobao-style) 🆕
+
+**What it is:** Sellers can create rich, customized store pages with carousels, banners, and decorations - like Taobao/Tmall.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  STORE PAGE BUILDER (Seller Dashboard)                       │
+│                                                              │
+│  Drag & Drop Components:                                     │
+│  ┌─────────┐ ┌─────────┐ ┌─────────┐ ┌─────────┐           │
+│  │ Banner  │ │Carousel │ │ Grid    │ │  Text   │           │
+│  └─────────┘ └─────────┘ └─────────┘ └─────────┘           │
+│                                                              │
+│  Live Preview:                                               │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │ [Hero Banner - Sale 50% OFF]                        │   │
+│  │                                                     │   │
+│  │ [Image Carousel: New Arrivals]                      │   │
+│  │  ← [img1] [img2] [img3] [img4] →                   │   │
+│  │                                                     │   │
+│  │ Featured Products:                                  │   │
+│  │ ┌───┐ ┌───┐ ┌───┐ ┌───┐                           │   │
+│  │ │ P │ │ P │ │ P │ │ P │                           │   │
+│  │ └───┘ └───┘ └───┘ └───┘                           │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                              │
+│  [Preview] [Save Draft] [Publish]                           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Available Components:**
+| Component | Description |
+|-----------|-------------|
+| **Hero Banner** | Full-width image with text overlay |
+| **Image Carousel** | Swipeable image gallery |
+| **Product Grid** | 2x2, 3x3, or 4x4 product layout |
+| **Product List** | Vertical product list |
+| **Text Block** | Custom text (store description, announcements) |
+| **Divider** | Visual separator |
+| **Video** | Embedded video player |
+| **Collection Link** | Link to product collection |
+
+**How it works (Backend):**
+- Store layout saved as JSON in seller-service
+- JSON defines component order, types, and content
+- Frontend renders components dynamically
+
+**Example Layout JSON:**
+```json
+{
+  "blocks": [
+    { "type": "hero_banner", "imageUrl": "...", "text": "Sale 50%" },
+    { "type": "carousel", "images": ["...", "...", "..."] },
+    { "type": "product_grid", "productIds": ["...", "...", "..."], "columns": 3 }
+  ]
+}
+```
+
+---
+
+#### 10. Customer Service
 
 **Support Channels:**
 - Live chat (AI first, human escalation)
@@ -2529,6 +2698,15 @@ A: Internal dashboard (link provided on Day 1). Focus metrics: MAU, DAU, brands 
 ---
 
 ## CHANGE LOG
+
+**Version 2.1** (January 2026) - FEATURE CLARIFICATIONS
+- Added TL;DR section for quick onboarding
+- Added Fitting Room (Mix & Match) feature - frontend demo for MVP
+- Added Store Page Builder (Taobao-style seller customization)
+- Clarified: Reviews and Posts are SEPARATE (like Xiaohongshu)
+- Clarified: Users can tag ANY product from any store
+- Updated target audience: Women 17-30, Jakarta focus
+- Simplified language for new employee readability
 
 **Version 2.0** (January 2026) - SOCIAL COMMERCE PIVOT
 - **Major pivot** from e-commerce to social commerce model

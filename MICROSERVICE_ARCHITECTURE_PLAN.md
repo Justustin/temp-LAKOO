@@ -625,6 +625,34 @@ Seller {
   acquisitionSource: enum     // organic, bazaar, referral
   bazaarCampaignId: String?   // If acquired via bazaar
 }
+
+// 🆕 Store Page Builder (Taobao-style customization)
+SellerStorePage {
+  id: UUID
+  sellerId: UUID @unique
+  layout: JSON                // Block-based layout configuration
+  isPublished: Boolean
+  publishedAt: DateTime?
+  createdAt: DateTime
+  updatedAt: DateTime
+}
+
+// Layout JSON structure example:
+{
+  "blocks": [
+    { "type": "hero_banner", "imageUrl": "...", "text": "..." },
+    { "type": "carousel", "images": [...] },
+    { "type": "product_grid", "productIds": [...], "columns": 3 },
+    { "type": "text", "content": "..." }
+  ]
+}
+```
+
+**Store Page Builder API:**
+```
+GET    /sellers/:id/store-page     - Get store page layout
+PUT    /sellers/:id/store-page     - Update store page layout
+POST   /sellers/:id/store-page/publish - Publish store page
 ```
 
 ---
@@ -650,10 +678,12 @@ Seller {
 - Review moderation
 
 **Social Commerce Notes:**
-- Reviews are a form of social content - photo reviews appear in feeds
+- **Reviews are SEPARATE from Posts** (following Xiaohongshu model)
+  - Posts = general content, anyone can create anytime
+  - Reviews = tied to orders, only after purchase, verified badge
+- Photo reviews CAN appear in feed but are distinct from regular posts
 - Verified purchase badge builds trust in social discovery
 - Review moderation integrates with support-service
-- Consider: reviews could be surfaced as "shoppable content" in feed
 
 ---
 
@@ -734,11 +764,17 @@ Follow {
 
 **Features:**
 - Shoppable posts with product tags
+- **Users can tag ANY product** (not just their own - key social commerce feature)
 - Like, save, comment functionality
 - Follow/unfollow users and sellers
 - Collections (Pinterest boards)
 - Content flagging for moderation
 - Media upload to S3
+
+**Note on Fitting Room (Mix & Match):**
+- For MVP, Fitting Room is frontend-only (no backend storage)
+- Future phase: Add `Look` and `LookItem` models for saving outfit combinations
+- Future phase: Users can share looks as posts
 
 **API Endpoints:**
 ```
