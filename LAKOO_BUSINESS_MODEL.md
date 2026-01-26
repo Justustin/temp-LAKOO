@@ -354,55 +354,188 @@ This is different from Shopee/Tokopedia where users search for specific products
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Revenue Projections (Year 1 Targets)
+### Revenue Projections (Year 1 - Realistic Bootstrap)
 
-**Phase 1: Traffic Building (Month 1-6)**
-- Focus: User acquisition, brand onboarding
-- Revenue: Minimal (not the priority)
-- Goal: 100+ community brands, 50K+ MAU
+> **Reality Check:** We are a 5-founder team with no employees. Revenue in Year 1 will be minimal. The focus is survival and traction, not profit.
 
-**Phase 2: Monetization (Month 7-12)**
+**Phase 1: Survival Mode (Month 1-6)**
+- Focus: Build MVP, onboard first 50 brands, prove concept
+- Revenue: Near zero (not the priority)
+- Goal: 50+ community brands, 10K+ MAU, working product
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│ REVENUE SOURCE           │ AMOUNT (Rp)     │ % OF TOTAL    │
-├─────────────────────────────────────────────────────────────┤
-│ 1. Commission (0.5%)     │ 250,000,000     │ 40%           │
-│    (GMV Rp 50B × 0.5%)   │                 │               │
-│                          │                 │               │
-│ 2. Sponsored Posts       │ 300,000,000     │ 48%           │
-│    (100 brands × Rp 3M)  │                 │               │
-│                          │                 │               │
-│ 3. House Brand Margins   │ 75,000,000      │ 12%           │
-│    (gap-filler only)     │                 │               │
-│                          │                 │               │
-│ MONTHLY REVENUE (M12)    │ 625,000,000     │ 100%          │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Cost Structure (Estimated Monthly at Scale)
+**Phase 2: Early Traction (Month 7-12)**
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ COST ITEM                │ AMOUNT (Rp)     │ NOTES         │
+│ REVENUE SOURCE           │ AMOUNT (Rp)     │ NOTES         │
 ├─────────────────────────────────────────────────────────────┤
-│ Bazaar Sponsorships      │ 100,000,000     │ 100 brands/mo │
-│ (Brand Acquisition)      │ (Rp 1M × 100)   │               │
+│ 1. Commission (0.5%)     │ 5,000,000       │ GMV Rp 1B     │
+│    (realistic early GMV) │                 │ × 0.5%        │
 │                          │                 │               │
-│ Salaries & Staff         │ 300,000,000     │ Leaner team   │
+│ 2. Sponsored Posts       │ 15,000,000      │ 5 brands ×    │
+│    (early adopters)      │                 │ Rp 3M/month   │
 │                          │                 │               │
-│ Technology & Hosting     │ 50,000,000      │ PWA + cloud   │
+│ 3. House Brand Margins   │ 0               │ Deprioritized │
+│    (focus on platform)   │                 │ for MVP       │
 │                          │                 │               │
-│ Content Moderation       │ 30,000,000      │ Draft review  │
-│ (Quality Control)        │                 │               │
-│                          │                 │               │
-│ Marketing (non-bazaar)   │ 50,000,000      │ Digital ads   │
-│                          │                 │               │
-│ TOTAL MONTHLY COSTS      │ 530,000,000     │               │
-├─────────────────────────────────────────────────────────────┤
-│ NET PROFIT (at scale)    │ 95,000,000      │ ~15% margin   │
+│ MONTHLY REVENUE (M12)    │ 20,000,000      │ ~$1,250 USD   │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+**Realistic Year 1 Total Revenue:** Rp 50-100M (mostly Month 9-12)
+
+---
+
+### Cost Structure (Bootstrap - 5 Founders, No Employees)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ COST ITEM                │ MONTHLY (Rp)    │ NOTES         │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 🖥️  INFRASTRUCTURE (18 Microservices)                       │
+│                                                              │
+│ EC2 Instances            │ 1,500,000       │ 2-3 t3.medium │
+│ (2-3 servers, Docker)    │ (~$94 USD)      │ shared hosting│
+│                          │                 │               │
+│ RDS PostgreSQL           │ 500,000         │ db.t3.micro   │
+│ (managed database)       │ (~$31 USD)      │ single-AZ     │
+│                          │                 │               │
+│ Redis (ElastiCache)      │ 350,000         │ cache.t3.micro│
+│                          │ (~$22 USD)      │               │
+│                          │                 │               │
+│ Kafka (Upstash/MSK)      │ 500,000         │ Event bus     │
+│                          │ (~$31 USD)      │               │
+│                          │                 │               │
+│ S3 + CloudFront          │ 300,000         │ Images, CDN   │
+│                          │ (~$19 USD)      │               │
+│                          │                 │               │
+│ Domain + SSL + Misc      │ 150,000         │               │
+│                          │ (~$9 USD)       │               │
+│                          │                 │               │
+│ INFRA SUBTOTAL           │ 3,300,000       │ ~$206 USD/mo  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 🔌 THIRD-PARTY APIs                                         │
+│                                                              │
+│ Xendit (payments)        │ 0               │ Fees paid by  │
+│                          │                 │ buyer (2.9%)  │
+│                          │                 │               │
+│ Biteship (logistics)     │ 0               │ Fees paid by  │
+│                          │                 │ buyer         │
+│                          │                 │               │
+│ SendGrid (email)         │ 0 - 350,000     │ Free tier →   │
+│                          │                 │ $20/mo later  │
+│                          │                 │               │
+│ Twilio (SMS/OTP)         │ 800,000         │ ~$50/mo for   │
+│                          │                 │ OTP & notifs  │
+│                          │                 │               │
+│ Firebase (push)          │ 0               │ Free tier     │
+│                          │                 │               │
+│ Algolia (search)         │ 0 - 800,000     │ Free tier →   │
+│                          │                 │ $50/mo later  │
+│                          │                 │               │
+│ API SUBTOTAL             │ 800,000-2,000,000│ ~$50-125/mo  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 👥 TEAM (5 Founders - No Salary Initially)                  │
+│                                                              │
+│ Founder Salaries         │ 0               │ Bootstrapping │
+│                          │                 │ equity only   │
+│                          │                 │               │
+│ Accountant (part-time)   │ 1,500,000       │ Monthly       │
+│                          │                 │ bookkeeping   │
+│                          │                 │               │
+│ Tax Consultant           │ 500,000         │ Quarterly =   │
+│                          │                 │ ~2M/quarter   │
+│                          │                 │               │
+│ TEAM SUBTOTAL            │ 2,000,000       │ ~$125 USD/mo  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 🎪 BRAND ACQUISITION                                        │
+│                                                              │
+│ Bazaar Sponsorships      │ 10,000,000      │ 10 brands/mo  │
+│ (conservative start)     │ (Rp 1M × 10)    │ @ Rp 1M each  │
+│                          │                 │               │
+│ ACQUISITION SUBTOTAL     │ 10,000,000      │ ~$625 USD/mo  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 📱 OPERATIONS                                               │
+│                                                              │
+│ Co-working/Meeting Space │ 2,000,000       │ Optional      │
+│                          │                 │               │
+│ Misc (transport, etc)    │ 1,000,000       │               │
+│                          │                 │               │
+│ OPS SUBTOTAL             │ 3,000,000       │ ~$188 USD/mo  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ 💰 TOTAL MONTHLY BURN    │ 19,100,000      │ ~$1,194 USD   │
+│                          │                 │               │
+│ With buffer (+20%)       │ 23,000,000      │ ~$1,438 USD   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Initial Runway Budget (Pre-Revenue Survival)
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ STARTUP RUNWAY CALCULATION                                   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│ Monthly burn rate:           Rp 23,000,000 (~$1,438 USD)    │
+│                                                              │
+│ Recommended runway:          6-9 months before revenue      │
+│                                                              │
+│ ┌─────────────────────────────────────────────────────┐     │
+│ │ 6-month runway:   Rp 138,000,000  (~$8,625 USD)    │     │
+│ │ 9-month runway:   Rp 207,000,000  (~$12,938 USD)   │     │
+│ │ 12-month runway:  Rp 276,000,000  (~$17,250 USD)   │     │
+│ └─────────────────────────────────────────────────────┘     │
+│                                                              │
+│ RECOMMENDED INITIAL CAPITAL: Rp 200-300 Juta                │
+│ (covers 9-12 months + unexpected costs)                     │
+│                                                              │
+├─────────────────────────────────────────────────────────────┤
+│ BUDGET ALLOCATION (Rp 250,000,000 example):                 │
+│                                                              │
+│ • Infrastructure (12 mo)      Rp 40,000,000    16%          │
+│ • Third-party APIs (12 mo)    Rp 24,000,000    10%          │
+│ • Accountant/Tax (12 mo)      Rp 24,000,000    10%          │
+│ • Bazaar sponsorships (12 mo) Rp 120,000,000   48%          │
+│   (120 brands @ Rp 1M each)                                 │
+│ • Operations (12 mo)          Rp 36,000,000    14%          │
+│ • Emergency buffer            Rp 6,000,000     2%           │
+│                               ─────────────                 │
+│ TOTAL                         Rp 250,000,000   100%         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Payment Flow (Xendit Fees Paid by Buyer)
+
+> **Important:** Xendit payment gateway fees are passed to the buyer, NOT absorbed by LAKOO.
+
+**Customer Payment Breakdown:**
+```
+Product price:              Rp 250,000
+Shipping (paid by buyer):   Rp 20,000
+Payment fee (2.9% + 2K):    Rp 9,250  ← Buyer pays this
+─────────────────────────────────────
+Total paid by customer:     Rp 279,250
+
+Seller receives:            Rp 250,000 - 0.5% commission
+                          = Rp 248,750
+
+LAKOO commission:           Rp 1,250 (0.5%)
+```
+
+**Why Buyer Pays Fees:**
+- Industry standard in Indonesia (Shopee, Tokopedia do this)
+- Keeps our 0.5% commission promise clean
+- Transparent pricing for sellers
 
 ### Unit Economics
 
@@ -898,34 +1031,43 @@ Steps 1-6: Same as above
 
 ### Payment Flow
 
-**LAKOO Brand Order:**
+> **Key:** Xendit fees are paid by the BUYER, not absorbed by seller or platform.
+
+**Community Brand Order (Standard):**
 ```
-Customer pays: Rp 250,000
+Product price:                    Rp 250,000
+Shipping (buyer pays):            Rp 20,000
+Payment processing fee (buyer):   Rp 9,250  (2.9% + Rp 2,000)
+───────────────────────────────────────────
+Customer total:                   Rp 279,250
     ↓
-Xendit receives payment
+Xendit receives:                  Rp 279,250
+Xendit keeps fee:                 Rp 9,250
     ↓
-Xendit fee (3%): Rp 7,500
+LAKOO receives:                   Rp 270,000 (product + shipping)
     ↓
-Platform receives: Rp 242,500
+LAKOO commission (0.5%):          Rp 1,250
+Shipping to courier:              Rp 20,000
     ↓
-Platform pays warehouse: Rp 100,000 (transfer price)
-    ↓
-Shipping cost: Rp 20,000 (subsidized by platform)
-    ↓
-Platform net: Rp 122,500 (49% margin)
+Seller payout:                    Rp 248,750
+
+LAKOO net revenue:                Rp 1,250 (0.5% commission only)
 ```
 
-**Third-Party Seller Order:**
+**LAKOO House Brand Order (Gap-Filler Products):**
 ```
-Customer pays: Rp 250,000
+Product price:                    Rp 250,000
+Shipping (buyer pays):            Rp 20,000
+Payment processing fee (buyer):   Rp 9,250
+───────────────────────────────────────────
+Customer total:                   Rp 279,250
     ↓
-Xendit receives payment
+LAKOO receives:                   Rp 270,000
     ↓
-Xendit fee (3%): Rp 7,500
+COGS (warehouse cost):            Rp 100,000
+Shipping to courier:              Rp 20,000
     ↓
-Seller receives: Rp 242,500 (100% - gateway fee)
-    ↓
-Platform receives: Rp 0 (0% commission)
+LAKOO gross margin:               Rp 150,000 (60%)
 ```
 
 ### Refund & Return Process
@@ -1998,25 +2140,28 @@ Question 5 (Optional): Upload style photos
 └─────────────────────────────────────────────────────────────┘
 ```
 
-#### Monthly Targets
+#### Monthly Targets (Bootstrap - 5 Founders)
+
+> **Reality:** With 5 founders doing everything, we can realistically attend 4-6 bazaar events per month (weekends only).
 
 | Month | Bazaar Events | Brands Onboarded | Total Brands | Monthly Spend |
 |-------|--------------|------------------|--------------|---------------|
-| 1 | 10 | 50 | 50 | Rp 50M |
-| 2 | 15 | 75 | 125 | Rp 75M |
-| 3 | 15 | 75 | 200 | Rp 75M |
-| 4 | 20 | 100 | 300 | Rp 100M |
-| 5 | 20 | 100 | 400 | Rp 100M |
-| 6 | 20 | 100 | 500 | Rp 100M |
+| 1 | 2 | 5 | 5 | Rp 5M |
+| 2 | 4 | 10 | 15 | Rp 10M |
+| 3 | 4 | 12 | 27 | Rp 12M |
+| 4 | 5 | 15 | 42 | Rp 15M |
+| 5 | 5 | 15 | 57 | Rp 15M |
+| 6 | 6 | 18 | 75 | Rp 18M |
 
-**6-Month Goal:** 500 community brands on LAKOO
+**6-Month Goal (Realistic):** 75 community brands on LAKOO
+**12-Month Goal:** 150-200 community brands
 
-#### Bazaar Team
+#### Bazaar Team (Bootstrap)
 
-**Staffing:**
-- 1 Bazaar Partnership Manager
-- 3-5 Bazaar Scouts (attend events, recruit brands)
-- 2 Onboarding Specialists (set up stores, migrate content)
+**Staffing: Founders Only**
+- CEO + Operations founder attend bazaar events (weekends)
+- Design/Marketing founder handles social outreach
+- CTO + Frontend founder handle onboarding (store setup, IG migration)
 
 **Process:**
 1. Scouts identify upcoming bazaars (Jakarta/Java focus)
@@ -2100,27 +2245,36 @@ Instead of paying influencers directly, leverage the affiliate program:
 - Creator gatherings
 - Brand networking events
 
-### Marketing Budget Allocation
+### Marketing Budget Allocation (Bootstrap Reality)
+
+> **We have no marketing budget beyond bazaar sponsorships.** Founders do organic marketing.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│  MONTHLY MARKETING BUDGET: Rp 150,000,000                   │
+│  MONTHLY MARKETING BUDGET: Rp 10,000,000 (Bootstrap)        │
 ├─────────────────────────────────────────────────────────────┤
 │                                                              │
-│  Bazaar Sponsorships:     Rp 100,000,000  (67%)             │
-│  └─ 100 brands × Rp 1M                                      │
+│  Bazaar Sponsorships:     Rp 10,000,000  (100%)             │
+│  └─ 10 brands × Rp 1M                                       │
+│  └─ This IS our marketing - brands bring their audience     │
 │                                                              │
-│  Digital Ads (IG/TikTok): Rp 30,000,000   (20%)             │
-│  └─ App download campaigns                                  │
-│  └─ Brand awareness                                         │
+│  Digital Ads:             Rp 0                              │
+│  └─ No budget - rely on organic + brand communities         │
 │                                                              │
-│  Influencer Gifting:      Rp 10,000,000   (7%)              │
-│  └─ Product costs only                                      │
+│  Influencer:              Rp 0                              │
+│  └─ Product gifting only (when we have house brand stock)   │
 │                                                              │
-│  UGC Incentives:          Rp 10,000,000   (6%)              │
-│  └─ Review credits, challenge prizes                        │
+│  UGC Incentives:          Rp 0                              │
+│  └─ Built into platform (affiliate program, gamification)   │
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
+
+**Post-Funding Marketing Budget (Future):**
+When we raise seed/Series A, scale to Rp 50-100M/month:
+- 60% Bazaar sponsorships (50-100 brands/month)
+- 25% Digital ads (Instagram, TikTok)
+- 10% Influencer partnerships
+- 5% UGC incentives
 ```
 
 ### Why This Strategy Works
@@ -2302,106 +2456,95 @@ Instead of paying influencers directly, leverage the affiliate program:
 
 ## TEAM STRUCTURE
 
-### Leadership
+### Current Reality: 5 Founders (Bootstrap Phase)
 
-- **CEO/Founder** - Overall vision and strategy
-- **CTO** - Technology and product
-- **CMO** - Marketing and brand management
-- **COO** - Operations and logistics
+> **We are bootstrapping.** No employees, no salaries. 5 founders doing everything.
 
-### Technology Team (30-40 people)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  FOUNDING TEAM (5 People)                                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  👤 FOUNDER 1 - CEO / Product                               │
+│     • Overall vision and strategy                           │
+│     • Product decisions and roadmap                         │
+│     • Investor relations (when needed)                      │
+│     • Bazaar partnerships (face of the company)             │
+│                                                              │
+│  👤 FOUNDER 2 - CTO / Backend Lead                          │
+│     • Backend architecture (18 microservices)               │
+│     • Database design and DevOps                            │
+│     • API development                                       │
+│     • Infrastructure management                             │
+│                                                              │
+│  👤 FOUNDER 3 - Frontend / Mobile Lead                      │
+│     • Web app (Next.js PWA)                                 │
+│     • Mobile app (React Native)                             │
+│     • UI implementation                                     │
+│                                                              │
+│  👤 FOUNDER 4 - Design / Marketing                          │
+│     • UI/UX design                                          │
+│     • Brand identity                                        │
+│     • Social media content                                  │
+│     • Bazaar scouting and outreach                         │
+│                                                              │
+│  👤 FOUNDER 5 - Operations / BD                             │
+│     • Seller onboarding and support                         │
+│     • Customer service (early stage)                        │
+│     • Bazaar event attendance                               │
+│     • Quality control / content moderation                  │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**Backend Team (12-15):**
-- 1 Backend Team Lead
-- 2 devs on Order Service
-- 2 devs on Brand/Product/Warehouse Services
-- 2 devs on Seller/Advertising Services
-- 2 devs on Customer Service/Review Services
-- 2 devs on Live Streaming/Analytics
-- 2 devs on Payment/Logistics/Notification
+### External Support (Part-Time/Contract)
 
-**Frontend Team (8-10):**
-- 1 Frontend Team Lead
-- 3-4 Web Developers (Next.js)
-- 3-4 Mobile Developers (React Native/Flutter)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  CONTRACTORS / PART-TIME                                     │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  📊 Accountant (Part-Time)                                  │
+│     • Monthly bookkeeping                                   │
+│     • Financial reporting                                   │
+│     • Cost: ~Rp 1,500,000/month                            │
+│                                                              │
+│  📋 Tax Consultant (Quarterly)                              │
+│     • Tax compliance                                        │
+│     • Annual tax filing                                     │
+│     • Cost: ~Rp 2,000,000/quarter                          │
+│                                                              │
+│  🎨 Freelance Designers (As Needed)                         │
+│     • Marketing materials                                   │
+│     • Bazaar booth design                                   │
+│     • Cost: Project-based                                   │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
 
-**DevOps (3):**
-- 1 DevOps Lead
-- 2 DevOps Engineers
+### TOTAL TEAM: 5 Founders + 2 Part-Time Contractors
 
-**QA (5):**
-- 1 QA Lead
-- 4 QA Engineers
+---
 
-**Product (3):**
-- 1 Product Manager (overall)
-- 1 Product Manager (customer features)
-- 1 Product Manager (seller features)
+### Future Hiring Plan (Post-Funding / Post-Traction)
 
-**Design (3-4):**
-- 1 UI/UX Lead
-- 2-3 UI/UX Designers
+> **Only hire when absolutely necessary.** Each hire should be justified by clear bottleneck.
 
-### Marketing & Content (40-50 people)
+**First Hires (When MAU > 10K or Post-Seed):**
 
-**Brand Management (15 Brand Account Managers):**
-- Each manages 1 official LAKOO brand
-- Responsibilities: Product curation, pricing, social media, campaigns
+| Priority | Role | Trigger | Est. Salary |
+|----------|------|---------|-------------|
+| 1 | Customer Service | >50 tickets/day | Rp 5-7M/mo |
+| 2 | Content Moderator | >100 products/day pending | Rp 4-6M/mo |
+| 3 | Bazaar Scout | >20 events/month target | Rp 5-7M/mo |
 
-**Content Creation:**
-- 5 Photography Teams (3-4 people each) = 15-20 people
-- 3 Video Producers
-- 2 Graphic Designers
+**Later Hires (Series A / Scaling):**
+- Additional developers (backend/frontend)
+- Marketing specialist
+- Finance manager
+- More CS agents
 
-**Live Streaming:**
-- 1 Live Stream Director
-- 2 Producers
-- 3 Camera Operators
-- 2 Community Managers (chat moderation)
-
-**Performance Marketing:**
-- 1 Marketing Manager
-- 2 Paid Ads Specialists (Google, Facebook, TikTok)
-- 1 SEO Specialist
-- 1 Email Marketing Specialist
-
-**Social Media:**
-- 1 Social Media Manager
-- 2 Social Media Specialists
-
-### Operations (30-40 people)
-
-**Warehouse:**
-- 1 Warehouse Manager
-- 1 Inventory Manager
-- 3 Shift Supervisors
-- 10-15 Warehouse Workers
-- 3 Quality Control Inspectors
-- 2 Receiving/Shipping Coordinators
-
-**Customer Service:**
-- 1 CS Manager
-- 15-20 CS Agents (shifts to cover 8 AM - 10 PM)
-- 3 CS Supervisors
-
-**Seller Support:**
-- 1 Seller Support Manager
-- 5 Seller Support Agents
-
-**Logistics:**
-- 1 Logistics Manager
-- 2 Logistics Coordinators
-
-### Finance & Admin (8-10)
-
-- 1 CFO/Finance Manager
-- 2 Accountants
-- 1 Finance Analyst
-- 2 HR Managers
-- 1 Office Manager
-- 1-2 Admin Assistants
-
-### TOTAL TEAM: ~120-140 people
+**Philosophy:** Stay lean. Founders do everything until it's physically impossible.
 
 ---
 
@@ -2416,86 +2559,88 @@ Instead of paying influencers directly, leverage the affiliate program:
 - Traffic attracts investors ("show us your growth")
 - Revenue follows traffic, not the other way around
 
-**Target Month 6:** 100,000 MAU
+**Target Month 6:** 10,000 MAU (realistic bootstrap target)
 
 ### North Star Metric (Phase 2: Month 7-12)
 
 **GMV (Gross Merchandise Value):** Total value of all orders
 
-**Target Year 1:** Rp 50 Billion GMV
+**Target Year 1:** Rp 1-2 Billion GMV (realistic for 150 brands)
 
-### Key Performance Indicators (KPIs)
+### Key Performance Indicators (KPIs) - Realistic Bootstrap Targets
 
 #### Traffic & Engagement Metrics (PRIORITY)
 
-**User Acquisition:**
+**User Acquisition (Bootstrap Reality):**
 | Metric | Month 3 | Month 6 | Month 12 |
 |--------|---------|---------|----------|
-| MAU | 30,000 | 100,000 | 300,000 |
-| DAU | 5,000 | 20,000 | 75,000 |
-| New users/month | 15,000 | 40,000 | 80,000 |
+| MAU | 1,000 | 10,000 | 50,000 |
+| DAU | 100 | 1,500 | 10,000 |
+| New users/month | 500 | 3,000 | 15,000 |
+
+> These numbers assume organic growth from brand communities only, no paid ads.
 
 **Engagement (Social Metrics):**
 | Metric | Target |
 |--------|--------|
-| Avg. session duration | >5 minutes |
-| Posts viewed per session | >20 |
-| Likes per user per session | >5 |
-| Saves per user per week | >10 |
-| Comments per post (avg) | >3 |
-| Follow rate (users following brands) | >30% |
+| Avg. session duration | >3 minutes |
+| Posts viewed per session | >10 |
+| Likes per user per session | >3 |
+| Saves per user per week | >5 |
+| Comments per post (avg) | >1 |
+| Follow rate (users following brands) | >20% |
 
 **Content Metrics:**
 | Metric | Month 3 | Month 6 | Month 12 |
 |--------|---------|---------|----------|
-| Total posts on platform | 5,000 | 20,000 | 100,000 |
-| Posts per day (new) | 50 | 150 | 500 |
-| User-generated posts | 500 | 5,000 | 30,000 |
-| Avg. engagement rate | >3% | >4% | >5% |
+| Total posts on platform | 300 | 1,500 | 5,000 |
+| Posts per day (new) | 5 | 15 | 30 |
+| User-generated posts | 20 | 200 | 1,000 |
+| Avg. engagement rate | >2% | >3% | >4% |
 
-#### Brand Acquisition Metrics
+#### Brand Acquisition Metrics (Bootstrap)
 
 **Community Brands:**
 | Metric | Month 3 | Month 6 | Month 12 |
 |--------|---------|---------|----------|
-| Total brands | 150 | 500 | 1,000 |
-| New brands/month | 50 | 100 | 100 |
-| Active brands (posting) | 70% | 75% | 80% |
-| Brands with sales | 50% | 65% | 75% |
+| Total brands | 27 | 75 | 150 |
+| New brands/month | 10 | 15 | 15 |
+| Active brands (posting) | 60% | 65% | 70% |
+| Brands with sales | 30% | 45% | 55% |
 
 **Brand Performance:**
 | Metric | Target |
 |--------|--------|
-| Avg. followers per brand | 500+ |
-| Avg. products per brand | 15+ |
-| Avg. posts per brand/month | 8+ |
-| Brand retention (still active after 3 months) | >80% |
+| Avg. followers per brand | 100+ |
+| Avg. products per brand | 10+ |
+| Avg. posts per brand/month | 4+ |
+| Brand retention (still active after 3 months) | >70% |
 
-**Bazaar Sponsorship Efficiency:**
+**Bazaar Sponsorship Efficiency (Founders Only):**
 | Metric | Target |
 |--------|--------|
-| Bazaar events/month | 15-20 |
-| Brands approached per event | 15 |
-| Conversion rate | 50%+ |
+| Bazaar events/month | 4-6 |
+| Brands approached per event | 8-10 |
+| Conversion rate | 40%+ |
 | Cost per brand | Rp 1,000,000 |
-| Community value per brand (followers brought) | 1,000+ |
+| Community value per brand (followers brought) | 500+ |
 
 #### Commerce Metrics (Phase 2 Focus)
 
 **Conversion:**
 | Metric | Target |
 |--------|--------|
-| Browse-to-purchase rate | 2-3% |
-| Add-to-cart rate | 10-15% |
-| Cart completion rate | 60%+ |
-| Avg. order value (AOV) | Rp 200,000 |
+| Browse-to-purchase rate | 1-2% |
+| Add-to-cart rate | 8-12% |
+| Cart completion rate | 50%+ |
+| Avg. order value (AOV) | Rp 180,000 |
 
-**GMV Growth:**
+**GMV Growth (Realistic):**
 | Metric | Month 6 | Month 9 | Month 12 |
 |--------|---------|---------|----------|
-| Monthly GMV | Rp 2B | Rp 8B | Rp 20B |
-| Orders/month | 10,000 | 40,000 | 100,000 |
-| Repeat purchase rate | 15% | 25% | 35% |
+| Monthly GMV | Rp 50M | Rp 150M | Rp 300M |
+| Orders/month | 250 | 800 | 1,500 |
+| Repeat purchase rate | 10% | 15% | 25% |
 
 #### Quality Metrics
 
@@ -2515,29 +2660,42 @@ Instead of paying influencers directly, leverage the affiliate program:
 | Return/refund rate | <5% |
 | Customer satisfaction (CSAT) | >85% |
 
-#### Financial Metrics
+#### Financial Metrics (Bootstrap Reality)
 
-**Revenue (Phase 2):**
+**Revenue (Realistic Year 1):**
 | Source | Month 6 | Month 12 |
 |--------|---------|----------|
-| Commission (0.5% GMV) | Rp 10M | Rp 100M |
-| Sponsored posts | Rp 50M | Rp 300M |
-| House brand margins | Rp 20M | Rp 50M |
-| **Total Revenue** | **Rp 80M** | **Rp 450M** |
+| Commission (0.5% GMV) | Rp 250K | Rp 1.5M |
+| Sponsored posts | Rp 0 | Rp 15M |
+| House brand margins | Rp 0 | Rp 0 |
+| **Total Revenue** | **Rp 250K** | **Rp 16.5M** |
 
-**Costs:**
-| Item | Monthly (at scale) |
-|------|-------------------|
-| Bazaar sponsorships | Rp 100M |
-| Team salaries | Rp 250M |
-| Technology | Rp 50M |
-| Marketing (non-bazaar) | Rp 50M |
-| **Total Costs** | **Rp 450M** |
+> Year 1 total revenue: ~Rp 50-80M (mostly from Month 9-12)
 
-**Path to Profitability:**
-- Month 1-6: Investment phase (negative)
-- Month 7-12: Revenue ramp (approaching break-even)
-- Year 2: Profitability target
+**Costs (Bootstrap - 5 Founders, No Salaries):**
+| Item | Monthly |
+|------|---------|
+| Infrastructure (EC2, DB, etc) | Rp 3.3M |
+| Third-party APIs | Rp 1.5M |
+| Accountant + Tax | Rp 2M |
+| Bazaar sponsorships | Rp 10-15M |
+| Operations (misc) | Rp 3M |
+| **Total Monthly Burn** | **Rp 20-25M** |
+
+**Runway Calculation:**
+```
+Initial capital needed:     Rp 200-300M
+Monthly burn:               Rp 20-25M
+Runway:                     9-12 months
+
+Break-even requirement:     Not expected in Year 1
+Focus:                      Traction metrics for fundraising
+```
+
+**Path to Sustainability:**
+- Month 1-6: Build MVP, prove concept, onboard 75 brands
+- Month 7-12: Early traction, prepare for seed round
+- Year 2: Raise seed funding OR reach Rp 50M/month revenue
 
 ### Fail Criteria (When to Pivot)
 
