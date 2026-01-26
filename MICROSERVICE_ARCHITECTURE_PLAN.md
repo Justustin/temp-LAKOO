@@ -180,11 +180,14 @@ LAKOO is migrating from a partial microservices setup to a fully distributed arc
 **Key Entities:** User, Session, Role, Permission, VerificationToken
 **Social Commerce Status:** ⚠️ Minor changes needed
 
+> **Key Concept:** Sellers ARE users. A seller is a user with `isSeller: true` flag and additional seller data in seller-service. All users (including sellers) can post, comment, follow, and buy.
+
 **Events Published:**
 - `user.registered` - New user signup
 - `user.verified` - Email/phone verified
 - `user.login` - User logged in
 - `user.password_reset` - Password changed
+- `user.became_seller` 🆕 - User upgraded to seller
 
 **Consumes Events:** None (origin service)
 
@@ -194,7 +197,8 @@ LAKOO is migrating from a partial microservices setup to a fully distributed arc
 
 **Social Commerce Changes:**
 - Add user profile fields: `bio`, `avatar_url`, `is_public_profile`
-- Or keep auth minimal and delegate profile to content-service
+- Add `isSeller` flag to indicate seller capability
+- Seller-specific data stored in seller-service (not here)
 
 ---
 
@@ -580,10 +584,12 @@ PostBoost {
 ---
 
 #### 15. seller-service (Port 3015)
-**Owner:** Seller management (all sellers can create content and build followers)
+**Owner:** Seller management (sellers = users with selling capability)
 **Database:** seller_db
 **Key Entities:** Seller, SellerProduct, SellerOrder, SellerPayout, **SellerProfile** 🆕, **AcquisitionSource** 🆕
 **Social Commerce Status:** ⚠️ Changes needed (Critical for Social Commerce)
+
+> **Key Concept:** Sellers ARE users. This service stores seller-specific data (products, orders, payouts, store page) for users who have `isSeller: true` in auth-service. Sellers retain ALL user capabilities: they can post, comment, follow, and buy from other sellers.
 
 **Events Published:**
 - `seller.registered`

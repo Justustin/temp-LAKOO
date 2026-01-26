@@ -34,6 +34,8 @@
 - **Store Page Builder** - Sellers can customize their store like Taobao
 - **Fitting Room** - Mix & match items from different stores (frontend demo)
 
+👤 **Users vs Sellers:** Sellers ARE users! A seller is just a user who also sells. Sellers can post, comment, follow, and even buy from other sellers.
+
 📱 **We are NOT:**
 - Shopee/Tokopedia (search-first, price-focused)
 - Instagram (can't buy in-app)
@@ -174,24 +176,68 @@ This is different from Shopee/Tokopedia where users search for specific products
 
 ## CORE ENTITIES
 
-### 1. USERS (Content Consumers & Creators)
+### Understanding Users vs Sellers
+
+> **Key Concept:** Sellers ARE users. A seller is just a user with additional selling capabilities.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                         USER                                 │
+│                    (Base Account)                            │
+│                                                              │
+│  Everyone starts as a user. All users can:                  │
+│  ✓ Browse the feed                                          │
+│  ✓ Like, save, comment on posts                             │
+│  ✓ Follow other users and sellers                           │
+│  ✓ Create posts and tag products                            │
+│  ✓ Buy products from any seller                             │
+│  ✓ Write reviews after purchase                             │
+│                                                              │
+│         ┌─────────────────────────────────────┐             │
+│         │      SELLER = User + Selling        │             │
+│         │                                     │             │
+│         │  All user features PLUS:            │             │
+│         │  ✓ List products for sale           │             │
+│         │  ✓ Receive and fulfill orders       │             │
+│         │  ✓ Customize store page             │             │
+│         │  ✓ Run sponsored posts              │             │
+│         │  ✓ Receive payouts                  │             │
+│         │  ✓ Access seller dashboard          │             │
+│         │                                     │             │
+│         │  Sellers can ALSO buy from others!  │             │
+│         └─────────────────────────────────────┘             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Example Scenarios:**
+- A seller posts an OOTD wearing their own products AND items from other stores → totally fine!
+- A seller buys supplies from another seller → totally fine!
+- A user becomes a seller later → just upgrade, same account
+
+---
+
+### 1. USERS (Everyone on the Platform)
 
 **Function:** The heart of the platform - they discover, create content, and buy
 
-**User Types:**
+**What ALL users can do:**
 
-**Browsers/Shoppers:**
-- Discover new brands through the feed
+**Browse & Discover:**
+- Scroll the discovery feed
+- Search for products and brands
 - Save products to collections
-- Follow favorite brands
-- Read reviews before buying
-- Purchase with seamless checkout
+- Follow favorite brands and users
 
-**Content Creators (Reviewers):**
+**Create Content:**
 - Post outfit photos and styling ideas
-- Write product reviews with photos
-- Earn through affiliate links
-- Build following within the platform
+- Tag products from ANY store in posts
+- Comment on other posts
+- Write reviews after purchase
+
+**Shop:**
+- Add to cart and checkout
+- Track orders
+- Request returns/refunds
 
 **Behaviors We're Designing For:**
 - "I'm bored, let me scroll LAKOO for fashion inspiration"
@@ -2705,6 +2751,7 @@ A: Internal dashboard (link provided on Day 1). Focus metrics: MAU, DAU, brands 
 - Added Store Page Builder (Taobao-style seller customization)
 - Clarified: Reviews and Posts are SEPARATE (like Xiaohongshu)
 - Clarified: Users can tag ANY product from any store
+- Clarified: Sellers ARE users (sellers can post, comment, follow, buy from others)
 - Updated target audience: Women 17-30, Jakarta focus
 - Simplified language for new employee readability
 
