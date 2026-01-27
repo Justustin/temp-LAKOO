@@ -247,6 +247,7 @@ model CommissionLedger {
   createdAt         DateTime          @default(now()) @db.Timestamptz(6)
   updatedAt         DateTime          @updatedAt @db.Timestamptz(6)
 
+  @@unique([orderId, sellerId]) // Prevent duplicate commission per seller per order
   @@index([orderId])
   @@index([sellerId])
   @@index([status])
