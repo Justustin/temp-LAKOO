@@ -371,6 +371,12 @@ enum TicketCategory {
   technical_issue
   seller_complaint
   feedback
+  // Content moderation (social commerce)
+  content_report        // Reported posts/comments
+  copyright_claim       // Copyright/IP violations
+  spam_report           // Spam content
+  harassment_report     // Harassment/bullying
+  creator_support       // Content creator issues
   other
 }
 

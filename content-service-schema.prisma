@@ -1,0 +1,403 @@
+// =============================================================================
+// CONTENT SERVICE DATABASE SCHEMA
+// Service: content-service (Port 3017)
+// Database: content_db
+// Owner: Posts, comments, likes, saves, product tags, content moderation
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CONTENT_DATABASE_URL")
+}
+
+// =============================================================================
+// POSTS (Social commerce content - like Xiaohongshu/Pinterest)
+// =============================================================================
+
+model Post {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String      @db.Uuid // Reference to User Service (creator)
+  postCode        String      @unique @db.VarChar(50) // PST-XXXXX
+  // Content
+  title           String?     @db.VarChar(255)
+  caption         String      // Main text content
+  // Post type
+  postType        PostType    @default(standard)
+  // Engagement metrics (denormalized for performance)
+  likeCount       Int         @default(0)
+  commentCount    Int         @default(0)
+  saveCount       Int         @default(0)
+  shareCount      Int         @default(0)
+  viewCount       Int         @default(0)
+  // Status
+  status          PostStatus  @default(draft)
+  publishedAt     DateTime?   @db.Timestamptz(6)
+  // Visibility
+  visibility      PostVisibility @default(public)
+  // Location (optional)
+  locationName    String?     @db.VarChar(255)
+  locationLat     Decimal?    @db.Decimal(10, 8)
+  locationLng     Decimal?    @db.Decimal(11, 8)
+  // Moderation
+  isReported      Boolean     @default(false)
+  reportCount     Int         @default(0)
+  moderationStatus ModerationStatus @default(pending)
+  moderatedAt     DateTime?   @db.Timestamptz(6)
+  moderatedBy     String?     @db.Uuid
+  // Timestamps
+  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
+  deletedAt       DateTime?   @db.Timestamptz(6)
+
+  media           PostMedia[]
+  productTags     PostProductTag[]
+  hashtags        PostHashtag[]
+  likes           PostLike[]
+  saves           PostSave[]
+  comments        Comment[]
+  reports         ContentReport[]
+
+  @@index([userId])
+  @@index([postCode])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([deletedAt])
+  @@map("post")
+}
+
+// =============================================================================
+// POST MEDIA (Images/Videos attached to posts)
+// =============================================================================
+
+model PostMedia {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId        String    @db.Uuid
+  mediaType     MediaType
+  // URLs
+  mediaUrl      String    // Original/full resolution
+  thumbnailUrl  String?   // Thumbnail for lists
+  // Dimensions
+  width         Int?
+  height        Int?
+  durationSec   Int?      // For videos
+  fileSizeBytes Int?
+  // Display order
+  sortOrder     Int       @default(0)
+  // Alt text for accessibility
+  altText       String?   @db.VarChar(500)
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@index([postId])
+  @@map("post_media")
+}
+
+// =============================================================================
+// POST PRODUCT TAGS (Products tagged in posts - key feature!)
+// Users can tag ANY product from any store
+// =============================================================================
+
+model PostProductTag {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId          String   @db.Uuid
+  // Product reference (to Seller Service or Product Service)
+  productId       String   @db.Uuid
+  sellerId        String?  @db.Uuid // Seller who owns the product
+  // Position in media (for clickable tags)
+  mediaIndex      Int?     // Which image in the post (0-indexed)
+  positionX       Decimal? @db.Decimal(5, 2) // 0-100 percentage
+  positionY       Decimal? @db.Decimal(5, 2) // 0-100 percentage
+  // Snapshot of product info at time of tagging
+  productName     String   @db.VarChar(255)
+  productPrice    Decimal  @db.Decimal(15, 2)
+  productImageUrl String?
+  // Tracking
+  clickCount      Int      @default(0)
+  purchaseCount   Int      @default(0) // Conversions from this tag
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, productId])
+  @@index([productId])
+  @@index([sellerId])
+  @@map("post_product_tag")
+}
+
+// =============================================================================
+// HASHTAGS
+// =============================================================================
+
+model Hashtag {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tag         String   @unique @db.VarChar(100) // Without #, lowercase
+  postCount   Int      @default(0)
+  isActive    Boolean  @default(true)
+  isBanned    Boolean  @default(false)
+  isTrending  Boolean  @default(false)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  posts PostHashtag[]
+
+  @@index([tag])
+  @@index([isTrending])
+  @@map("hashtag")
+}
+
+model PostHashtag {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @db.Uuid
+  hashtagId String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, hashtagId])
+  @@index([hashtagId])
+  @@map("post_hashtag")
+}
+
+// =============================================================================
+// LIKES
+// =============================================================================
+
+model PostLike {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId    String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@map("post_like")
+}
+
+// =============================================================================
+// SAVES (Bookmarks)
+// =============================================================================
+
+model PostSave {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId       String   @db.Uuid
+  userId       String   @db.Uuid
+  collectionId String?  @db.Uuid // Optional: save to specific collection
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  post       Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  collection SaveCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
+
+  @@unique([postId, userId])
+  @@index([userId])
+  @@index([collectionId])
+  @@map("post_save")
+}
+
+model SaveCollection {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String   @db.Uuid
+  name        String   @db.VarChar(100)
+  description String?  @db.VarChar(500)
+  coverImageUrl String?
+  isPrivate   Boolean  @default(false)
+  postCount   Int      @default(0)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+
+  saves PostSave[]
+
+  @@index([userId])
+  @@map("save_collection")
+}
+
+// =============================================================================
+// COMMENTS
+// =============================================================================
+
+model Comment {
+  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId          String      @db.Uuid
+  userId          String      @db.Uuid // Commenter
+  parentId        String?     @db.Uuid // For replies (nested comments)
+  // Content
+  content         String      @db.VarChar(2000)
+  // Engagement
+  likeCount       Int         @default(0)
+  replyCount      Int         @default(0)
+  // Moderation
+  isReported      Boolean     @default(false)
+  moderationStatus ModerationStatus @default(approved) // Comments auto-approved by default
+  // Timestamps
+  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
+  deletedAt       DateTime?   @db.Timestamptz(6)
+
+  post     Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[]     @relation("CommentReplies")
+  likes    CommentLike[]
+  mentions CommentMention[]
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([deletedAt])
+  @@map("comment")
+}
+
+model CommentLike {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commentId String   @db.Uuid
+  userId    String   @db.Uuid
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@index([userId])
+  @@map("comment_like")
+}
+
+model CommentMention {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  commentId       String   @db.Uuid
+  mentionedUserId String   @db.Uuid
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, mentionedUserId])
+  @@index([mentionedUserId])
+  @@map("comment_mention")
+}
+
+// =============================================================================
+// CONTENT REPORTS (Moderation)
+// =============================================================================
+
+model ContentReport {
+  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId    String       @db.Uuid // User who reported
+  // Content reference
+  contentType   ContentType  // post, comment
+  contentId     String       @db.Uuid
+  postId        String?      @db.Uuid // For easier querying
+  // Report details
+  reason        ReportReason
+  description   String?      @db.VarChar(1000)
+  // Status
+  status        ReportStatus @default(pending)
+  // Resolution
+  resolvedAt    DateTime?    @db.Timestamptz(6)
+  resolvedBy    String?      @db.Uuid
+  resolution    String?      @db.VarChar(500)
+  actionTaken   ReportAction?
+  // Timestamps
+  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
+  updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
+
+  post Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
+
+  @@index([reporterId])
+  @@index([contentType, contentId])
+  @@index([status])
+  @@map("content_report")
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For future Kafka migration)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @db.VarChar(100)
+  aggregateId   String    @db.Uuid
+  eventType     String    @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false)
+  publishedAt   DateTime? @db.Timestamptz(6)
+  retryCount    Int       @default(0)
+  lastError     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum PostType {
+  standard      // Regular post with images/video
+  review        // Product review post (linked to order)
+  lookbook      // Fashion lookbook/outfit post
+  tutorial      // How-to/tutorial content
+  unboxing      // Unboxing content
+}
+
+enum PostStatus {
+  draft
+  published
+  archived
+  removed       // Removed by moderation
+}
+
+enum PostVisibility {
+  public
+  followers_only
+  private
+}
+
+enum MediaType {
+  image
+  video
+}
+
+enum ModerationStatus {
+  pending       // Awaiting review
+  approved      // Approved for display
+  flagged       // Flagged for review
+  rejected      // Rejected/removed
+}
+
+enum ContentType {
+  post
+  comment
+}
+
+enum ReportReason {
+  spam
+  inappropriate
+  harassment
+  misinformation
+  copyright
+  counterfeit   // Fake products
+  other
+}
+
+enum ReportStatus {
+  pending
+  under_review
+  resolved
+  dismissed
+}
+
+enum ReportAction {
+  none          // No action taken
+  warning       // User warned
+  content_removed
+  user_suspended
+  user_banned
+}

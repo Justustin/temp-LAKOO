@@ -51,8 +51,8 @@ model Seller {
   bankAccountName     String?            @db.VarChar(255)
   bankAccountNumber   String?            @db.VarChar(50)
   bankBranch          String?            @db.VarChar(100)
-  // Commission (0% for LAKOO)
-  commissionRate      Decimal            @default(0.00) @db.Decimal(5, 2)
+  // Commission (0.5% for LAKOO social commerce)
+  commissionRate      Decimal            @default(0.50) @db.Decimal(5, 2)
   // Performance metrics
   totalProducts       Int                @default(0)
   totalOrders         Int                @default(0)
@@ -86,6 +86,7 @@ model Seller {
   documents           SellerDocument[]
   payouts             SellerPayout[]
   payoutSchedules     SellerPayoutSchedule[]
+  storePage           SellerStorePage?
 
   @@index([sellerCode])
   @@index([shopSlug])
@@ -124,6 +125,34 @@ model SellerDocument {
   @@index([documentType])
   @@index([status])
   @@map("seller_document")
+}
+
+// =============================================================================
+// SELLER STORE PAGE (Taobao-style store builder)
+// =============================================================================
+
+model SellerStorePage {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sellerId        String   @unique @db.Uuid
+  // Page layout (JSON block-based layout like Taobao store builder)
+  // Blocks: hero_banner, product_grid, category_showcase, promo_banner, etc.
+  layoutBlocks    Json     @default("[]") // [{type, config, order}]
+  // Theme customization
+  primaryColor    String?  @db.VarChar(7)  // Hex color
+  secondaryColor  String?  @db.VarChar(7)
+  fontFamily      String?  @db.VarChar(100)
+  // Custom content
+  customCss       String?  // Advanced users
+  // Status
+  isPublished     Boolean  @default(false)
+  publishedAt     DateTime? @db.Timestamptz(6)
+  // Audit
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@map("seller_store_page")
 }
 
 // =============================================================================

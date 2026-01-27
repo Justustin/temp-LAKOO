@@ -223,6 +223,38 @@ model SettlementRecord {
 }
 
 // =============================================================================
+// COMMISSION LEDGER (0.5% commission tracking for social commerce)
+// =============================================================================
+
+model CommissionLedger {
+  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ledgerNumber      String            @unique @db.VarChar(50) // COM-20260115-XXXXX
+  orderId           String            @db.Uuid // Reference to Order Service
+  orderNumber       String            @db.VarChar(50)
+  sellerId          String            @db.Uuid // Reference to Seller Service
+  paymentId         String?           @db.Uuid // Reference to Payment
+  // Amounts
+  orderAmount       Decimal           @db.Decimal(15, 2) // Total order amount from this seller
+  commissionRate    Decimal           @db.Decimal(5, 4)  // e.g., 0.0050 for 0.5%
+  commissionAmount  Decimal           @db.Decimal(15, 2) // Calculated commission
+  // Payout reference (when commission is deducted from seller payout)
+  sellerPayoutId    String?           @db.Uuid
+  // Status
+  status            CommissionStatus  @default(pending)
+  collectedAt       DateTime?         @db.Timestamptz(6)
+  // Timestamps
+  orderCompletedAt  DateTime?         @db.Timestamptz(6) // Commission becomes collectible
+  createdAt         DateTime          @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime          @updatedAt @db.Timestamptz(6)
+
+  @@index([orderId])
+  @@index([sellerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("commission_ledger")
+}
+
+// =============================================================================
 // SERVICE OUTBOX (For future Kafka migration)
 // =============================================================================
 
@@ -287,4 +319,12 @@ enum RefundStatus {
   completed
   failed
   rejected
+}
+
+enum CommissionStatus {
+  pending           // Order not yet completed
+  collectible       // Order completed, ready to collect
+  collected         // Deducted from seller payout
+  waived            // Commission waived (promo, etc.)
+  refunded          // Order was refunded
 }
