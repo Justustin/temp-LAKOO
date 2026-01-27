@@ -116,6 +116,12 @@ model NotificationPreference {
   promotions    Boolean           @default(true)
   priceAlerts   Boolean           @default(true)
   newsletter    Boolean           @default(false)
+  // Social notification preferences
+  socialLikes     Boolean         @default(true)
+  socialComments  Boolean         @default(true)
+  socialFollows   Boolean         @default(true)
+  socialMentions  Boolean         @default(true)
+  sellerUpdates   Boolean         @default(true) // Posts from sellers you follow
   // Quiet hours
   quietHoursEnabled Boolean       @default(false)
   quietHoursStart String?         @db.VarChar(5) // "22:00"
@@ -233,23 +239,40 @@ model ServiceOutbox {
 // =============================================================================
 
 enum NotificationType {
+  // Order notifications
   order_created
   order_confirmed
   order_shipped
   order_delivered
   order_cancelled
+  // Payment notifications
   payment_pending
   payment_success
   payment_failed
   refund_processed
+  // Return notifications
   return_approved
   return_rejected
+  // Review notifications
   review_request
+  // Product notifications
   price_drop
   back_in_stock
+  // Marketing notifications
   promotion
   live_starting
   cart_abandoned
+  // Social notifications (new for social commerce)
+  post_liked
+  post_commented
+  post_saved
+  post_shared
+  new_follower
+  mentioned_in_post
+  mentioned_in_comment
+  product_tagged        // Someone tagged your product
+  seller_new_post       // Seller you follow posted
+  // General notifications
   welcome
   system
 }

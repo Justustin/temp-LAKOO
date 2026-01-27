@@ -339,6 +339,76 @@ model BannerAdBooking {
 }
 
 // =============================================================================
+// SPONSORED POSTS (Social Commerce - promote posts in feed)
+// =============================================================================
+
+model SponsoredPost {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String              @db.Uuid // User or Seller promoting the post
+  postId            String              @db.Uuid // Reference to Content Service post
+  // Budget
+  dailyBudget       Decimal             @db.Decimal(15, 2)
+  totalBudget       Decimal?            @db.Decimal(15, 2)
+  spentToday        Decimal             @default(0) @db.Decimal(15, 2)
+  spentTotal        Decimal             @default(0) @db.Decimal(15, 2)
+  // Pricing (CPM - Cost Per Mille/1000 impressions)
+  cpmRate           Decimal             @db.Decimal(10, 2) // e.g., Rp 10,000 per 1000 views
+  // Targeting
+  targetLocations   String[]            // Province/city codes
+  targetGender      String?             @db.VarChar(20) // "all", "female", "male"
+  targetAgeMin      Int?
+  targetAgeMax      Int?
+  targetInterests   String[]            // Interest tags
+  // Schedule
+  startDate         DateTime            @db.Timestamptz(6)
+  endDate           DateTime?           @db.Timestamptz(6)
+  // Status
+  status            SponsoredPostStatus @default(draft)
+  approvedAt        DateTime?           @db.Timestamptz(6)
+  approvedBy        String?             @db.Uuid
+  rejectedAt        DateTime?           @db.Timestamptz(6)
+  rejectionReason   String?             @db.VarChar(500)
+  // Performance
+  totalImpressions  Int                 @default(0)
+  totalClicks       Int                 @default(0)
+  totalSaves        Int                 @default(0)
+  totalProfileVisits Int                @default(0)
+  // Audit
+  createdAt         DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt         DateTime            @updatedAt @db.Timestamptz(6)
+
+  dailyStats SponsoredPostDailyStat[]
+
+  @@index([userId])
+  @@index([postId])
+  @@index([status])
+  @@index([startDate, endDate])
+  @@map("sponsored_post")
+}
+
+model SponsoredPostDailyStat {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sponsoredPostId String   @db.Uuid
+  date            DateTime @db.Date
+  // Metrics
+  impressions     Int      @default(0)
+  clicks          Int      @default(0)
+  saves           Int      @default(0)
+  profileVisits   Int      @default(0)
+  spent           Decimal  @default(0) @db.Decimal(15, 2)
+  // Calculated
+  ctr             Decimal? @db.Decimal(8, 4) // Click-through rate
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @db.Timestamptz(6)
+
+  sponsoredPost SponsoredPost @relation(fields: [sponsoredPostId], references: [id], onDelete: Cascade)
+
+  @@unique([sponsoredPostId, date])
+  @@index([date])
+  @@map("sponsored_post_daily_stat")
+}
+
+// =============================================================================
 // SERVICE OUTBOX (For future Kafka migration)
 // =============================================================================
 
@@ -378,11 +448,12 @@ enum AdBalanceTxType {
 }
 
 enum AdCampaignType {
-  product_boost   // Boost product in search/listings
-  search_ads      // Search result ads
-  banner          // Display banner ads
+  product_boost    // Boost product in search/listings
+  search_ads       // Search result ads
+  banner           // Display banner ads
   homepage_feature // Homepage featured products
   category_feature // Category page featured
+  sponsored_post   // Sponsored content post (social commerce)
 }
 
 enum AdPricingModel {
@@ -416,4 +487,15 @@ enum BannerStatus {
   active
   completed
   cancelled
+}
+
+enum SponsoredPostStatus {
+  draft
+  pending_review
+  approved
+  active
+  paused
+  completed
+  exhausted       // Budget depleted
+  rejected
 }

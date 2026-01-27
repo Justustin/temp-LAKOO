@@ -306,6 +306,10 @@ enum WalletTxType {
   withdrawal        // Cash out
   adjustment        // Manual adjustment
   expiry            // Promotional credit expired
+  // Seller payout types (social commerce)
+  seller_payout     // Payout from sales to seller wallet
+  commission_deduction // 0.5% commission deducted from payout
+  ad_spend          // Sponsored post/ad spending
 }
 
 enum TxDirection {
