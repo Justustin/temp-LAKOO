@@ -78,13 +78,13 @@ Think: *"Where do I find the best Indonesian fashion brands?"* → LAKOO
 - **Pinterest-style Discovery** - Visual, browsable, inspirational feed (not transactional like Shopee)
 - **Content + Commerce** - Every post is shoppable with seamless checkout (no external links like Instagram)
 - **Community-Driven** - Real Indonesian brands, authentic user reviews, community trust
-- **0.5% Commission** - Lowest in market (vs. Shopee 5-15%, Tokopedia 5-10%)
+- **0.5% Commission** - Lowest in market (vs. Shopee 4.25%-10%, Tokopedia and tiktok shop 4.75%-10%) https://seller.shopee.co.id/edu/article/15965 https://seller-id.tokopedia.com/university/essay?knowledge_id=5411650459305729&lang=en
 - **Curated Quality** - All products go through draft approval (no fake photos, no fake products)
 - **Bazaar Brand Acquisition** - We sponsor local bazaars to onboard community-heavy brands
 
 **Target Market:** Indonesian women aged 17-30, fashion-conscious, Jakarta-based, seeking trendy local fashion discovery
 
-**Geographic Focus:** Jakarta (initial launch) → Greater Java → Indonesia
+**Geographic Focus:** Jakarta (initial launch) → Java → Indonesia
 
 **Business Stage:** Development/Pre-Launch (pivoting to social commerce model)
 
