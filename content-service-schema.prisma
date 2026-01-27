@@ -104,29 +104,32 @@ model PostMedia {
 // =============================================================================
 
 model PostProductTag {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId          String   @db.Uuid
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId          String        @db.Uuid
   // Product reference (to Seller Service or Product Service)
-  productId       String   @db.Uuid
-  sellerId        String?  @db.Uuid // Seller who owns the product
+  productId       String        @db.Uuid
+  sellerId        String?       @db.Uuid // Seller who owns the product
+  productSource   ProductSource @default(seller_product) // Distinguish product types
   // Position in media (for clickable tags)
-  mediaIndex      Int?     // Which image in the post (0-indexed)
-  positionX       Decimal? @db.Decimal(5, 2) // 0-100 percentage
-  positionY       Decimal? @db.Decimal(5, 2) // 0-100 percentage
+  mediaIndex      Int           @default(0) // Which image in the post (0-indexed)
+  positionX       Decimal?      @db.Decimal(5, 2) // 0-100 percentage
+  positionY       Decimal?      @db.Decimal(5, 2) // 0-100 percentage
   // Snapshot of product info at time of tagging
-  productName     String   @db.VarChar(255)
-  productPrice    Decimal  @db.Decimal(15, 2)
+  productName     String        @db.VarChar(255)
+  productPrice    Decimal       @db.Decimal(15, 2)
   productImageUrl String?
+  snapshotAt      DateTime      @default(now()) @db.Timestamptz(6) // When snapshot was taken
   // Tracking
-  clickCount      Int      @default(0)
-  purchaseCount   Int      @default(0) // Conversions from this tag
-  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  clickCount      Int           @default(0)
+  purchaseCount   Int           @default(0) // Conversions from this tag
+  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  @@unique([postId, productId])
+  @@unique([postId, productId, mediaIndex]) // Allow same product on different images
   @@index([productId])
   @@index([sellerId])
+  @@index([createdAt])
   @@map("post_product_tag")
 }
 
@@ -196,7 +199,7 @@ model PostSave {
   post       Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
   collection SaveCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
 
-  @@unique([postId, userId])
+  @@unique([postId, userId, collectionId]) // Allow same post in multiple collections
   @@index([userId])
   @@index([collectionId])
   @@map("post_save")
@@ -246,10 +249,12 @@ model Comment {
   replies  Comment[]     @relation("CommentReplies")
   likes    CommentLike[]
   mentions CommentMention[]
+  reports  ContentReport[]
 
   @@index([postId])
   @@index([userId])
   @@index([parentId])
+  @@index([createdAt])
   @@index([deletedAt])
   @@map("comment")
 }
@@ -290,7 +295,8 @@ model ContentReport {
   // Content reference
   contentType   ContentType  // post, comment
   contentId     String       @db.Uuid
-  postId        String?      @db.Uuid // For easier querying
+  postId        String?      @db.Uuid // For easier querying (when contentType = post)
+  commentId     String?      @db.Uuid // For easier querying (when contentType = comment)
   // Report details
   reason        ReportReason
   description   String?      @db.VarChar(1000)
@@ -305,8 +311,10 @@ model ContentReport {
   createdAt     DateTime     @default(now()) @db.Timestamptz(6)
   updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
 
-  post Post? @relation(fields: [postId], references: [id], onDelete: SetNull)
+  post    Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  comment Comment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
 
+  @@unique([reporterId, contentType, contentId]) // Prevent duplicate reports
   @@index([reporterId])
   @@index([contentType, contentId])
   @@index([status])
@@ -363,6 +371,11 @@ enum PostVisibility {
 enum MediaType {
   image
   video
+}
+
+enum ProductSource {
+  seller_product    // Product from seller-service (third-party seller)
+  warehouse_product // Product from product-service (LAKOO warehouse)
 }
 
 enum ModerationStatus {

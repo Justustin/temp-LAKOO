@@ -74,7 +74,7 @@ model FeedItem {
   // Expiry (for cleanup)
   expiresAt     DateTime?   @db.Timestamptz(6)
 
-  @@unique([userId, postId])
+  @@unique([userId, postId, feedType]) // Allow same post as different types (organic + sponsored)
   @@index([userId, createdAt])
   @@index([userId, feedType])
   @@index([expiresAt])
@@ -250,7 +250,7 @@ model ServiceOutbox {
 enum FollowStatus {
   active
   unfollowed
-  blocked
+  // Note: Use UserBlock table for blocking (single source of truth)
 }
 
 enum FeedType {

@@ -36,7 +36,8 @@ model SellerAdBalance {
   createdAt       DateTime @default(now()) @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @db.Timestamptz(6)
 
-  transactions AdBalanceTransaction[]
+  transactions   AdBalanceTransaction[]
+  sponsoredPosts SponsoredPost[]
 
   @@map("seller_ad_balance")
 }
@@ -346,6 +347,8 @@ model SponsoredPost {
   id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   userId            String              @db.Uuid // User or Seller promoting the post
   postId            String              @db.Uuid // Reference to Content Service post
+  // Ad balance reference (for billing - if user is a seller)
+  sellerAdBalanceId String?             @db.Uuid // Reference to SellerAdBalance
   // Budget
   dailyBudget       Decimal             @db.Decimal(15, 2)
   totalBudget       Decimal?            @db.Decimal(15, 2)
@@ -377,10 +380,12 @@ model SponsoredPost {
   createdAt         DateTime            @default(now()) @db.Timestamptz(6)
   updatedAt         DateTime            @updatedAt @db.Timestamptz(6)
 
-  dailyStats SponsoredPostDailyStat[]
+  dailyStats     SponsoredPostDailyStat[]
+  sellerAdBalance SellerAdBalance? @relation(fields: [sellerAdBalanceId], references: [id])
 
   @@index([userId])
   @@index([postId])
+  @@index([sellerAdBalanceId])
   @@index([status])
   @@index([startDate, endDate])
   @@map("sponsored_post")
