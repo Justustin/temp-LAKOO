@@ -21,43 +21,43 @@ datasource db {
 
 model Payment {
   id                   String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentNumber        String        @unique @db.VarChar(50) // PAY-20260115-XXXXX
-  orderId              String        @db.Uuid // Reference to Order Service
-  userId               String        @db.Uuid // Reference to Auth Service
+  paymentNumber        String        @unique @map("payment_number") @db.VarChar(50) // PAY-20260115-XXXXX
+  orderId              String        @map("order_id") @db.Uuid // Reference to Order Service
+  userId               String        @map("user_id") @db.Uuid // Reference to Auth Service
   // Amounts
   amount               Decimal       @db.Decimal(15, 2)
-  gatewayFee           Decimal       @default(0) @db.Decimal(15, 2)
-  netAmount            Decimal       @db.Decimal(15, 2) // Amount - gatewayFee
+  gatewayFee           Decimal       @default(0) @map("gateway_fee") @db.Decimal(15, 2)
+  netAmount            Decimal       @map("net_amount") @db.Decimal(15, 2) // Amount - gatewayFee
   currency             String        @default("IDR") @db.VarChar(3)
   // Payment method
-  paymentMethod        PaymentMethod
-  paymentMethodDetail  String?       @db.VarChar(100) // e.g., "BCA Virtual Account"
+  paymentMethod        PaymentMethod @map("payment_method")
+  paymentMethodDetail  String?       @map("payment_method_detail") @db.VarChar(100) // e.g., "BCA Virtual Account"
   // Gateway info (Xendit)
-  paymentGateway       String        @default("xendit") @db.VarChar(50)
-  gatewayTransactionId String?       @db.VarChar(255)
-  gatewayReferenceId   String?       @db.VarChar(255)
-  gatewayInvoiceUrl    String?
+  paymentGateway       String        @default("xendit") @map("payment_gateway") @db.VarChar(50)
+  gatewayTransactionId String?       @map("gateway_transaction_id") @db.VarChar(255)
+  gatewayReferenceId   String?       @map("gateway_reference_id") @db.VarChar(255)
+  gatewayInvoiceUrl    String?       @map("gateway_invoice_url")
   // Virtual account / payment details
-  virtualAccountNumber String?       @db.VarChar(50)
-  qrCodeUrl            String?
-  paymentCode          String?       @db.VarChar(50)
+  virtualAccountNumber String?       @map("virtual_account_number") @db.VarChar(50)
+  qrCodeUrl            String?       @map("qr_code_url")
+  paymentCode          String?       @map("payment_code") @db.VarChar(50)
   // Status
   status               PaymentStatus @default(pending)
-  failureReason        String?       @db.VarChar(500)
-  failureCode          String?       @db.VarChar(100)
+  failureReason        String?       @map("failure_reason") @db.VarChar(500)
+  failureCode          String?       @map("failure_code") @db.VarChar(100)
   // Timestamps
-  expiresAt            DateTime?     @db.Timestamptz(6)
-  paidAt               DateTime?     @db.Timestamptz(6)
-  cancelledAt          DateTime?     @db.Timestamptz(6)
+  expiresAt            DateTime?     @map("expires_at") @db.Timestamptz(6)
+  paidAt               DateTime?     @map("paid_at") @db.Timestamptz(6)
+  cancelledAt          DateTime?     @map("cancelled_at") @db.Timestamptz(6)
   // Wallet payment (if applicable)
-  walletId             String?       @db.Uuid
-  walletTransactionId  String?       @db.Uuid
+  walletId             String?       @map("wallet_id") @db.Uuid
+  walletTransactionId  String?       @map("wallet_transaction_id") @db.Uuid
   // Idempotency
-  idempotencyKey       String        @unique @db.VarChar(100)
+  idempotencyKey       String        @unique @map("idempotency_key") @db.VarChar(100)
   // Metadata
   metadata             Json?
-  createdAt            DateTime      @default(now()) @db.Timestamptz(6)
-  updatedAt            DateTime      @updatedAt @db.Timestamptz(6)
+  createdAt            DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   gatewayLogs PaymentGatewayLog[]
   refunds     Refund[]
@@ -76,28 +76,28 @@ model Payment {
 // =============================================================================
 
 model PaymentGatewayLog {
-  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  paymentId     String?  @db.Uuid
-  refundId      String?  @db.Uuid
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  paymentId       String?  @map("payment_id") @db.Uuid
+  refundId        String?  @map("refund_id") @db.Uuid
   // Request details
-  action        String   @db.VarChar(100) // "create_invoice", "get_payment", etc.
-  requestMethod String   @db.VarChar(10)
-  requestUrl    String   @db.VarChar(500)
-  requestBody   Json?
-  requestHeaders Json?
+  action          String   @db.VarChar(100) // "create_invoice", "get_payment", etc.
+  requestMethod   String   @map("request_method") @db.VarChar(10)
+  requestUrl      String   @map("request_url") @db.VarChar(500)
+  requestBody     Json?    @map("request_body")
+  requestHeaders  Json?    @map("request_headers")
   // Response details
-  responseStatus Int?
-  responseBody   Json?
-  responseHeaders Json?
+  responseStatus  Int?     @map("response_status")
+  responseBody    Json?    @map("response_body")
+  responseHeaders Json?    @map("response_headers")
   // Timing
-  durationMs    Int?
+  durationMs      Int?     @map("duration_ms")
   // Error tracking
-  errorMessage  String?
-  errorCode     String?  @db.VarChar(100)
+  errorMessage    String?  @map("error_message")
+  errorCode       String?  @map("error_code") @db.VarChar(100)
   // Webhook info (if applicable)
-  isWebhook     Boolean  @default(false)
-  webhookType   String?  @db.VarChar(100)
-  createdAt     DateTime @default(now()) @db.Timestamptz(6)
+  isWebhook       Boolean  @default(false) @map("is_webhook")
+  webhookType     String?  @map("webhook_type") @db.VarChar(100)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   payment Payment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
   refund  Refund?  @relation(fields: [refundId], references: [id], onDelete: SetNull)
@@ -113,38 +113,38 @@ model PaymentGatewayLog {
 // =============================================================================
 
 model Refund {
-  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  refundNumber         String       @unique @db.VarChar(50) // REF-20260115-XXXXX
-  paymentId            String       @db.Uuid
-  orderId              String       @db.Uuid // Reference to Order Service
-  returnId             String?      @db.Uuid // Reference to Order Service Return
-  userId               String       @db.Uuid
+  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  refundNumber    String       @unique @map("refund_number") @db.VarChar(50) // REF-20260115-XXXXX
+  paymentId       String       @map("payment_id") @db.Uuid
+  orderId         String       @map("order_id") @db.Uuid // Reference to Order Service
+  returnId        String?      @map("return_id") @db.Uuid // Reference to Order Service Return
+  userId          String       @map("user_id") @db.Uuid
   // Amounts
-  amount               Decimal      @db.Decimal(15, 2)
-  currency             String       @default("IDR") @db.VarChar(3)
+  amount          Decimal      @db.Decimal(15, 2)
+  currency        String       @default("IDR") @db.VarChar(3)
   // Refund method
-  refundMethod         RefundMethod
+  refundMethod    RefundMethod @map("refund_method")
   // Gateway info
-  gatewayRefundId      String?      @db.VarChar(255)
+  gatewayRefundId String?      @map("gateway_refund_id") @db.VarChar(255)
   // Status
-  status               RefundStatus @default(pending)
-  failureReason        String?      @db.VarChar(500)
+  status          RefundStatus @default(pending)
+  failureReason   String?      @map("failure_reason") @db.VarChar(500)
   // Details
-  reason               String?      @db.VarChar(500)
-  notes                String?
+  reason          String?      @db.VarChar(500)
+  notes           String?
   // Timestamps
-  approvedAt           DateTime?    @db.Timestamptz(6)
-  approvedBy           String?      @db.Uuid
-  processedAt          DateTime?    @db.Timestamptz(6)
-  completedAt          DateTime?    @db.Timestamptz(6)
-  rejectedAt           DateTime?    @db.Timestamptz(6)
-  rejectedBy           String?      @db.Uuid
-  rejectionReason      String?      @db.VarChar(500)
+  approvedAt      DateTime?    @map("approved_at") @db.Timestamptz(6)
+  approvedBy      String?      @map("approved_by") @db.Uuid
+  processedAt     DateTime?    @map("processed_at") @db.Timestamptz(6)
+  completedAt     DateTime?    @map("completed_at") @db.Timestamptz(6)
+  rejectedAt      DateTime?    @map("rejected_at") @db.Timestamptz(6)
+  rejectedBy      String?      @map("rejected_by") @db.Uuid
+  rejectionReason String?      @map("rejection_reason") @db.VarChar(500)
   // Idempotency
-  idempotencyKey       String       @unique @db.VarChar(100)
-  createdBy            String?      @db.Uuid
-  createdAt            DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt            DateTime     @updatedAt @db.Timestamptz(6)
+  idempotencyKey  String       @unique @map("idempotency_key") @db.VarChar(100)
+  createdBy       String?      @map("created_by") @db.Uuid
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   payment     Payment             @relation(fields: [paymentId], references: [id])
   gatewayLogs PaymentGatewayLog[]
@@ -162,31 +162,31 @@ model Refund {
 // =============================================================================
 
 model SavedPaymentMethod {
-  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId            String        @db.Uuid
-  paymentMethod     PaymentMethod
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String        @map("user_id") @db.Uuid
+  paymentMethod    PaymentMethod @map("payment_method")
   // Card details (tokenized)
-  cardType          String?       @db.VarChar(20) // visa, mastercard
-  cardLast4         String?       @db.VarChar(4)
-  cardExpMonth      Int?
-  cardExpYear       Int?
-  cardholderName    String?       @db.VarChar(255)
-  gatewayTokenId    String?       @db.VarChar(255) // Xendit card token
+  cardType         String?       @map("card_type") @db.VarChar(20) // visa, mastercard
+  cardLast4        String?       @map("card_last4") @db.VarChar(4)
+  cardExpMonth     Int?          @map("card_exp_month")
+  cardExpYear      Int?          @map("card_exp_year")
+  cardholderName   String?       @map("cardholder_name") @db.VarChar(255)
+  gatewayTokenId   String?       @map("gateway_token_id") @db.VarChar(255) // Xendit card token
   // Bank account details
-  bankCode          String?       @db.VarChar(20)
-  bankAccountLast4  String?       @db.VarChar(4)
+  bankCode         String?       @map("bank_code") @db.VarChar(20)
+  bankAccountLast4 String?       @map("bank_account_last4") @db.VarChar(4)
   // Ewallet
-  ewalletType       String?       @db.VarChar(50) // ovo, gopay, dana
-  ewalletPhone      String?       @db.VarChar(20)
+  ewalletType      String?       @map("ewallet_type") @db.VarChar(50) // ovo, gopay, dana
+  ewalletPhone     String?       @map("ewallet_phone") @db.VarChar(20)
   // Display
-  displayName       String?       @db.VarChar(100)
-  isDefault         Boolean       @default(false)
+  displayName      String?       @map("display_name") @db.VarChar(100)
+  isDefault        Boolean       @default(false) @map("is_default")
   // Status
-  isActive          Boolean       @default(true)
-  lastUsedAt        DateTime?     @db.Timestamptz(6)
-  createdAt         DateTime      @default(now()) @db.Timestamptz(6)
-  updatedAt         DateTime      @updatedAt @db.Timestamptz(6)
-  deletedAt         DateTime?     @db.Timestamptz(6)
+  isActive         Boolean       @default(true) @map("is_active")
+  lastUsedAt       DateTime?     @map("last_used_at") @db.Timestamptz(6)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?     @map("deleted_at") @db.Timestamptz(6)
 
   @@index([userId])
   @@index([isActive])
@@ -199,23 +199,23 @@ model SavedPaymentMethod {
 // =============================================================================
 
 model SettlementRecord {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  settlementDate  DateTime @db.Date
-  paymentGateway  String   @db.VarChar(50)
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  settlementDate DateTime  @map("settlement_date") @db.Date
+  paymentGateway String    @map("payment_gateway") @db.VarChar(50)
   // Totals
-  totalPayments   Int
-  totalAmount     Decimal  @db.Decimal(15, 2)
-  totalFees       Decimal  @db.Decimal(15, 2)
-  netAmount       Decimal  @db.Decimal(15, 2)
+  totalPayments  Int       @map("total_payments")
+  totalAmount    Decimal   @map("total_amount") @db.Decimal(15, 2)
+  totalFees      Decimal   @map("total_fees") @db.Decimal(15, 2)
+  netAmount      Decimal   @map("net_amount") @db.Decimal(15, 2)
   // Refunds
-  totalRefunds    Int
-  refundAmount    Decimal  @db.Decimal(15, 2)
+  totalRefunds   Int       @map("total_refunds")
+  refundAmount   Decimal   @map("refund_amount") @db.Decimal(15, 2)
   // Status
-  isReconciled    Boolean  @default(false)
-  reconciledAt    DateTime? @db.Timestamptz(6)
-  reconciledBy    String?  @db.Uuid
-  notes           String?
-  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  isReconciled   Boolean   @default(false) @map("is_reconciled")
+  reconciledAt   DateTime? @map("reconciled_at") @db.Timestamptz(6)
+  reconciledBy   String?   @map("reconciled_by") @db.Uuid
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([settlementDate, paymentGateway])
   @@index([settlementDate])
@@ -227,25 +227,25 @@ model SettlementRecord {
 // =============================================================================
 
 model CommissionLedger {
-  id                String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ledgerNumber      String            @unique @db.VarChar(50) // COM-20260115-XXXXX
-  orderId           String            @db.Uuid // Reference to Order Service
-  orderNumber       String            @db.VarChar(50)
-  sellerId          String            @db.Uuid // Reference to Seller Service
-  paymentId         String?           @db.Uuid // Reference to Payment
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ledgerNumber     String           @unique @map("ledger_number") @db.VarChar(50) // COM-20260115-XXXXX
+  orderId          String           @map("order_id") @db.Uuid // Reference to Order Service
+  orderNumber      String           @map("order_number") @db.VarChar(50)
+  sellerId         String           @map("seller_id") @db.Uuid // Reference to Seller Service
+  paymentId        String?          @map("payment_id") @db.Uuid // Reference to Payment
   // Amounts
-  orderAmount       Decimal           @db.Decimal(15, 2) // Total order amount from this seller
-  commissionRate    Decimal           @db.Decimal(5, 4)  // e.g., 0.0050 for 0.5%
-  commissionAmount  Decimal           @db.Decimal(15, 2) // Calculated commission
+  orderAmount      Decimal          @map("order_amount") @db.Decimal(15, 2) // Total order amount from this seller
+  commissionRate   Decimal          @map("commission_rate") @db.Decimal(5, 4)  // e.g., 0.0050 for 0.5%
+  commissionAmount Decimal          @map("commission_amount") @db.Decimal(15, 2) // Calculated commission
   // Payout reference (when commission is deducted from seller payout)
-  sellerPayoutId    String?           @db.Uuid
+  sellerPayoutId   String?          @map("seller_payout_id") @db.Uuid
   // Status
-  status            CommissionStatus  @default(pending)
-  collectedAt       DateTime?         @db.Timestamptz(6)
+  status           CommissionStatus @default(pending)
+  collectedAt      DateTime?        @map("collected_at") @db.Timestamptz(6)
   // Timestamps
-  orderCompletedAt  DateTime?         @db.Timestamptz(6) // Commission becomes collectible
-  createdAt         DateTime          @default(now()) @db.Timestamptz(6)
-  updatedAt         DateTime          @updatedAt @db.Timestamptz(6)
+  orderCompletedAt DateTime?        @map("order_completed_at") @db.Timestamptz(6) // Commission becomes collectible
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([orderId, sellerId]) // Prevent duplicate commission per seller per order
   @@index([orderId])
@@ -261,16 +261,16 @@ model CommissionLedger {
 
 model ServiceOutbox {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  aggregateType String    @db.VarChar(100)
-  aggregateId   String    @db.Uuid
-  eventType     String    @db.VarChar(100)
+  aggregateType String    @map("aggregate_type") @db.VarChar(100)
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") @db.VarChar(100)
   payload       Json
   metadata      Json?
-  isPublished   Boolean   @default(false)
-  publishedAt   DateTime? @db.Timestamptz(6)
-  retryCount    Int       @default(0)
-  lastError     String?
-  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  isPublished   Boolean   @default(false) @map("is_published")
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  retryCount    Int       @default(0) @map("retry_count")
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([isPublished, createdAt])
   @@index([aggregateType, aggregateId])

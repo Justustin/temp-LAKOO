@@ -6,10 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3015:3015"
+      - "3004:3004"
     environment:
       - NODE_ENV=production
-      - PORT=3015
+      - PORT=3004
       - DATABASE_URL=postgresql://postgres:postgres@db:5432/brand_db?schema=public
       - GATEWAY_SECRET_KEY=${GATEWAY_SECRET_KEY:-dev-gateway-key}
       - SERVICE_SECRET=${SERVICE_SECRET:-dev-service-secret}

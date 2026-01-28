@@ -21,51 +21,51 @@ datasource db {
 
 model Address {
   id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId         String    @db.Uuid // Reference to Auth Service
+  userId         String    @map("user_id") @db.Uuid // Reference to Auth Service
   label          String?   @db.VarChar(50) // "Home", "Office", "Apartment"
   // Recipient info (can differ from user)
-  recipientName  String    @db.VarChar(255)
-  phoneNumber    String    @db.VarChar(20)
-  alternatePhone String?   @db.VarChar(20)
+  recipientName  String    @map("recipient_name") @db.VarChar(255)
+  phoneNumber    String    @map("phone_number") @db.VarChar(20)
+  alternatePhone String?   @map("alternate_phone") @db.VarChar(20)
   // Address details
-  streetAddress  String
-  addressLine2   String?   @db.VarChar(255) // Apartment, suite, unit, etc.
+  streetAddress  String    @map("street_address")
+  addressLine2   String?   @map("address_line2") @db.VarChar(255) // Apartment, suite, unit, etc.
   rt             String?   @db.VarChar(10)  // Indonesian RT
   rw             String?   @db.VarChar(10)  // Indonesian RW
   // Location hierarchy
-  villageId      String?   @db.Uuid
-  villageName    String?   @db.VarChar(100)
-  districtId     String?   @db.Uuid
-  districtName   String?   @db.VarChar(100) // Kecamatan
-  cityId         String?   @db.Uuid
-  cityName       String    @db.VarChar(100) // Kota/Kabupaten
-  provinceId     String?   @db.Uuid
-  provinceName   String    @db.VarChar(100)
-  postalCode     String    @db.VarChar(10)
+  villageId      String?   @map("village_id") @db.Uuid
+  villageName    String?   @map("village_name") @db.VarChar(100)
+  districtId     String?   @map("district_id") @db.Uuid
+  districtName   String?   @map("district_name") @db.VarChar(100) // Kecamatan
+  cityId         String?   @map("city_id") @db.Uuid
+  cityName       String    @map("city_name") @db.VarChar(100) // Kota/Kabupaten
+  provinceId     String?   @map("province_id") @db.Uuid
+  provinceName   String    @map("province_name") @db.VarChar(100)
+  postalCode     String    @map("postal_code") @db.VarChar(10)
   country        String    @default("Indonesia") @db.VarChar(100)
-  countryCode    String    @default("ID") @db.VarChar(2)
+  countryCode    String    @default("ID") @map("country_code") @db.VarChar(2)
   // Coordinates (for delivery optimization)
   latitude       Decimal?  @db.Decimal(10, 8)
   longitude      Decimal?  @db.Decimal(11, 8)
-  geoAccuracy    String?   @db.VarChar(50) // "exact", "approximate", "postal_code"
+  geoAccuracy    String?   @map("geo_accuracy") @db.VarChar(50) // "exact", "approximate", "postal_code"
   // Courier-specific codes
-  biteshipAreaId String?   @db.VarChar(50)
-  jneAreaCode    String?   @db.VarChar(50)
-  jntAreaCode    String?   @db.VarChar(50)
+  biteshipAreaId String?   @map("biteship_area_id") @db.VarChar(50)
+  jneAreaCode    String?   @map("jne_area_code") @db.VarChar(50)
+  jntAreaCode    String?   @map("jnt_area_code") @db.VarChar(50)
   // Settings
-  isDefault      Boolean   @default(false)
-  isValidated    Boolean   @default(false)
-  validatedAt    DateTime? @db.Timestamptz(6)
+  isDefault      Boolean   @default(false) @map("is_default")
+  isValidated    Boolean   @default(false) @map("is_validated")
+  validatedAt    DateTime? @map("validated_at") @db.Timestamptz(6)
   // Delivery notes
-  deliveryNotes  String?   @db.VarChar(500)
+  deliveryNotes  String?   @map("delivery_notes") @db.VarChar(500)
   landmark       String?   @db.VarChar(255) // "Near the mosque", "Behind mall"
   // Usage tracking
-  lastUsedAt     DateTime? @db.Timestamptz(6)
-  useCount       Int       @default(0)
+  lastUsedAt     DateTime? @map("last_used_at") @db.Timestamptz(6)
+  useCount       Int       @default(0) @map("use_count")
   // Audit
-  createdAt      DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt      DateTime  @updatedAt @db.Timestamptz(6)
-  deletedAt      DateTime? @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
 
   @@index([userId])
   @@index([cityId])

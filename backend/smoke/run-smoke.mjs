@@ -124,6 +124,21 @@ async function runSmoke() {
       authProbePath: '/api/payments/__smoke'
     },
     {
+      name: 'brand-service',
+      cwd: `${ROOT}/backend/services/brand-service`,
+      port: 3004,
+      env: {
+        PORT: '3004',
+        NODE_ENV: 'test',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/brand_smoke?schema=public',
+        SERVICE_SECRET: serviceSecret,
+        SERVICE_NAME: 'brand-service',
+        GATEWAY_SECRET_KEY: gatewayKey,
+        ALLOWED_ORIGINS: 'http://localhost:3000'
+      },
+      authProbePath: '/api/brands/internal/__smoke'
+    },
+    {
       name: 'address-service',
       cwd: `${ROOT}/backend/services/address-service`,
       port: 3010,
@@ -152,6 +167,21 @@ async function runSmoke() {
         ALLOWED_ORIGINS: 'http://localhost:3000'
       },
       authProbePath: '/api/internal/__smoke'
+    },
+    {
+      name: 'review-service',
+      cwd: `${ROOT}/backend/services/review-service`,
+      port: 3015,
+      env: {
+        PORT: '3015',
+        NODE_ENV: 'test',
+        DATABASE_URL: 'postgresql://postgres:postgres@localhost:5432/review_smoke?schema=public',
+        SERVICE_SECRET: serviceSecret,
+        SERVICE_NAME: 'review-service',
+        GATEWAY_SECRET_KEY: gatewayKey,
+        ALLOWED_ORIGINS: 'http://localhost:3000'
+      },
+      authProbePath: '/api/reviews/internal/review-requests'
     },
     {
       name: 'warehouse-service',

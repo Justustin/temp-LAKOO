@@ -22,7 +22,7 @@ Typical request flow:
 ## 3) Runtime contracts
 
 ### Environment variables
-- **`PORT`**: listen port (default `3016`).
+- **`PORT`**: listen port (default `3015`).
 - **`NODE_ENV`**: `development|test|production` (affects logging + dev auth bypass).
 - **`DATABASE_URL`**: Postgres connection string for Prisma.
 - **`GATEWAY_SECRET_KEY`**: verifies gateway traffic (`x-gateway-key`).
@@ -59,9 +59,9 @@ Base route: **`/api/reviews`** → `src/routes/review.routes.ts`
 **Reviews (CRUD)**:
 - `POST /` → `createReview` (gatewayAuth, user only)
 - `GET /:id` → `getReviewById` (gatewayOrInternalAuth)
-- `GET /product/:productId` → `getReviewsByProduct` (gatewayOrInternalAuth)
+- `GET /products/:productId` → `getReviewsByProduct` (gatewayOrInternalAuth)
 - `GET /user/:userId` → `getReviewsByUser` (gatewayAuth)
-- `PUT /:id` → `updateReview` (gatewayAuth, owner only)
+- `PATCH /:id` → `updateReview` (gatewayAuth, owner only)
 - `DELETE /:id` → `deleteReview` (gatewayAuth, owner or admin)
 
 **Images**:
@@ -77,13 +77,13 @@ Base route: **`/api/reviews`** → `src/routes/review.routes.ts`
 
 **Replies** (seller/brand/admin):
 - `POST /:id/replies` → `createReply` (gatewayAuth, seller/brand_owner/admin)
-- `PUT /:id/replies/:replyId` → `updateReply` (gatewayAuth, owner)
+- `PATCH /:id/replies/:replyId` → `updateReply` (gatewayAuth, owner)
 - `DELETE /:id/replies/:replyId` → `deleteReply` (gatewayAuth, owner or admin)
 
 **Review Requests** (internal):
-- `POST /requests` → `createReviewRequest` (internalAuth)
-- `GET /requests/pending` → `getReviewRequests` (gatewayAuth)
-- `POST /requests/:id/skip` → `skipReviewRequest` (gatewayAuth)
+- `POST /internal/review-requests` → `createReviewRequest` (internalAuth)
+- `GET /review-requests` → `getReviewRequests` (gatewayAuth)
+- `POST /review-requests/:id/skip` → `skipReviewRequest` (gatewayAuth)
 
 **Moderation** (admin only):
 - `GET /moderation/queue` → `getModerationQueue` (gatewayAuth + admin)
@@ -91,7 +91,7 @@ Base route: **`/api/reviews`** → `src/routes/review.routes.ts`
 - `POST /moderation/:id/reject` → `rejectReview` (gatewayAuth + admin)
 
 **Summary**:
-- `GET /summary/:productId` → `getReviewSummary` (gatewayOrInternalAuth)
+- `GET /products/:productId/summary` → `getReviewSummary` (gatewayOrInternalAuth)
 
 ## 5) Middleware
 Files under `src/middleware/`.

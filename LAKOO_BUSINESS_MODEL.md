@@ -34,6 +34,11 @@
 - **Store Page Builder** - Sellers can customize their store like Taobao
 - **Fitting Room** - Mix & match items from different stores (frontend demo)
 
+**Clarification (Tagging vs Selling vs Reviews):**
+- **Post tags** are for discovery only: users can tag products from any store.
+- **Sellable catalog** requires approval: only LAKOO‑approved products can be purchased in‑app.
+- **Reviews** are purchase‑verified and separate from post comments.
+
 👤 **Users vs Sellers:** Sellers ARE users! A seller is just a user who also sells. Sellers can post, comment, follow, and even buy from other sellers.
 
 📱 **We are NOT:**

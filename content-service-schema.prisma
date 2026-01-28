@@ -20,39 +20,39 @@ datasource db {
 // =============================================================================
 
 model Post {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId          String      @db.Uuid // Reference to User Service (creator)
-  postCode        String      @unique @db.VarChar(50) // PST-XXXXX
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId           String             @map("user_id") @db.Uuid // Reference to User Service (creator)
+  postCode         String             @unique @map("post_code") @db.VarChar(50) // PST-XXXXX
   // Content
-  title           String?     @db.VarChar(255)
-  caption         String      // Main text content
+  title            String?            @db.VarChar(255)
+  caption          String             // Main text content
   // Post type
-  postType        PostType    @default(standard)
+  postType         PostType           @default(standard) @map("post_type")
   // Engagement metrics (denormalized for performance)
-  likeCount       Int         @default(0)
-  commentCount    Int         @default(0)
-  saveCount       Int         @default(0)
-  shareCount      Int         @default(0)
-  viewCount       Int         @default(0)
+  likeCount        Int                @default(0) @map("like_count")
+  commentCount     Int                @default(0) @map("comment_count")
+  saveCount        Int                @default(0) @map("save_count")
+  shareCount       Int                @default(0) @map("share_count")
+  viewCount        Int                @default(0) @map("view_count")
   // Status
-  status          PostStatus  @default(draft)
-  publishedAt     DateTime?   @db.Timestamptz(6)
+  status           PostStatus         @default(draft)
+  publishedAt      DateTime?          @map("published_at") @db.Timestamptz(6)
   // Visibility
-  visibility      PostVisibility @default(public)
+  visibility       PostVisibility     @default(public)
   // Location (optional)
-  locationName    String?     @db.VarChar(255)
-  locationLat     Decimal?    @db.Decimal(10, 8)
-  locationLng     Decimal?    @db.Decimal(11, 8)
+  locationName     String?            @map("location_name") @db.VarChar(255)
+  locationLat      Decimal?           @map("location_lat") @db.Decimal(10, 8)
+  locationLng      Decimal?           @map("location_lng") @db.Decimal(11, 8)
   // Moderation
-  isReported      Boolean     @default(false)
-  reportCount     Int         @default(0)
-  moderationStatus ModerationStatus @default(pending)
-  moderatedAt     DateTime?   @db.Timestamptz(6)
-  moderatedBy     String?     @db.Uuid
+  isReported       Boolean            @default(false) @map("is_reported")
+  reportCount      Int                @default(0) @map("report_count")
+  moderationStatus ModerationStatus   @default(pending) @map("moderation_status")
+  moderatedAt      DateTime?          @map("moderated_at") @db.Timestamptz(6)
+  moderatedBy      String?            @map("moderated_by") @db.Uuid
   // Timestamps
-  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
-  deletedAt       DateTime?   @db.Timestamptz(6)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?          @map("deleted_at") @db.Timestamptz(6)
 
   media           PostMedia[]
   productTags     PostProductTag[]
@@ -76,21 +76,21 @@ model Post {
 
 model PostMedia {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId        String    @db.Uuid
-  mediaType     MediaType
+  postId        String    @map("post_id") @db.Uuid
+  mediaType     MediaType @map("media_type")
   // URLs
-  mediaUrl      String    // Original/full resolution
-  thumbnailUrl  String?   // Thumbnail for lists
+  mediaUrl      String    @map("media_url") // Original/full resolution
+  thumbnailUrl  String?   @map("thumbnail_url") // Thumbnail for lists
   // Dimensions
   width         Int?
   height        Int?
-  durationSec   Int?      // For videos
-  fileSizeBytes Int?
+  durationSec   Int?      @map("duration_sec") // For videos
+  fileSizeBytes Int?      @map("file_size_bytes")
   // Display order
-  sortOrder     Int       @default(0)
+  sortOrder     Int       @default(0) @map("sort_order")
   // Alt text for accessibility
-  altText       String?   @db.VarChar(500)
-  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  altText       String?   @map("alt_text") @db.VarChar(500)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
@@ -105,28 +105,28 @@ model PostMedia {
 
 model PostProductTag {
   id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId          String        @db.Uuid
+  postId          String        @map("post_id") @db.Uuid
   // Product reference (to Seller Service or Product Service)
-  productId       String        @db.Uuid
-  sellerId        String?       @db.Uuid // Seller who owns the product
-  productSource   ProductSource @default(seller_product) // Distinguish product types
+  productId       String        @map("product_id") @db.Uuid
+  sellerId        String?       @map("seller_id") @db.Uuid // Seller who owns the product
+  productSource   ProductSource @default(seller_product) @map("product_source") // Distinguish product types
   // Position in media (for clickable tags)
-  mediaIndex      Int           @default(0) // Which image in the post (0-indexed)
-  positionX       Decimal?      @db.Decimal(5, 2) // 0-100 percentage
-  positionY       Decimal?      @db.Decimal(5, 2) // 0-100 percentage
+  mediaIndex      Int           @default(0) @map("media_index") // Which image in the post (0-indexed)
+  positionX       Decimal?      @map("position_x") @db.Decimal(5, 2) // 0-100 percentage
+  positionY       Decimal?      @map("position_y") @db.Decimal(5, 2) // 0-100 percentage
   // Snapshot of product info at time of tagging
-  productName     String        @db.VarChar(255)
-  productPrice    Decimal       @db.Decimal(15, 2)
-  productImageUrl String?
-  snapshotAt      DateTime      @default(now()) @db.Timestamptz(6) // When snapshot was taken
+  productName     String        @map("product_name") @db.VarChar(255)
+  productPrice    Decimal       @map("product_price") @db.Decimal(15, 2)
+  productImageUrl String?       @map("product_image_url")
+  snapshotAt      DateTime      @default(now()) @map("snapshot_at") @db.Timestamptz(6) // When snapshot was taken
   // Tracking
-  clickCount      Int           @default(0)
-  purchaseCount   Int           @default(0) // Conversions from this tag
-  createdAt       DateTime      @default(now()) @db.Timestamptz(6)
+  clickCount      Int           @default(0) @map("click_count")
+  purchaseCount   Int           @default(0) @map("purchase_count") // Conversions from this tag
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
-  @@unique([postId, productId, mediaIndex]) // Allow same product on different images
+  @@unique([postId, productId, productSource, mediaIndex]) // Allow same product on different images
   @@index([productId])
   @@index([sellerId])
   @@index([createdAt])
@@ -138,14 +138,14 @@ model PostProductTag {
 // =============================================================================
 
 model Hashtag {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tag         String   @unique @db.VarChar(100) // Without #, lowercase
-  postCount   Int      @default(0)
-  isActive    Boolean  @default(true)
-  isBanned    Boolean  @default(false)
-  isTrending  Boolean  @default(false)
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tag        String   @unique @db.VarChar(100) // Without #, lowercase
+  postCount  Int      @default(0) @map("post_count")
+  isActive   Boolean  @default(true) @map("is_active")
+  isBanned   Boolean  @default(false) @map("is_banned")
+  isTrending Boolean  @default(false) @map("is_trending")
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   posts PostHashtag[]
 
@@ -156,9 +156,9 @@ model Hashtag {
 
 model PostHashtag {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId    String   @db.Uuid
-  hashtagId String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  postId    String   @map("post_id") @db.Uuid
+  hashtagId String   @map("hashtag_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   post    Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
   hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
@@ -174,9 +174,9 @@ model PostHashtag {
 
 model PostLike {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId    String   @db.Uuid
-  userId    String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  postId    String   @map("post_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
 
@@ -191,10 +191,10 @@ model PostLike {
 
 model PostSave {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId       String   @db.Uuid
-  userId       String   @db.Uuid
-  collectionId String?  @db.Uuid // Optional: save to specific collection
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  postId       String   @map("post_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  collectionId String?  @map("collection_id") @db.Uuid // Optional: save to specific collection
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   post       Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
   collection SaveCollection? @relation(fields: [collectionId], references: [id], onDelete: SetNull)
@@ -206,15 +206,15 @@ model PostSave {
 }
 
 model SaveCollection {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId      String   @db.Uuid
-  name        String   @db.VarChar(100)
-  description String?  @db.VarChar(500)
-  coverImageUrl String?
-  isPrivate   Boolean  @default(false)
-  postCount   Int      @default(0)
-  createdAt   DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt   DateTime @updatedAt @db.Timestamptz(6)
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  name          String   @db.VarChar(100)
+  description   String?  @db.VarChar(500)
+  coverImageUrl String?  @map("cover_image_url")
+  isPrivate     Boolean  @default(false) @map("is_private")
+  postCount     Int      @default(0) @map("post_count")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   saves PostSave[]
 
@@ -227,22 +227,22 @@ model SaveCollection {
 // =============================================================================
 
 model Comment {
-  id              String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  postId          String      @db.Uuid
-  userId          String      @db.Uuid // Commenter
-  parentId        String?     @db.Uuid // For replies (nested comments)
+  id               String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  postId           String             @map("post_id") @db.Uuid
+  userId           String             @map("user_id") @db.Uuid // Commenter
+  parentId         String?            @map("parent_id") @db.Uuid // For replies (nested comments)
   // Content
-  content         String      @db.VarChar(2000)
+  content          String             @db.VarChar(2000)
   // Engagement
-  likeCount       Int         @default(0)
-  replyCount      Int         @default(0)
+  likeCount        Int                @default(0) @map("like_count")
+  replyCount       Int                @default(0) @map("reply_count")
   // Moderation
-  isReported      Boolean     @default(false)
-  moderationStatus ModerationStatus @default(approved) // Comments auto-approved by default
+  isReported       Boolean            @default(false) @map("is_reported")
+  moderationStatus ModerationStatus   @default(approved) @map("moderation_status") // Comments auto-approved by default
   // Timestamps
-  createdAt       DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime    @updatedAt @db.Timestamptz(6)
-  deletedAt       DateTime?   @db.Timestamptz(6)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?          @map("deleted_at") @db.Timestamptz(6)
 
   post     Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
   parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
@@ -261,9 +261,9 @@ model Comment {
 
 model CommentLike {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  commentId String   @db.Uuid
-  userId    String   @db.Uuid
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  commentId String   @map("comment_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
@@ -274,9 +274,9 @@ model CommentLike {
 
 model CommentMention {
   id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  commentId       String   @db.Uuid
-  mentionedUserId String   @db.Uuid
-  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  commentId       String   @map("comment_id") @db.Uuid
+  mentionedUserId String   @map("mentioned_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
@@ -290,26 +290,26 @@ model CommentMention {
 // =============================================================================
 
 model ContentReport {
-  id            String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reporterId    String       @db.Uuid // User who reported
+  id          String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId  String        @map("reporter_id") @db.Uuid // User who reported
   // Content reference
-  contentType   ContentType  // post, comment
-  contentId     String       @db.Uuid
-  postId        String?      @db.Uuid // For easier querying (when contentType = post)
-  commentId     String?      @db.Uuid // For easier querying (when contentType = comment)
+  contentType ContentType   @map("content_type") // post, comment
+  contentId   String        @map("content_id") @db.Uuid
+  postId      String?       @map("post_id") @db.Uuid // For easier querying (when contentType = post)
+  commentId   String?       @map("comment_id") @db.Uuid // For easier querying (when contentType = comment)
   // Report details
-  reason        ReportReason
-  description   String?      @db.VarChar(1000)
+  reason      ReportReason
+  description String?       @db.VarChar(1000)
   // Status
-  status        ReportStatus @default(pending)
+  status      ReportStatus  @default(pending)
   // Resolution
-  resolvedAt    DateTime?    @db.Timestamptz(6)
-  resolvedBy    String?      @db.Uuid
-  resolution    String?      @db.VarChar(500)
-  actionTaken   ReportAction?
+  resolvedAt  DateTime?     @map("resolved_at") @db.Timestamptz(6)
+  resolvedBy  String?       @map("resolved_by") @db.Uuid
+  resolution  String?       @db.VarChar(500)
+  actionTaken ReportAction? @map("action_taken")
   // Timestamps
-  createdAt     DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime     @updatedAt @db.Timestamptz(6)
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   post    Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
   comment Comment? @relation(fields: [commentId], references: [id], onDelete: SetNull)
@@ -327,16 +327,16 @@ model ContentReport {
 
 model ServiceOutbox {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  aggregateType String    @db.VarChar(100)
-  aggregateId   String    @db.Uuid
-  eventType     String    @db.VarChar(100)
+  aggregateType String    @map("aggregate_type") @db.VarChar(100)
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") @db.VarChar(100)
   payload       Json
   metadata      Json?
-  isPublished   Boolean   @default(false)
-  publishedAt   DateTime? @db.Timestamptz(6)
-  retryCount    Int       @default(0)
-  lastError     String?
-  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  isPublished   Boolean   @default(false) @map("is_published")
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  retryCount    Int       @default(0) @map("retry_count")
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([isPublished, createdAt])
   @@index([aggregateType, aggregateId])

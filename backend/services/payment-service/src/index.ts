@@ -10,6 +10,7 @@ import paymentRoutes from './routes/payment.routes';
 import webhookRoutes from './routes/webhook.routes';
 import transactionRoutes from './routes/transaction.routes';
 import adminRoutes from './routes/admin.routes';
+import commissionRoutes from './routes/commission.routes';
 import { PaymentRepository } from './repositories/payment.repository';
 import { errorHandler } from './middleware/error-handler';
 
@@ -65,6 +66,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/commissions', commissionRoutes);
 
 // 404 Handler
 app.use((req, res) => {

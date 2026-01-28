@@ -20,59 +20,59 @@ datasource db {
 // =============================================================================
 
 model ProductReview {
-  id              String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   // References (to other services)
-  productId       String       @db.Uuid // Reference to Product Service
-  variantId       String?      @db.Uuid
-  userId          String       @db.Uuid // Reference to Auth Service
-  orderId         String?      @db.Uuid // Reference to Order Service
-  orderItemId     String?      @db.Uuid
-  sellerId        String?      @db.Uuid // Reference to Seller Service (for seller products)
-  brandId         String?      @db.Uuid // Reference to Brand Service (for brand products)
+  productId        String       @map("product_id") @db.Uuid // Reference to Product Service
+  variantId        String?      @map("variant_id") @db.Uuid
+  userId           String       @map("user_id") @db.Uuid // Reference to Auth Service
+  orderId          String?      @map("order_id") @db.Uuid // Reference to Order Service
+  orderItemId      String?      @map("order_item_id") @db.Uuid
+  sellerId         String?      @map("seller_id") @db.Uuid // Reference to Seller Service (for seller products)
+  brandId          String?      @map("brand_id") @db.Uuid // Reference to Brand Service (for brand products)
   // Product snapshot (at time of review)
-  productName     String       @db.VarChar(255)
-  variantName     String?      @db.VarChar(255)
-  productImageUrl String?
+  productName      String       @map("product_name") @db.VarChar(255)
+  variantName      String?      @map("variant_name") @db.VarChar(255)
+  productImageUrl  String?      @map("product_image_url")
   // Reviewer snapshot
-  reviewerName    String       @db.VarChar(255)
-  reviewerImageUrl String?
+  reviewerName     String       @map("reviewer_name") @db.VarChar(255)
+  reviewerImageUrl String?      @map("reviewer_image_url")
   // Review content
-  rating          Int          // 1-5 stars
-  title           String?      @db.VarChar(255)
-  reviewText      String?
+  rating           Int          // 1-5 stars
+  title            String?      @db.VarChar(255)
+  reviewText       String?      @map("review_text")
   // Detailed ratings (optional)
-  qualityRating   Int?         // 1-5
-  valueRating     Int?         // 1-5
-  fitRating       Int?         // 1-5 (for fashion)
+  qualityRating    Int?         @map("quality_rating") // 1-5
+  valueRating      Int?         @map("value_rating") // 1-5
+  fitRating        Int?         @map("fit_rating") // 1-5 (for fashion)
   // Purchase verification
-  isVerified      Boolean      @default(false) // Verified purchase
+  isVerified       Boolean      @default(false) @map("is_verified") // Verified purchase
   // Engagement
-  helpfulCount    Int          @default(0)
-  unhelpfulCount  Int          @default(0)
-  reportCount     Int          @default(0)
-  replyCount      Int          @default(0)
+  helpfulCount     Int          @default(0) @map("helpful_count")
+  unhelpfulCount   Int          @default(0) @map("unhelpful_count")
+  reportCount      Int          @default(0) @map("report_count")
+  replyCount       Int          @default(0) @map("reply_count")
   // Moderation
-  status          ReviewStatus @default(pending)
-  moderatedAt     DateTime?    @db.Timestamptz(6)
-  moderatedBy     String?      @db.Uuid
-  moderationNotes String?      @db.VarChar(500)
-  rejectionReason String?      @db.VarChar(255)
+  status           ReviewStatus @default(pending)
+  moderatedAt      DateTime?    @map("moderated_at") @db.Timestamptz(6)
+  moderatedBy      String?      @map("moderated_by") @db.Uuid
+  moderationNotes  String?      @map("moderation_notes") @db.VarChar(500)
+  rejectionReason  String?      @map("rejection_reason") @db.VarChar(255)
   // Visibility
-  isVisible       Boolean      @default(false) // Only true after moderation
-  isFeatured      Boolean      @default(false)
-  isPinned        Boolean      @default(false)
+  isVisible        Boolean      @default(false) @map("is_visible") // Only true after moderation
+  isFeatured       Boolean      @default(false) @map("is_featured")
+  isPinned         Boolean      @default(false) @map("is_pinned")
   // Analytics
-  viewCount       Int          @default(0)
+  viewCount        Int          @default(0) @map("view_count")
   // Edit tracking
-  isEdited        Boolean      @default(false)
-  editedAt        DateTime?    @db.Timestamptz(6)
-  editCount       Int          @default(0)
+  isEdited         Boolean      @default(false) @map("is_edited")
+  editedAt         DateTime?    @map("edited_at") @db.Timestamptz(6)
+  editCount        Int          @default(0) @map("edit_count")
   // Timestamps
-  purchasedAt     DateTime?    @db.Timestamptz(6) // When product was purchased
-  deliveredAt     DateTime?    @db.Timestamptz(6) // When product was delivered
-  createdAt       DateTime     @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime     @updatedAt @db.Timestamptz(6)
-  deletedAt       DateTime?    @db.Timestamptz(6)
+  purchasedAt      DateTime?    @map("purchased_at") @db.Timestamptz(6) // When product was purchased
+  deliveredAt      DateTime?    @map("delivered_at") @db.Timestamptz(6) // When product was delivered
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?    @map("deleted_at") @db.Timestamptz(6)
 
   images  ReviewImage[]
   votes   ReviewVote[]
@@ -94,15 +94,15 @@ model ProductReview {
 
 model ReviewImage {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewId     String   @db.Uuid
-  imageUrl     String
-  thumbnailUrl String?
-  altText      String?  @db.VarChar(255)
-  displayOrder Int      @default(0)
+  reviewId     String   @map("review_id") @db.Uuid
+  imageUrl     String   @map("image_url")
+  thumbnailUrl String?  @map("thumbnail_url")
+  altText      String?  @map("alt_text") @db.VarChar(255)
+  displayOrder Int      @default(0) @map("display_order")
   width        Int?
   height       Int?
-  sizeBytes    Int?
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  sizeBytes    Int?     @map("size_bytes")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   review ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
@@ -116,10 +116,10 @@ model ReviewImage {
 
 model ReviewVote {
   id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewId  String   @db.Uuid
-  userId    String   @db.Uuid
-  voteType  VoteType
-  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  reviewId  String   @map("review_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  voteType  VoteType @map("vote_type")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   review ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
@@ -134,16 +134,16 @@ model ReviewVote {
 // =============================================================================
 
 model ReviewReport {
-  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewId     String       @db.Uuid
-  reporterId   String       @db.Uuid
-  reason       ReportReason
-  description  String?      @db.VarChar(500)
-  status       ReportStatus @default(pending)
-  resolvedAt   DateTime?    @db.Timestamptz(6)
-  resolvedBy   String?      @db.Uuid
-  resolution   String?      @db.VarChar(255)
-  createdAt    DateTime     @default(now()) @db.Timestamptz(6)
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId    String       @map("review_id") @db.Uuid
+  reporterId  String       @map("reporter_id") @db.Uuid
+  reason      ReportReason
+  description String?      @db.VarChar(500)
+  status      ReportStatus @default(pending)
+  resolvedAt  DateTime?    @map("resolved_at") @db.Timestamptz(6)
+  resolvedBy  String?      @map("resolved_by") @db.Uuid
+  resolution  String?      @db.VarChar(255)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
 
   review ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
@@ -158,23 +158,23 @@ model ReviewReport {
 // =============================================================================
 
 model ReviewReply {
-  id           String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewId     String      @db.Uuid
+  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId      String        @map("review_id") @db.Uuid
   // Responder (seller or brand manager)
-  responderType ResponderType
-  responderId  String      @db.Uuid
-  responderName String     @db.VarChar(255)
+  responderType ResponderType @map("responder_type")
+  responderId   String        @map("responder_id") @db.Uuid
+  responderName String        @map("responder_name") @db.VarChar(255)
   // Content
-  replyText    String
+  replyText     String        @map("reply_text")
   // Status
-  status       ReplyStatus @default(visible)
+  status        ReplyStatus   @default(visible)
   // Edit tracking
-  isEdited     Boolean     @default(false)
-  editedAt     DateTime?   @db.Timestamptz(6)
+  isEdited      Boolean       @default(false) @map("is_edited")
+  editedAt      DateTime?     @map("edited_at") @db.Timestamptz(6)
   // Timestamps
-  createdAt    DateTime    @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime    @updatedAt @db.Timestamptz(6)
-  deletedAt    DateTime?   @db.Timestamptz(6)
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt     DateTime?     @map("deleted_at") @db.Timestamptz(6)
 
   review ProductReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
@@ -187,33 +187,33 @@ model ReviewReply {
 // =============================================================================
 
 model ReviewRequest {
-  id            String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  userId        String        @db.Uuid
-  orderId       String        @db.Uuid
-  orderItemId   String?       @db.Uuid
-  productId     String        @db.Uuid
-  variantId     String?       @db.Uuid
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String         @map("user_id") @db.Uuid
+  orderId         String         @map("order_id") @db.Uuid
+  orderItemId     String?        @map("order_item_id") @db.Uuid
+  productId       String         @map("product_id") @db.Uuid
+  variantId       String?        @map("variant_id") @db.Uuid
   // Product snapshot
-  productName   String        @db.VarChar(255)
-  productImageUrl String?
+  productName     String         @map("product_name") @db.VarChar(255)
+  productImageUrl String?        @map("product_image_url")
   // Request details
-  channel       RequestChannel @default(in_app)
+  channel         RequestChannel @default(in_app)
   // Status
-  status        RequestStatus @default(pending)
-  sentAt        DateTime?     @db.Timestamptz(6)
-  openedAt      DateTime?     @db.Timestamptz(6)
-  completedAt   DateTime?     @db.Timestamptz(6)
-  reviewId      String?       @db.Uuid // If review was submitted
+  status          RequestStatus  @default(pending)
+  sentAt          DateTime?      @map("sent_at") @db.Timestamptz(6)
+  openedAt        DateTime?      @map("opened_at") @db.Timestamptz(6)
+  completedAt     DateTime?      @map("completed_at") @db.Timestamptz(6)
+  reviewId        String?        @map("review_id") @db.Uuid // If review was submitted
   // Retry tracking
-  sendCount     Int           @default(0)
-  maxSendCount  Int           @default(3)
-  lastSentAt    DateTime?     @db.Timestamptz(6)
-  nextSendAt    DateTime?     @db.Timestamptz(6)
+  sendCount       Int            @default(0) @map("send_count")
+  maxSendCount    Int            @default(3) @map("max_send_count")
+  lastSentAt      DateTime?      @map("last_sent_at") @db.Timestamptz(6)
+  nextSendAt      DateTime?      @map("next_send_at") @db.Timestamptz(6)
   // Timestamps
-  eligibleAt    DateTime      @db.Timestamptz(6) // When eligible to request (after delivery)
-  expiresAt     DateTime      @db.Timestamptz(6) // Review window expiration
-  createdAt     DateTime      @default(now()) @db.Timestamptz(6)
-  updatedAt     DateTime      @updatedAt @db.Timestamptz(6)
+  eligibleAt      DateTime       @map("eligible_at") @db.Timestamptz(6) // When eligible to request (after delivery)
+  expiresAt       DateTime       @map("expires_at") @db.Timestamptz(6) // Review window expiration
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([orderId, productId, variantId])
   @@index([userId])
@@ -229,23 +229,23 @@ model ReviewRequest {
 // =============================================================================
 
 model ModerationQueueItem {
-  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  reviewId      String           @unique @db.Uuid
+  id          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewId    String              @unique @map("review_id") @db.Uuid
   // Auto-moderation results
-  autoScore     Decimal?         @db.Decimal(5, 2) // 0-100 (higher = more likely spam/inappropriate)
-  autoFlags     String[]         // ["profanity", "spam", "fake", etc.]
+  autoScore   Decimal?            @map("auto_score") @db.Decimal(5, 2) // 0-100 (higher = more likely spam/inappropriate)
+  autoFlags   String[]            @map("auto_flags") // ["profanity", "spam", "fake", etc.]
   // Priority
-  priority      ModerationPriority @default(normal)
+  priority    ModerationPriority  @default(normal)
   // Assignment
-  assignedTo    String?          @db.Uuid
-  assignedAt    DateTime?        @db.Timestamptz(6)
+  assignedTo  String?             @map("assigned_to") @db.Uuid
+  assignedAt  DateTime?           @map("assigned_at") @db.Timestamptz(6)
   // Status
-  status        QueueStatus      @default(pending)
-  processedAt   DateTime?        @db.Timestamptz(6)
-  processedBy   String?          @db.Uuid
-  decision      ModerationDecision?
-  notes         String?          @db.VarChar(500)
-  createdAt     DateTime         @default(now()) @db.Timestamptz(6)
+  status      QueueStatus         @default(pending)
+  processedAt DateTime?           @map("processed_at") @db.Timestamptz(6)
+  processedBy String?             @map("processed_by") @db.Uuid
+  decision    ModerationDecision?
+  notes       String?             @db.VarChar(500)
+  createdAt   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([status])
   @@index([priority])
@@ -258,30 +258,30 @@ model ModerationQueueItem {
 // =============================================================================
 
 model ProductReviewSummary {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  productId       String   @unique @db.Uuid
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId        String    @unique @map("product_id") @db.Uuid
   // Totals
-  totalReviews    Int      @default(0)
-  totalWithPhotos Int      @default(0)
-  totalVerified   Int      @default(0)
+  totalReviews     Int       @default(0) @map("total_reviews")
+  totalWithPhotos  Int       @default(0) @map("total_with_photos")
+  totalVerified    Int       @default(0) @map("total_verified")
   // Rating breakdown
-  avgRating       Decimal? @db.Decimal(3, 2)
-  rating5Count    Int      @default(0)
-  rating4Count    Int      @default(0)
-  rating3Count    Int      @default(0)
-  rating2Count    Int      @default(0)
-  rating1Count    Int      @default(0)
+  avgRating        Decimal?  @map("avg_rating") @db.Decimal(3, 2)
+  rating5Count     Int       @default(0) @map("rating5_count")
+  rating4Count     Int       @default(0) @map("rating4_count")
+  rating3Count     Int       @default(0) @map("rating3_count")
+  rating2Count     Int       @default(0) @map("rating2_count")
+  rating1Count     Int       @default(0) @map("rating1_count")
   // Detailed ratings
-  avgQualityRating Decimal? @db.Decimal(3, 2)
-  avgValueRating  Decimal? @db.Decimal(3, 2)
-  avgFitRating    Decimal? @db.Decimal(3, 2)
+  avgQualityRating Decimal?  @map("avg_quality_rating") @db.Decimal(3, 2)
+  avgValueRating   Decimal?  @map("avg_value_rating") @db.Decimal(3, 2)
+  avgFitRating     Decimal?  @map("avg_fit_rating") @db.Decimal(3, 2)
   // Common keywords (for display)
-  topKeywords     String[]
+  topKeywords      String[]  @map("top_keywords")
   // Timestamps
-  lastReviewAt    DateTime? @db.Timestamptz(6)
-  recalculatedAt  DateTime  @default(now()) @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @db.Timestamptz(6)
+  lastReviewAt     DateTime? @map("last_review_at") @db.Timestamptz(6)
+  recalculatedAt   DateTime  @default(now()) @map("recalculated_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("product_review_summary")
 }
@@ -292,16 +292,16 @@ model ProductReviewSummary {
 
 model ServiceOutbox {
   id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  aggregateType String    @db.VarChar(100)
-  aggregateId   String    @db.Uuid
-  eventType     String    @db.VarChar(100)
+  aggregateType String    @map("aggregate_type") @db.VarChar(100)
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") @db.VarChar(100)
   payload       Json
   metadata      Json?
-  isPublished   Boolean   @default(false)
-  publishedAt   DateTime? @db.Timestamptz(6)
-  retryCount    Int       @default(0)
-  lastError     String?
-  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+  isPublished   Boolean   @default(false) @map("is_published")
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  retryCount    Int       @default(0) @map("retry_count")
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([isPublished, createdAt])
   @@index([aggregateType, aggregateId])

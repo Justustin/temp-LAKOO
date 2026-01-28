@@ -13,7 +13,7 @@ import { prisma } from './lib/prisma';
 dotenv.config();
 
 const app: Express = express();
-const PORT = process.env.PORT || 3016;
+const PORT = process.env.PORT || 3015;
 
 // Security middleware
 app.use(helmet());

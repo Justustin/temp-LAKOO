@@ -20,13 +20,13 @@ PAYMENT-SERVICE 3007
 psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/payment_db?sslmode=require&channel_binding=require'
 
 NOTIFICATION-SERVICE 3008
-
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/notification_db?sslmode=require&channel_binding=require'
 
 LOGISTIC-SERVICE 3009
 psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/logistics_db?sslmode=require&channel_binding=require'
 
 ADDRESS-SERVICE 3010
-
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/address_db?sslmode=require&channel_binding=require'
 
 WALLET-SERVICE 3011
 psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/wallet_db?sslmode=require&channel_binding=require'
@@ -35,12 +35,19 @@ WAREHOUSE-SERVICE 3012
 psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/warehouse_db?sslmode=require&channel_binding=require'
 
 ADVERTISEMENTS-SERVICE 3013
-
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/ad_db?sslmode=require&channel_binding=require'
 
 CUSTOMERSERVICE-SERVICE 3014
-
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/support_db?sslmode=require&channel_binding=require'
 
 SELLER-SERVICE 3015
-
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/seller_db?sslmode=require&channel_binding=require'
 
 REVIEW-SERVICE 3016
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/review_db?sslmode=require&channel_binding=require'
+
+CONTENT-SERVICE 3017
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/content_db?sslmode=require&channel_binding=require'
+
+FEED-SERVICE 3018
+psql 'postgresql://neondb_owner:npg_GVbUo4NiHXw1@ep-silent-boat-a1jd5w32-pooler.ap-southeast-1.aws.neon.tech/feed_db?sslmode=require&channel_binding=require'

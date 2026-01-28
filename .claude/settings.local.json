@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(test:*)",
+      "Bash(export PRODUCT_DATABASE_URL:*)",
+      "Bash(pnpm prisma:push:*)",
+      "Bash(npx prisma:*)",
+      "Bash(export DATABASE_URL:*)"
+    ]
+  }
+}

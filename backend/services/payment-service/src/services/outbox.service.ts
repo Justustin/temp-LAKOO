@@ -28,7 +28,14 @@ export type RefundEventType =
 
 export type SettlementEventType = 'settlement.completed';
 
-export type EventType = PaymentEventType | RefundEventType | SettlementEventType;
+export type CommissionEventType =
+  | 'commission.recorded'
+  | 'commission.collectible'
+  | 'commission.collected'
+  | 'commission.waived'
+  | 'commission.refunded';
+
+export type EventType = PaymentEventType | RefundEventType | SettlementEventType | CommissionEventType;
 
 // =============================================================================
 // Event Payloads
@@ -128,6 +135,55 @@ export interface RefundFailedPayload {
   failedAt: string;
 }
 
+export interface CommissionRecordedPayload {
+  commissionId: string;
+  ledgerNumber: string;
+  orderId: string;
+  orderNumber: string;
+  sellerId: string;
+  paymentId: string | null;
+  orderAmount: number;
+  commissionRate: number;
+  commissionAmount: number;
+  createdAt: string;
+}
+
+export interface CommissionCollectiblePayload {
+  commissionId: string;
+  ledgerNumber: string;
+  orderId: string;
+  sellerId: string;
+  commissionAmount: number;
+  orderCompletedAt: string;
+}
+
+export interface CommissionCollectedPayload {
+  commissionId: string;
+  ledgerNumber: string;
+  orderId: string;
+  sellerId: string;
+  commissionAmount: number;
+  settlementId: string | null;
+  collectedAt: string;
+}
+
+export interface CommissionWaivedPayload {
+  commissionId: string;
+  ledgerNumber: string;
+  orderId: string;
+  sellerId: string;
+  reason: string;
+  waivedAt: string;
+}
+
+export interface CommissionRefundedPayload {
+  commissionId: string;
+  ledgerNumber: string;
+  orderId: string;
+  sellerId: string;
+  refundedAt: string;
+}
+
 // =============================================================================
 // Outbox Service
 // =============================================================================
@@ -137,7 +193,7 @@ export class OutboxService {
    * Publish an event to the outbox
    */
   async publish(
-    aggregateType: 'Payment' | 'Refund' | 'Settlement',
+    aggregateType: 'Payment' | 'Refund' | 'Settlement' | 'Commission',
     aggregateId: string,
     eventType: EventType,
     payload: Record<string, any>,
@@ -371,6 +427,116 @@ export class OutboxService {
     };
 
     await this.publish('Refund', refund.id, 'refund.failed', payload);
+  }
+
+  // =============================================================================
+  // Commission Events
+  // =============================================================================
+
+  async commissionRecorded(commission: {
+    id: string;
+    ledgerNumber: string;
+    orderId: string;
+    orderNumber: string;
+    sellerId: string;
+    paymentId: string | null;
+    orderAmount: any;
+    commissionRate: any;
+    commissionAmount: any;
+    createdAt: Date;
+  }): Promise<void> {
+    const payload: CommissionRecordedPayload = {
+      commissionId: commission.id,
+      ledgerNumber: commission.ledgerNumber,
+      orderId: commission.orderId,
+      orderNumber: commission.orderNumber,
+      sellerId: commission.sellerId,
+      paymentId: commission.paymentId,
+      orderAmount: Number(commission.orderAmount),
+      commissionRate: Number(commission.commissionRate),
+      commissionAmount: Number(commission.commissionAmount),
+      createdAt: commission.createdAt.toISOString()
+    };
+
+    await this.publish('Commission', commission.id, 'commission.recorded', payload);
+  }
+
+  async commissionCollectible(commission: {
+    id: string;
+    ledgerNumber: string;
+    orderId: string;
+    sellerId: string;
+    commissionAmount: any;
+    orderCompletedAt: Date;
+  }): Promise<void> {
+    const payload: CommissionCollectiblePayload = {
+      commissionId: commission.id,
+      ledgerNumber: commission.ledgerNumber,
+      orderId: commission.orderId,
+      sellerId: commission.sellerId,
+      commissionAmount: Number(commission.commissionAmount),
+      orderCompletedAt: commission.orderCompletedAt.toISOString()
+    };
+
+    await this.publish('Commission', commission.id, 'commission.collectible', payload);
+  }
+
+  async commissionCollected(commission: {
+    id: string;
+    ledgerNumber: string;
+    orderId: string;
+    sellerId: string;
+    commissionAmount: any;
+    settlementId: string | null;
+    collectedAt: Date;
+  }): Promise<void> {
+    const payload: CommissionCollectedPayload = {
+      commissionId: commission.id,
+      ledgerNumber: commission.ledgerNumber,
+      orderId: commission.orderId,
+      sellerId: commission.sellerId,
+      commissionAmount: Number(commission.commissionAmount),
+      settlementId: commission.settlementId,
+      collectedAt: commission.collectedAt.toISOString()
+    };
+
+    await this.publish('Commission', commission.id, 'commission.collected', payload);
+  }
+
+  async commissionWaived(commission: {
+    id: string;
+    ledgerNumber: string;
+    orderId: string;
+    sellerId: string;
+    reason: string;
+  }): Promise<void> {
+    const payload: CommissionWaivedPayload = {
+      commissionId: commission.id,
+      ledgerNumber: commission.ledgerNumber,
+      orderId: commission.orderId,
+      sellerId: commission.sellerId,
+      reason: commission.reason,
+      waivedAt: new Date().toISOString()
+    };
+
+    await this.publish('Commission', commission.id, 'commission.waived', payload);
+  }
+
+  async commissionRefunded(commission: {
+    id: string;
+    ledgerNumber: string;
+    orderId: string;
+    sellerId: string;
+  }): Promise<void> {
+    const payload: CommissionRefundedPayload = {
+      commissionId: commission.id,
+      ledgerNumber: commission.ledgerNumber,
+      orderId: commission.orderId,
+      sellerId: commission.sellerId,
+      refundedAt: new Date().toISOString()
+    };
+
+    await this.publish('Commission', commission.id, 'commission.refunded', payload);
   }
 }
 

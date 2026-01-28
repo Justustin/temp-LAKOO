@@ -1,0 +1,289 @@
+// =============================================================================
+// FEED SERVICE DATABASE SCHEMA
+// Service: feed-service (Port 3018)
+// Database: feed_db
+// Owner: User follows, feed generation, user interests, trending content
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// USER FOLLOWS (Social graph)
+// =============================================================================
+
+model UserFollow {
+  id           String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  followerId   String       @map("follower_id") @db.Uuid // User who is following
+  followingId  String       @map("following_id") @db.Uuid // User being followed
+  // Status
+  status       FollowStatus @default(active)
+  // Timestamps
+  createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  unfollowedAt DateTime?    @map("unfollowed_at") @db.Timestamptz(6)
+
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+  @@index([status])
+  @@map("user_follow")
+}
+
+// =============================================================================
+// USER FOLLOW STATS (Denormalized counts for performance)
+// =============================================================================
+
+model UserFollowStats {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String   @unique @map("user_id") @db.Uuid
+  followerCount  Int      @default(0) @map("follower_count")
+  followingCount Int      @default(0) @map("following_count")
+  // Version for optimistic locking
+  version        Int      @default(0)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_follow_stats")
+}
+
+// =============================================================================
+// FEED ITEMS (Pre-computed feed for fast retrieval)
+// =============================================================================
+
+model FeedItem {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid // User whose feed this belongs to
+  // Content reference
+  postId         String    @map("post_id") @db.Uuid // Reference to Content Service
+  authorId       String    @map("author_id") @db.Uuid // Post author
+  // Feed item type
+  feedType       FeedType  @default(following) @map("feed_type")
+  // Relevance scoring
+  relevanceScore Decimal?  @map("relevance_score") @db.Decimal(10, 4) // For algorithmic ranking
+  // Reasons for showing (for transparency)
+  reasons        String[]  // ["following", "trending", "suggested", "sponsored"]
+  // Timestamps
+  postCreatedAt  DateTime  @map("post_created_at") @db.Timestamptz(6) // Original post time
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  // Expiry (for cleanup)
+  expiresAt      DateTime? @map("expires_at") @db.Timestamptz(6)
+
+  @@unique([userId, postId, feedType]) // Allow same post as different types (organic + sponsored)
+  @@index([userId, createdAt])
+  @@index([userId, feedType])
+  @@index([expiresAt])
+  @@map("feed_item")
+}
+
+// =============================================================================
+// USER INTERESTS (For personalized feed algorithm)
+// =============================================================================
+
+model UserInterest {
+  id                String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId            String       @map("user_id") @db.Uuid
+  // Interest type
+  interestType      InterestType @map("interest_type")
+  interestValue     String       @map("interest_value") @db.VarChar(255) // Category ID, hashtag, seller ID, etc.
+  // Scoring
+  score             Decimal      @default(0) @db.Decimal(10, 4) // Interest strength
+  // Sources (how we inferred this interest)
+  interactionCount  Int          @default(0) @map("interaction_count")
+  lastInteractionAt DateTime?    @map("last_interaction_at") @db.Timestamptz(6)
+  // Timestamps
+  createdAt         DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([userId, interestType, interestValue])
+  @@index([userId])
+  @@index([interestType])
+  @@map("user_interest")
+}
+
+// =============================================================================
+// USER INTERACTION LOG (For building interest profile)
+// =============================================================================
+
+model UserInteraction {
+  id              String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  // Content interacted with
+  contentType     String          @map("content_type") @db.VarChar(50) // "post", "product", "seller"
+  contentId       String          @map("content_id") @db.Uuid
+  // Interaction type
+  interactionType InteractionType @map("interaction_type")
+  // Duration (for views)
+  durationSec     Int?            @map("duration_sec")
+  // Context
+  source          String?         @db.VarChar(50) // "feed", "search", "profile", "product_page"
+  // Metadata
+  metadata        Json?
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([userId])
+  @@index([contentType, contentId])
+  @@index([interactionType])
+  @@index([createdAt])
+  @@map("user_interaction")
+}
+
+// =============================================================================
+// TRENDING CONTENT (Computed periodically)
+// =============================================================================
+
+model TrendingContent {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  // Content reference
+  contentType  String         @map("content_type") @db.VarChar(50) // "post", "hashtag", "product"
+  contentId    String         @map("content_id") @db.Uuid
+  // Trending metrics
+  score        Decimal        @db.Decimal(15, 4) // Computed trending score
+  // Time window
+  windowType   TrendingWindow @map("window_type")
+  windowStart  DateTime       @map("window_start") @db.Timestamptz(6)
+  windowEnd    DateTime       @map("window_end") @db.Timestamptz(6)
+  // Engagement stats for this window
+  viewCount    Int            @default(0) @map("view_count")
+  likeCount    Int            @default(0) @map("like_count")
+  commentCount Int            @default(0) @map("comment_count")
+  shareCount   Int            @default(0) @map("share_count")
+  // Rank
+  rank         Int?
+  // Timestamps
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([contentType, contentId, windowType, windowStart])
+  @@index([windowType, score])
+  @@index([contentType, rank])
+  @@map("trending_content")
+}
+
+// =============================================================================
+// TRENDING HASHTAGS
+// =============================================================================
+
+model TrendingHashtag {
+  id         String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  hashtag    String         @db.VarChar(100)
+  score      Decimal        @db.Decimal(15, 4)
+  postCount  Int            @default(0) @map("post_count")
+  // Time window
+  windowType TrendingWindow @map("window_type")
+  windowDate DateTime       @map("window_date") @db.Date
+  rank       Int
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([hashtag, windowType, windowDate])
+  @@index([windowType, windowDate, rank])
+  @@map("trending_hashtag")
+}
+
+// =============================================================================
+// BLOCKED USERS
+// =============================================================================
+
+model UserBlock {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  blockerId String   @map("blocker_id") @db.Uuid // User who blocked
+  blockedId String   @map("blocked_id") @db.Uuid // User who is blocked
+  reason    String?  @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+  @@map("user_block")
+}
+
+// =============================================================================
+// MUTED USERS (Softer than block - hide from feed but don't notify)
+// =============================================================================
+
+model UserMute {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  muterId      String    @map("muter_id") @db.Uuid // User who muted
+  mutedId      String    @map("muted_id") @db.Uuid // User who is muted
+  // Mute options
+  mutePosts    Boolean   @default(true) @map("mute_posts")
+  muteComments Boolean   @default(false) @map("mute_comments")
+  // Duration
+  expiresAt    DateTime? @map("expires_at") @db.Timestamptz(6) // Null = permanent
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([muterId, mutedId])
+  @@index([muterId])
+  @@map("user_mute")
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For future Kafka migration)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @map("aggregate_type") @db.VarChar(100)
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false) @map("is_published")
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  retryCount    Int       @default(0) @map("retry_count")
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum FollowStatus {
+  active
+  unfollowed
+  // Note: Use UserBlock table for blocking (single source of truth)
+}
+
+enum FeedType {
+  following     // Posts from people user follows
+  suggested     // Algorithmically suggested
+  trending      // Trending content
+  sponsored     // Sponsored posts
+}
+
+enum InterestType {
+  category      // Product category interest
+  hashtag       // Hashtag interest
+  seller        // Specific seller interest
+  brand         // Brand interest
+  style         // Fashion style (casual, formal, etc.)
+  price_range   // Price preference
+}
+
+enum InteractionType {
+  view          // Viewed content
+  like          // Liked content
+  comment       // Commented on content
+  save          // Saved/bookmarked content
+  share         // Shared content
+  click_product // Clicked on tagged product
+  purchase      // Purchased tagged product
+  follow        // Followed user from content
+  dwell         // Spent time viewing (implicit interest)
+}
+
+enum TrendingWindow {
+  hourly
+  daily
+  weekly
+  monthly
+}

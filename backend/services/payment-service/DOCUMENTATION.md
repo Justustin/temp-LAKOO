@@ -137,10 +137,232 @@ Known caveat:
 - DB-backed endpoint sweep (Neon or local DB): `node backend/smoke/run-neon-full.mjs`
 
 ## 11) Future-me problems / tech debt
-- **Port default mismatch**: `PORT` defaults to `3006` in code; set it explicitly (especially in Docker).
-- **Admin routes bypass layering**: some admin handlers hit Prisma directly; migrate to services for consistency.
-- **Outbox transactionality**: ideally write domain updates + outbox rows in the same Prisma transaction.
-- **Webhook semantics**: ensure webhook handlers are strictly idempotent and “fail closed” on auth/signature misconfig.
+
+### 🔴 Critical (Must Fix Before Production)
+
+#### **Commission Integration with Order Service**
+- [ ] **Order service must call commission endpoints** when:
+  - Order is paid → `POST /api/commissions` (record commission)
+  - Order is delivered → `PUT /api/commissions/order/:orderId/complete` (mark collectible)
+  - Order is refunded → `PUT /api/commissions/order/:orderId/refund` (void commission)
+- [ ] **Add error handling**: What happens if commission recording fails? Should order creation fail or succeed?
+- [ ] **Idempotency**: Ensure order-service retries don't create duplicate commissions (already handled, but test it)
+
+#### **Settlement Job Implementation**
+- [ ] **Create weekly settlement cron job** that:
+  - Runs every Monday at 9 AM
+  - For each seller with collectible commissions:
+    - Calls `POST /api/commissions/seller/:sellerId/collect`
+    - Calculates net payout (gross earnings - commission)
+    - Creates payout record in wallet-service or transfers to bank
+    - Publishes `settlement.completed` event
+- [ ] **Handle settlement failures**: Rollback mechanism if payout fails mid-process
+- [ ] **Settlement notifications**: Email/WhatsApp to seller with breakdown
+- [ ] **Settlement reports**: Generate PDF invoice with commission breakdown
+
+#### **Xendit Webhook Enhancements**
+- [ ] **Add commission recording to payment webhook**: When `payment.paid` webhook arrives, automatically record commission
+- [ ] **Handle edge cases**: What if order-service hasn't called commission endpoint yet when webhook arrives?
+- [ ] **Webhook retry logic**: Xendit retries failed webhooks, ensure we handle duplicates gracefully
+
+---
+
+### 🟡 High Priority (Needed for Social Commerce Launch)
+
+#### **Commission Analytics & Reporting**
+- [ ] **Admin dashboard endpoints**:
+  - Total commissions collected (daily/weekly/monthly)
+  - Commission breakdown by seller
+  - Average commission rate
+  - Commission waived vs collected ratio
+- [ ] **Seller dashboard integration**: Expose commission data to seller-service
+- [ ] **Export functionality**: CSV/Excel export of commission records for accounting
+
+#### **Variable Commission Rates**
+- [ ] **Commission rate configuration**: Currently hardcoded to 0.5%, should be configurable
+  - Per seller (VIP sellers get lower rate)
+  - Per product category (premium categories get higher rate)
+  - Promotional periods (0% commission for new sellers)
+- [ ] **Commission rate history**: Track when rates change for compliance
+
+#### **Commission Dispute Handling**
+- [ ] **Dispute workflow**: Seller can dispute commission amount
+  - Freeze commission from collection
+  - Admin review process
+  - Approve/reject with reason
+- [ ] **Manual adjustments**: Admin can manually adjust commission amounts with audit trail
+
+#### **Sponsored Post Payment Integration**
+- [ ] **Track sponsored post payments**: When advertisement-service creates sponsored post, record payment here
+- [ ] **Ad spend ledger**: Separate tracking for ad spend vs transaction commissions
+- [ ] **Ad budget management**: Deduct from seller's ad balance, track remaining budget
+- [ ] **Ad refunds**: Handle refunds for unused ad spend
+
+---
+
+### 🟢 Medium Priority (Post-Launch Improvements)
+
+#### **Payment Method Enhancements**
+- [ ] **Installment support**: Kredivo, Akulaku integration
+  - Record installment schedule
+  - Track installment payments
+  - Handle failed installment payments
+- [ ] **Multiple payment methods**: Allow split payment (wallet + credit card)
+- [ ] **Saved payment methods**: Implement tokenization for repeat customers
+
+#### **Refund Improvements**
+- [ ] **Partial refunds**: Currently all-or-nothing, support partial amounts
+- [ ] **Refund reasons taxonomy**: Standardize refund reasons for analytics
+- [ ] **Automatic refund approval**: For trusted sellers/small amounts
+- [ ] **Refund SLA tracking**: Alert if refunds taking too long
+
+#### **Performance & Scalability**
+- [ ] **Database indexes review**: As data grows, check slow queries
+- [ ] **Outbox publisher job**: Separate service to publish events from outbox table to Kafka
+- [ ] **Payment archival**: Move old payments (>1 year) to cold storage
+- [ ] **Commission aggregation**: Pre-compute seller commission totals for performance
+
+#### **Security & Compliance**
+- [ ] **PCI compliance**: If storing card details, ensure PCI DSS compliance
+- [ ] **GDPR/data privacy**: Ability to export/delete user payment data
+- [ ] **Fraud detection**: Integrate with fraud detection service
+  - Unusual payment patterns
+  - High-risk transactions
+  - Velocity checks (too many payments from same user)
+- [ ] **Audit logging**: Enhanced logging for all financial transactions
+
+---
+
+### 🔵 Low Priority (Nice to Have)
+
+#### **Payment Experience**
+- [ ] **Payment links**: Generate shareable payment links (for offline sales)
+- [ ] **QR code payments**: Generate QR codes for in-person payments
+- [ ] **Recurring payments**: Subscription support for future features
+- [ ] **Payment reminders**: Notify users of pending payments before expiration
+
+#### **Analytics & Business Intelligence**
+- [ ] **Payment success rate**: Track by method, amount, time of day
+- [ ] **Conversion funnel**: Payment creation → successful payment
+- [ ] **Revenue forecasting**: Predict monthly revenue based on trends
+- [ ] **Commission revenue tracking**: Separate P&L for commission vs house brands
+
+#### **Developer Experience**
+- [ ] **Payment test mode**: Sandbox environment for testing
+- [ ] **Payment simulation API**: Create test payments without Xendit
+- [ ] **Better error messages**: More actionable error messages for failed payments
+- [ ] **Webhook replay**: Admin can replay webhooks for debugging
+
+#### **Operational Excellence**
+- [ ] **Health check enhancement**: Check Xendit API connectivity
+- [ ] **Circuit breaker**: Prevent cascading failures when Xendit is down
+- [ ] **Rate limiting**: Protect against abuse on payment creation
+- [ ] **Monitoring dashboards**: Grafana/DataDog dashboards for payment metrics
+
+---
+
+### 🛠️ Technical Debt (Clean Up When Possible)
+
+#### **Code Quality**
+- [ ] **Port default mismatch**: `PORT` defaults to `3006` in code; should be `3007`. Set explicitly in Docker.
+- [ ] **Admin routes bypass layering**: Some admin handlers hit Prisma directly; migrate to services for consistency
+- [ ] **Transaction management**: Ensure all commission operations use Prisma transactions
+- [ ] **Error handling standardization**: Consistent error responses across all endpoints
+
+#### **Testing**
+- [ ] **Unit tests**: Add tests for commission service, repository
+- [ ] **Integration tests**: Test full payment flow with commission recording
+- [ ] **Webhook tests**: Mock Xendit webhooks and test handling
+- [ ] **Load testing**: Ensure service can handle Black Friday volumes
+
+#### **Documentation**
+- [ ] **API documentation**: Complete Swagger/OpenAPI docs for commission endpoints
+- [ ] **Runbook**: Operations guide for common issues (payment stuck, refund failed, etc.)
+- [ ] **Sequence diagrams**: Document payment flow with order/commission services
+- [ ] **Architecture decision records**: Document why 0.5% commission, why weekly settlements, etc.
+
+#### **Infrastructure**
+- [ ] **Dockerfile pnpm support**: Currently uses `npm ci` but has `pnpm-lock.yaml`. Switch to pnpm consistently.
+- [ ] **Database connection pooling**: Optimize Prisma connection settings for production
+- [ ] **Secrets management**: Use proper secrets manager (AWS Secrets Manager, Vault)
+- [ ] **Multi-region support**: Prepare for expansion beyond Jakarta
+
+---
+
+### 📋 Commission-Specific Items (Recently Added - Jan 2026)
+
+#### **Immediate Next Steps**
+- [ ] **Test commission flow end-to-end**:
+  - Create order → Check commission recorded (status: pending)
+  - Complete order → Check commission collectible
+  - Run settlement → Check commission collected
+  - Verify seller receives net payout (gross - commission)
+- [ ] **Create settlement job** (see Critical section above)
+- [ ] **Update order-service** to call commission endpoints
+- [ ] **Seller dashboard** to show commission breakdown
+
+#### **Commission Edge Cases to Handle**
+- [ ] **Order cancellation after completion**: Should collected commission be reversed?
+- [ ] **Partial order fulfillment**: What if only some items are delivered?
+- [ ] **Multi-seller orders**: Cart with items from different sellers (each gets separate commission record)
+- [ ] **House brand orders**: LAKOO house brands don't pay commission (add check)
+- [ ] **Promo campaigns**: Track which commissions were waived for promos vs partnerships
+
+#### **Commission Compliance**
+- [ ] **Tax reporting**: Generate reports for tax authorities (commission is revenue)
+- [ ] **Seller agreements**: Ensure commission terms are in seller ToS
+- [ ] **Rate change communication**: Notify sellers 30 days before commission rate changes
+- [ ] **Commission invoice**: Provide invoice/receipt to sellers for their accounting
+
+---
+
+### 🔍 Monitoring & Alerts (Set These Up!)
+
+#### **Payment Monitoring**
+- [ ] Alert: Payment success rate < 90%
+- [ ] Alert: Xendit webhook failures > 5 in 1 hour
+- [ ] Alert: Average payment processing time > 30 seconds
+- [ ] Alert: Refund approval time > 48 hours
+
+#### **Commission Monitoring**
+- [ ] Alert: Commission recording failures (order paid but no commission)
+- [ ] Alert: Commission collection failures during settlement
+- [ ] Alert: Mismatch between order amounts and commission totals
+- [ ] Alert: Unusual commission waiver patterns (fraud detection)
+
+#### **Business Metrics**
+- [ ] Dashboard: Daily GMV (Gross Merchandise Value)
+- [ ] Dashboard: Commission revenue (daily/weekly/monthly)
+- [ ] Dashboard: Average commission per order
+- [ ] Dashboard: Top sellers by commission paid
+- [ ] Dashboard: Commission waived vs collected ratio
+
+---
+
+### 💡 Future Features (Brainstorming)
+
+#### **Dynamic Commission Models**
+- [ ] **Tiered commission**: Lower rate for high-volume sellers
+- [ ] **Category-based commission**: Different rates for different product categories
+- [ ] **Performance-based commission**: Lower commission for sellers with good ratings
+- [ ] **Promotional commission**: 0% commission for first 30 days for new sellers
+
+#### **Advanced Settlement**
+- [ ] **Instant payouts**: Sellers can request instant payout for a fee
+- [ ] **Flexible settlement schedule**: Weekly, bi-weekly, or monthly options
+- [ ] **Split settlements**: Auto-split commission to multiple bank accounts
+- [ ] **Settlement holds**: Hold payouts for sellers under review
+
+#### **Financial Products**
+- [ ] **Seller financing**: Advance payouts based on future sales
+- [ ] **Working capital loans**: Partner with fintech for seller loans
+- [ ] **Insurance products**: Payment protection insurance for buyers
+
+---
+
+**Last Updated**: January 27, 2026  
+**Commission Implementation**: ✅ Complete  
+**Next Milestone**: Settlement Job + Order Service Integration
 
 ## 12) File-by-file
 - `src/index.ts`: Express bootstrap, routes, health, swagger, error handler, shutdown.

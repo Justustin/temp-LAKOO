@@ -1,0 +1,345 @@
+// =============================================================================
+// PRODUCT SERVICE DATABASE SCHEMA (Social Commerce Model - 3rd Generation)
+// Service: product-service (Port 3002)
+// Database: product_db
+// Owner: Product catalog, draft approval, moderation
+// =============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// =============================================================================
+// CATEGORIES
+// =============================================================================
+
+model Category {
+  id              String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  parentId        String?    @map("parent_id") @db.Uuid
+  name            String     @db.VarChar(255)
+  slug            String     @unique @db.VarChar(255)
+  description     String?
+  imageUrl        String?    @map("image_url")
+  iconUrl         String?    @map("icon_url")
+  displayOrder    Int        @default(0) @map("display_order")
+  level           Int        @default(0) // 0 = root, 1 = child, etc.
+  path            String?    @db.VarChar(500) // Materialized path: "parent/child/grandchild"
+  isActive        Boolean    @default(true) @map("is_active")
+  isFeatured      Boolean    @default(false) @map("is_featured")
+  metaTitle       String?    @map("meta_title") @db.VarChar(255)
+  metaDescription String?    @map("meta_description")
+  createdAt       DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt       DateTime?  @map("deleted_at") @db.Timestamptz(6)
+
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+  products Product[]
+  drafts   ProductDraft[]
+
+  @@index([slug])
+  @@index([parentId])
+  @@index([isActive])
+  @@index([path])
+  @@index([deletedAt])
+  @@map("category")
+}
+
+// =============================================================================
+// PRODUCTS (Master catalog)
+// For Social Commerce: Products can be from sellers OR LAKOO house brands
+// =============================================================================
+
+model Product {
+  id               String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  categoryId       String        @map("category_id") @db.Uuid
+  sellerId         String?       @map("seller_id") @db.Uuid // Reference to Seller (null for house brands)
+  draftId          String?       @unique @map("draft_id") @db.Uuid // Link to original draft
+  productCode      String        @unique @map("product_code") @db.VarChar(50)
+  name             String        @db.VarChar(255)
+  slug             String        @unique @db.VarChar(255)
+  description      String?
+  shortDescription String?       @map("short_description") @db.VarChar(500)
+  // Base pricing (variants have actual prices)
+  baseCostPrice    Decimal       @map("base_cost_price") @db.Decimal(15, 2)
+  baseSellPrice    Decimal       @map("base_sell_price") @db.Decimal(15, 2)
+  // Default dimensions (variants can override)
+  weightGrams      Int?          @map("weight_grams")
+  lengthCm         Decimal?      @map("length_cm") @db.Decimal(10, 2)
+  widthCm          Decimal?      @map("width_cm") @db.Decimal(10, 2)
+  heightCm         Decimal?      @map("height_cm") @db.Decimal(10, 2)
+  primaryImageUrl  String?       @map("primary_image_url")
+  grosirUnitSize   Int?          @default(12) @map("grosir_unit_size") // Units per grosir bundle (house brands only)
+  material         String?       @db.VarChar(255)
+  careInstructions String?       @map("care_instructions")
+  countryOfOrigin  String?       @map("country_of_origin") @db.VarChar(100)
+  status           ProductStatus @default(draft)
+  moderationNotes  String?       @map("moderation_notes") // Internal notes from moderator
+  metaTitle        String?       @map("meta_title") @db.VarChar(255)
+  metaDescription  String?       @map("meta_description")
+  tags             String[]
+  publishedAt      DateTime?     @map("published_at") @db.Timestamptz(6)
+  // Denormalized for performance
+  supplierName     String?       @map("supplier_name") @db.VarChar(255) // For house brands
+  // Aggregated review data (sync from Review Service)
+  avgRating        Decimal?      @map("avg_rating") @db.Decimal(3, 2)
+  reviewCount      Int           @default(0) @map("review_count")
+  // Audit fields
+  createdBy        String?       @map("created_by") @db.Uuid
+  updatedBy        String?       @map("updated_by") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt        DateTime?     @map("deleted_at") @db.Timestamptz(6)
+
+  category  Category         @relation(fields: [categoryId], references: [id])
+  variants  ProductVariant[]
+  images    ProductImage[]
+  wishlists WishlistItem[]
+
+  @@index([categoryId])
+  @@index([sellerId])
+  @@index([draftId])
+  @@index([productCode])
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([deletedAt])
+  @@map("product")
+}
+
+// =============================================================================
+// PRODUCT VARIANTS - THIS IS THE ACTUAL SKU (sellable unit)
+// =============================================================================
+
+model ProductVariant {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId   String    @map("product_id") @db.Uuid
+  sku         String    @unique @db.VarChar(100)
+  color       String    @db.VarChar(50) // Color code: "RED", "BLU", "BLK"
+  colorHex    String?   @map("color_hex") @db.VarChar(7)  // Hex color for display
+  colorName   String?   @map("color_name") @db.VarChar(100) // Display name: "Crimson Red"
+  size        String    @db.VarChar(50) // Size code: "S", "M", "L", "XL"
+  sizeName    String?   @map("size_name") @db.VarChar(100) // Display name: "Medium"
+  material    String?   @db.VarChar(100)
+  style       String?   @db.VarChar(100)
+  costPrice   Decimal   @map("cost_price") @db.Decimal(15, 2)
+  sellPrice   Decimal   @map("sell_price") @db.Decimal(15, 2)
+  weightGrams Int?      @map("weight_grams")
+  imageUrl    String?   @map("image_url")
+  barcode     String?   @unique @db.VarChar(100)
+  sortOrder   Int       @default(0) @map("sort_order")
+  isDefault   Boolean   @default(false) @map("is_default")
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  deletedAt   DateTime? @map("deleted_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, color, size])
+  @@index([productId])
+  @@index([sku])
+  @@index([color])
+  @@index([size])
+  @@index([barcode])
+  @@index([isActive])
+  @@index([deletedAt])
+  @@map("product_variant")
+}
+
+model ProductImage {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId    String   @map("product_id") @db.Uuid
+  variantId    String?  @map("variant_id") @db.Uuid
+  imageUrl     String   @map("image_url")
+  thumbnailUrl String?  @map("thumbnail_url")
+  altText      String?  @map("alt_text") @db.VarChar(255)
+  displayOrder Int      @default(0) @map("display_order")
+  isPrimary    Boolean  @default(false) @map("is_primary")
+  width        Int?
+  height       Int?
+  sizeBytes    Int?     @map("size_bytes")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@index([variantId])
+  @@map("product_image")
+}
+
+// =============================================================================
+// PRODUCT DRAFT (for approval workflow) 🆕 SOCIAL COMMERCE
+// =============================================================================
+
+model ProductDraft {
+  id               String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sellerId         String       @map("seller_id") @db.Uuid // Reference to Seller Service
+  // Draft content (same fields as Product)
+  categoryId       String       @map("category_id") @db.Uuid
+  name             String       @db.VarChar(255)
+  description      String?
+  shortDescription String?      @map("short_description") @db.VarChar(500)
+  baseSellPrice    Decimal      @map("base_sell_price") @db.Decimal(15, 2)
+  images           Json[]       // Array of image URLs
+  variants         Json[]       // Array of variant data
+  weightGrams      Int?         @map("weight_grams")
+  lengthCm         Decimal?     @map("length_cm") @db.Decimal(10, 2)
+  widthCm          Decimal?     @map("width_cm") @db.Decimal(10, 2)
+  heightCm         Decimal?     @map("height_cm") @db.Decimal(10, 2)
+  material         String?      @db.VarChar(255)
+  careInstructions String?      @map("care_instructions")
+  countryOfOrigin  String?      @map("country_of_origin") @db.VarChar(100)
+  tags             String[]
+  // Submission
+  status           DraftStatus  @default(draft)
+  submittedAt      DateTime?    @map("submitted_at") @db.Timestamptz(6)
+  reviewedAt       DateTime?    @map("reviewed_at") @db.Timestamptz(6)
+  reviewedBy       String?      @map("reviewed_by") @db.Uuid // Moderator ID
+  rejectionReason  String?      @map("rejection_reason") @db.VarChar(500)
+  moderationNotes  String?      @map("moderation_notes") // Internal notes
+  // If approved, this is the created product ID
+  productId        String?      @unique @map("product_id") @db.Uuid
+  createdAt        DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  category         Category           @relation(fields: [categoryId], references: [id])
+  moderationQueues ModerationQueue[]
+
+  @@index([sellerId])
+  @@index([categoryId])
+  @@index([status])
+  @@index([submittedAt])
+  @@index([productId])
+  @@map("product_draft")
+}
+
+// =============================================================================
+// MODERATION QUEUE 🆕 SOCIAL COMMERCE
+// =============================================================================
+
+model ModerationQueue {
+  id          String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  draftId     String             @map("draft_id") @db.Uuid
+  priority    ModerationPriority @default(normal)
+  assignedTo  String?            @map("assigned_to") @db.Uuid // Moderator ID
+  assignedAt  DateTime?          @map("assigned_at") @db.Timestamptz(6)
+  completedAt DateTime?          @map("completed_at") @db.Timestamptz(6)
+  createdAt   DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  draft ProductDraft @relation(fields: [draftId], references: [id], onDelete: Cascade)
+
+  @@index([draftId])
+  @@index([assignedTo])
+  @@index([completedAt])
+  @@index([priority])
+  @@map("moderation_queue")
+}
+
+// =============================================================================
+// WISHLIST
+// =============================================================================
+
+model Wishlist {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String   @unique @map("user_id") @db.Uuid // Reference to Auth Service
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  items WishlistItem[]
+
+  @@map("wishlist")
+}
+
+model WishlistItem {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  wishlistId        String   @map("wishlist_id") @db.Uuid
+  productId         String   @map("product_id") @db.Uuid
+  variantId         String?  @map("variant_id") @db.Uuid
+  brandId           String?  @map("brand_id") @db.Uuid // Reference to Brand Service
+  addedAt           DateTime @default(now()) @map("added_at") @db.Timestamptz(6)
+  priceAtAdd        Decimal? @map("price_at_add") @db.Decimal(15, 2)
+  notifyOnPriceDrop Boolean  @default(false) @map("notify_on_price_drop")
+
+  wishlist Wishlist @relation(fields: [wishlistId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([wishlistId, productId, variantId])
+  @@index([wishlistId])
+  @@index([productId])
+  @@map("wishlist_item")
+}
+
+// =============================================================================
+// PRODUCT VIEW ANALYTICS (for recommendations)
+// =============================================================================
+
+model ProductView {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  sessionId String?  @map("session_id") @db.VarChar(100)
+  source    String?  @db.VarChar(50) // search, category, recommendation, ad
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([productId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("product_view")
+}
+
+// =============================================================================
+// SERVICE OUTBOX (For event-driven architecture)
+// =============================================================================
+
+model ServiceOutbox {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  aggregateType String    @map("aggregate_type") @db.VarChar(100)
+  aggregateId   String    @map("aggregate_id") @db.Uuid
+  eventType     String    @map("event_type") @db.VarChar(100)
+  payload       Json
+  metadata      Json?
+  isPublished   Boolean   @default(false) @map("is_published")
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  retryCount    Int       @default(0) @map("retry_count")
+  lastError     String?   @map("last_error")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([isPublished, createdAt])
+  @@index([aggregateType, aggregateId])
+  @@map("service_outbox")
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum ProductStatus {
+  draft              // Not visible to anyone except creator
+  pending_approval   // Submitted for moderation
+  approved           // Live on platform
+  rejected           // Rejected by moderator
+  inactive           // Temporarily hidden
+  out_of_stock       // No inventory available
+}
+
+enum DraftStatus {
+  draft            // Seller is still editing
+  pending          // Submitted for review
+  approved         // Approved, product created
+  rejected         // Rejected by moderator
+  changes_requested // Moderator requested changes
+}
+
+enum ModerationPriority {
+  low
+  normal
+  high
+  urgent
+}

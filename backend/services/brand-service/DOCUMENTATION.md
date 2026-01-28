@@ -22,7 +22,7 @@ Typical request flow:
 ## 3) Runtime contracts
 
 ### Environment variables
-- **`PORT`**: listen port (default `3015`).
+- **`PORT`**: listen port (default `3004`).
 - **`NODE_ENV`**: `development|test|production` (affects logging + dev auth bypass).
 - **`DATABASE_URL`**: Postgres connection string for Prisma.
 - **`GATEWAY_SECRET_KEY`**: verifies gateway traffic (`x-gateway-key`).
@@ -73,9 +73,6 @@ Base route: **`/api/brands`** → `src/routes/brand.routes.ts`
 - `POST /:brandId/products` → `addBrandProduct` (gatewayAuth, admin/brand_owner)
 - `PATCH /:brandId/products/:productId` → `updateBrandProduct` (gatewayAuth)
 - `DELETE /:brandId/products/:productId` → `removeBrandProduct` (gatewayAuth)
-
-**Internal**:
-- `GET /internal/:id` → `getBrandInternal` (internalServiceAuth)
 
 ## 5) Middleware
 Files under `src/middleware/`.
@@ -160,31 +157,3 @@ From repo root:
 - `src/config/swagger.ts`: OpenAPI configuration.
 - `scripts/copy-generated-prisma.mjs`: copies generated Prisma client into `dist/`.
 
-## LAKOO Brands
-
-This service manages the 15 official LAKOO brands:
-
-1. **LAKOO Elite** - Premium luxury fashion
-2. **LAKOO Street** - Urban streetwear
-3. **LAKOO Classic** - Timeless essentials
-4. **LAKOO Active** - Sportswear & athleisure
-5. **LAKOO Kids** - Children's fashion
-6. **LAKOO Modest** - Modest fashion line
-7. **LAKOO Curve** - Plus-size fashion
-8. **LAKOO Luxe** - Designer collaborations
-9. **LAKOO Casual** - Everyday wear
-10. **LAKOO Party** - Evening & occasion wear
-11. **LAKOO Bohemian** - Boho-chic styles
-12. **LAKOO Minimalist** - Clean, simple designs
-13. **LAKOO Vintage** - Retro-inspired fashion
-14. **LAKOO Sustainable** - Eco-friendly fashion
-15. **LAKOO X** - Limited edition collaborations
-
-Each brand has:
-- Dedicated brand manager
-- Own social media accounts
-- Unique storefront page
-- Distinct visual identity
-- Curated product selection
-- Independent pricing strategy
-- Own marketing campaigns

@@ -21,7 +21,7 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "docker:build": "docker build -t review-service .",
-    "docker:run": "docker run -p 3016:3016 review-service"
+    "docker:run": "docker run -p 3015:3015 review-service"
   },
   "dependencies": {
     "@prisma/client": "^5.22.0",

@@ -129,6 +129,17 @@ function gatewayHeaders(gatewayKey, userId, role) {
   };
 }
 
+function serviceHeaders(serviceName, secret) {
+  const timestamp = Math.floor(Date.now() / 1000);
+  const message = `${serviceName}:${timestamp}`;
+  const signature = crypto.createHmac('sha256', secret).update(message).digest('hex');
+  const token = `${serviceName}:${timestamp}:${signature}`;
+  return {
+    'x-service-auth': token,
+    'x-service-name': serviceName
+  };
+}
+
 async function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
@@ -141,27 +152,33 @@ async function runDbSmoke() {
 
   // Neon URLs present in DB_Connection.txt:
   const paymentBase = dbMap['payment_db'];
+  const brandBase = dbMap['brand_db'];
   const logisticBase = dbMap['logistics_db'];
   const warehouseBase = dbMap['warehouse_db'];
 
-  if (!paymentBase || !logisticBase || !warehouseBase) {
-    throw new Error('Missing required Neon URLs in DB_Connection.txt (need payment_db, logistics_db, warehouse_db).');
+  if (!paymentBase || !brandBase || !logisticBase || !warehouseBase) {
+    throw new Error('Missing required Neon URLs in DB_Connection.txt (need payment_db, brand_db, logistics_db, warehouse_db).');
   }
 
   // Address DB isn't listed; derive from the same host/user by swapping db name
   const addressBase = paymentBase.replace(/\/payment_db\?/i, '/address_db?');
+  const reviewBase = (dbMap['review_db'] || paymentBase.replace(/\/payment_db\?/i, '/review_db?'));
 
   const schemas = {
     payment: randomSchema('payment'),
     address: randomSchema('address'),
+    brand: randomSchema('brand'),
     logistic: randomSchema('logistic'),
+    review: randomSchema('review'),
     warehouse: randomSchema('warehouse')
   };
 
   const urls = {
     payment: withQueryParam(ensurePgbouncerSafe(paymentBase), 'schema', schemas.payment),
     address: withQueryParam(ensurePgbouncerSafe(addressBase), 'schema', schemas.address),
+    brand: withQueryParam(ensurePgbouncerSafe(brandBase), 'schema', schemas.brand),
     logistic: withQueryParam(ensurePgbouncerSafe(logisticBase), 'schema', schemas.logistic),
+    review: withQueryParam(ensurePgbouncerSafe(reviewBase), 'schema', schemas.review),
     warehouse: withQueryParam(ensurePgbouncerSafe(warehouseBase), 'schema', schemas.warehouse)
   };
 
@@ -177,6 +194,20 @@ async function runDbSmoke() {
         DATABASE_URL: urls.payment,
         SERVICE_SECRET: serviceSecret,
         SERVICE_NAME: 'payment-service',
+        GATEWAY_SECRET_KEY: gatewayKey,
+        ALLOWED_ORIGINS: 'http://localhost:3000'
+      }
+    },
+    {
+      name: 'brand-service',
+      cwd: `${ROOT}/backend/services/brand-service`,
+      port: 3004,
+      env: {
+        PORT: '3004',
+        NODE_ENV: 'test',
+        DATABASE_URL: urls.brand,
+        SERVICE_SECRET: serviceSecret,
+        SERVICE_NAME: 'brand-service',
         GATEWAY_SECRET_KEY: gatewayKey,
         ALLOWED_ORIGINS: 'http://localhost:3000'
       }
@@ -205,6 +236,20 @@ async function runDbSmoke() {
         LOGISTICS_DATABASE_URL: urls.logistic,
         SERVICE_SECRET: serviceSecret,
         SERVICE_NAME: 'logistic-service',
+        GATEWAY_SECRET_KEY: gatewayKey,
+        ALLOWED_ORIGINS: 'http://localhost:3000'
+      }
+    },
+    {
+      name: 'review-service',
+      cwd: `${ROOT}/backend/services/review-service`,
+      port: 3015,
+      env: {
+        PORT: '3015',
+        NODE_ENV: 'test',
+        DATABASE_URL: urls.review,
+        SERVICE_SECRET: serviceSecret,
+        SERVICE_NAME: 'review-service',
         GATEWAY_SECRET_KEY: gatewayKey,
         ALLOWED_ORIGINS: 'http://localhost:3000'
       }
@@ -288,6 +333,65 @@ async function runDbSmoke() {
       const def = await fetchJson(`${base}/api/addresses/user/${userId}/default`, { headers });
       await assert(def.status === 200, `address-service: default expected 200, got ${def.status}`);
       await assert(def.json?.data?.id === addressId, 'address-service: default should match set-default address');
+    }
+
+    // -------------------------------------------------------------------------
+    // Brand-service functional tests
+    // -------------------------------------------------------------------------
+    {
+      const base = 'http://localhost:3004';
+      const headers = serviceHeaders('brand-service', serviceSecret);
+
+      const brandCode = `SMOKE-${Date.now()}`;
+      const brandName = `Smoke Brand ${Date.now()}`;
+
+      const create = await fetchJson(`${base}/api/brands`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ brandCode, brandName })
+      });
+      await assert(create.status === 201, `brand-service: createBrand expected 201, got ${create.status}`);
+      await assert(create.json?.success === true, 'brand-service: createBrand expected success=true');
+      const brandId = create.json?.data?.id;
+      await assert(brandId, 'brand-service: createBrand missing data.id');
+
+      const getById = await fetchJson(`${base}/api/brands/${brandId}`);
+      await assert(getById.status === 200, `brand-service: getBrandById expected 200, got ${getById.status}`);
+
+      const del = await fetchJson(`${base}/api/brands/${brandId}`, { method: 'DELETE', headers });
+      await assert([200, 204].includes(del.status), `brand-service: delete expected 200/204, got ${del.status}`);
+    }
+
+    // -------------------------------------------------------------------------
+    // Review-service functional tests
+    // -------------------------------------------------------------------------
+    {
+      const base = 'http://localhost:3015';
+      const service = serviceHeaders('review-service', serviceSecret);
+      const userId = '00000000-0000-0000-0000-000000000011';
+      const orderId = '00000000-0000-0000-0000-000000000012';
+      const productId = '00000000-0000-0000-0000-000000000013';
+      const now = new Date();
+
+      const create = await fetchJson(`${base}/api/reviews/internal/review-requests`, {
+        method: 'POST',
+        headers: service,
+        body: JSON.stringify({
+          userId,
+          orderId,
+          productId,
+          productName: 'Smoke Product',
+          eligibleAt: now.toISOString(),
+          expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          channel: 'email'
+        })
+      });
+      await assert(create.status === 201, `review-service: createReviewRequest expected 201, got ${create.status}`);
+      await assert(create.json?.success === true, 'review-service: createReviewRequest expected success=true');
+
+      const userHeaders = gatewayHeaders(gatewayKey, userId, 'user');
+      const list = await fetchJson(`${base}/api/reviews/review-requests`, { headers: userHeaders });
+      await assert(list.status === 200, `review-service: getReviewRequests expected 200, got ${list.status}`);
     }
 
     // -------------------------------------------------------------------------
@@ -458,7 +562,7 @@ async function runDbSmoke() {
       await assert(getUserShipments.json?.success === true, 'logistic-service: getUserShipments expected success=true');
     }
 
-    log('\n✅ DB smoke suite passed (address + warehouse + payment + logistic flows + db push)');
+    log('\n✅ DB smoke suite passed (brand + review + address + warehouse + payment + logistic flows + db push)');
   } finally {
     log('\nStopping services...');
     for (const { child, svc } of procs) {

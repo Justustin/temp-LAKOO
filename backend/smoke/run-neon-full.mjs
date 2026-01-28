@@ -159,13 +159,15 @@ async function runNeonFull() {
 
   // NOTE: we never print the full URLs (they contain secrets)
   const paymentBase = dbMap['payment_db'];
+  const brandBase = dbMap['brand_db'];
   // address_db may not be listed in DB_Connection.txt; derive from another Neon pooler URL if needed
   const addressBase = dbMap['address_db'] || (paymentBase ? paymentBase.replace(/\/payment_db\?/i, '/address_db?') : undefined);
   const logisticBase = dbMap['logistics_db'];
+  const reviewBase = dbMap['review_db'] || (paymentBase ? paymentBase.replace(/\/payment_db\?/i, '/review_db?') : undefined);
   const warehouseBase = dbMap['warehouse_db'];
 
-  if (!paymentBase || !addressBase || !logisticBase || !warehouseBase) {
-    throw new Error('DB_Connection.txt must include psql URLs for payment_db, address_db, logistics_db, warehouse_db.');
+  if (!paymentBase || !brandBase || !addressBase || !logisticBase || !reviewBase || !warehouseBase) {
+    throw new Error('DB_Connection.txt must include psql URLs for payment_db, brand_db, address_db, logistics_db, review_db, warehouse_db.');
   }
 
   const serviceSecret = process.env.SERVICE_SECRET || 'dev-service-secret';
@@ -174,25 +176,31 @@ async function runNeonFull() {
   const schemaMode = (process.env.SMOKE_SCHEMA_MODE || 'isolated').toLowerCase();
   const schemas =
     schemaMode === 'public'
-      ? { payment: 'public', address: 'public', logistic: 'public', warehouse: 'public' }
+      ? { payment: 'public', brand: 'public', address: 'public', logistic: 'public', review: 'public', warehouse: 'public' }
       : {
           payment: randomSchema('payment'),
+          brand: randomSchema('brand'),
           address: randomSchema('address'),
           logistic: randomSchema('logistic'),
+          review: randomSchema('review'),
           warehouse: randomSchema('warehouse')
         };
 
   const urls = {
     payment: withQueryParam(neonPoolerSafe(paymentBase), 'schema', schemas.payment),
+    brand: withQueryParam(neonPoolerSafe(brandBase), 'schema', schemas.brand),
     address: withQueryParam(neonPoolerSafe(addressBase), 'schema', schemas.address),
     logistic: withQueryParam(neonPoolerSafe(logisticBase), 'schema', schemas.logistic),
+    review: withQueryParam(neonPoolerSafe(reviewBase), 'schema', schemas.review),
     warehouse: withQueryParam(neonPoolerSafe(warehouseBase), 'schema', schemas.warehouse)
   };
 
   log('Using Neon DBs with isolated schemas (safe to run repeatedly):');
   log(`- payment_db schema=${schemas.payment}`);
+  log(`- brand_db schema=${schemas.brand}`);
   log(`- address_db schema=${schemas.address}`);
   log(`- logistics_db schema=${schemas.logistic}`);
+  log(`- review_db schema=${schemas.review}`);
   log(`- warehouse_db schema=${schemas.warehouse}`);
 
   const services = [
@@ -207,6 +215,20 @@ async function runNeonFull() {
         DATABASE_URL: urls.payment,
         SERVICE_SECRET: serviceSecret,
         SERVICE_NAME: 'payment-service',
+        GATEWAY_SECRET_KEY: gatewayKey,
+        ALLOWED_ORIGINS: 'http://localhost:3000'
+      }
+    },
+    {
+      name: 'brand-service',
+      cwd: `${ROOT}/backend/services/brand-service`,
+      port: 3004,
+      env: {
+        PORT: '3004',
+        NODE_ENV: 'test',
+        DATABASE_URL: urls.brand,
+        SERVICE_SECRET: serviceSecret,
+        SERVICE_NAME: 'brand-service',
         GATEWAY_SECRET_KEY: gatewayKey,
         ALLOWED_ORIGINS: 'http://localhost:3000'
       }
@@ -235,6 +257,20 @@ async function runNeonFull() {
         LOGISTICS_DATABASE_URL: urls.logistic,
         SERVICE_SECRET: serviceSecret,
         SERVICE_NAME: 'logistic-service',
+        GATEWAY_SECRET_KEY: gatewayKey,
+        ALLOWED_ORIGINS: 'http://localhost:3000'
+      }
+    },
+    {
+      name: 'review-service',
+      cwd: `${ROOT}/backend/services/review-service`,
+      port: 3015,
+      env: {
+        PORT: '3015',
+        NODE_ENV: 'test',
+        DATABASE_URL: urls.review,
+        SERVICE_SECRET: serviceSecret,
+        SERVICE_NAME: 'review-service',
         GATEWAY_SECRET_KEY: gatewayKey,
         ALLOWED_ORIGINS: 'http://localhost:3000'
       }
@@ -336,6 +372,63 @@ async function runNeonFull() {
 
       const del = await fetchJson(`${base}/api/addresses/${addressId}`, { method: 'DELETE', headers: hUser });
       await assert([200, 204].includes(del.status), `address: delete expected 200/204, got ${del.status}`);
+    }
+
+    // -----------------------------------------------------------------------
+    // BRAND-SERVICE: happy path coverage
+    // -----------------------------------------------------------------------
+    {
+      const base = 'http://localhost:3004';
+      const hSvc = serviceHeaders('brand-service', serviceSecret);
+
+      const brandCode = `SMOKE-${Date.now()}`;
+      const brandName = `Smoke Brand ${Date.now()}`;
+
+      const create = await fetchJson(`${base}/api/brands`, {
+        method: 'POST',
+        headers: hSvc,
+        body: JSON.stringify({ brandCode, brandName })
+      });
+      await assert(create.status === 201, `brand: create expected 201, got ${create.status}`);
+      const brandId = create.json?.data?.id;
+      await assert(brandId, 'brand: create missing data.id');
+
+      const getById = await fetchJson(`${base}/api/brands/${brandId}`);
+      await assert(getById.status === 200, `brand: get by id expected 200, got ${getById.status}`);
+
+      const del = await fetchJson(`${base}/api/brands/${brandId}`, { method: 'DELETE', headers: hSvc });
+      await assert([200, 204].includes(del.status), `brand: delete expected 200/204, got ${del.status}`);
+    }
+
+    // -----------------------------------------------------------------------
+    // REVIEW-SERVICE: happy path coverage
+    // -----------------------------------------------------------------------
+    {
+      const base = 'http://localhost:3015';
+      const hSvc = serviceHeaders('review-service', serviceSecret);
+      const userId = uuidv4();
+      const orderId = uuidv4();
+      const productId = uuidv4();
+      const now = new Date();
+
+      const create = await fetchJson(`${base}/api/reviews/internal/review-requests`, {
+        method: 'POST',
+        headers: hSvc,
+        body: JSON.stringify({
+          userId,
+          orderId,
+          productId,
+          productName: 'Smoke Product',
+          eligibleAt: now.toISOString(),
+          expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          channel: 'email'
+        })
+      });
+      await assert(create.status === 201, `review: create review request expected 201, got ${create.status}`);
+
+      const hUser = gatewayHeaders(gatewayKey, userId, 'user');
+      const list = await fetchJson(`${base}/api/reviews/review-requests`, { headers: hUser });
+      await assert(list.status === 200, `review: list review requests expected 200, got ${list.status}`);
     }
 
     // -----------------------------------------------------------------------
