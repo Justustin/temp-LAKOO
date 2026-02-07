@@ -224,3 +224,17 @@ Kalau nanti berubah pikiran atau mau tanya-tanya, WA aku aja ya. Programnya masi
 
 Sukses terus kak buat [Nama Brand]! 💪
 ```
+
+---
+
+### 10. Ajak Coffee Chat — Ngobrol Santai
+
+```
+Hai kak [Nama]! Ini [Nama kamu] dari LAKOO 😊
+
+Aku lagi nyari brand-brand lokal yang seru buat diajak kerja sama, dan [Nama Brand] menarik banget menurutku.
+
+Mau ngga kak ngopi bareng? Santai aja, aku mau cerita dikit soal LAKOO dan dengerin juga soal brand kakak. Nggak ada commitment apa-apa kok, murni ngobrol aja.
+
+Aku flexible waktu dan tempat — kakak enaknya kapan dan di mana kak? ☕
+```
