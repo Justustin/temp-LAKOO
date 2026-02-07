@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>LAKOO Bazaar Poster</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #eee;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .poster {
+    width: 540px;
+    background: linear-gradient(165deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+    border-radius: 16px;
+    color: #fff;
+    padding: 40px 36px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .poster::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 300px; height: 300px;
+    background: radial-gradient(circle, rgba(255,107,107,0.15) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .poster > * { position: relative; z-index: 1; }
+
+  .logo { font-size: 28px; font-weight: 900; letter-spacing: 4px; margin-bottom: 2px; }
+  .tagline { font-size: 12px; color: rgba(255,255,255,0.45); margin-bottom: 32px; }
+
+  .headline { font-size: 34px; font-weight: 800; line-height: 1.15; margin-bottom: 10px; }
+  .headline span {
+    background: linear-gradient(135deg, #ff6b6b, #ffa07a);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  .sub { font-size: 13px; color: rgba(255,255,255,0.55); line-height: 1.5; margin-bottom: 28px; }
+
+  .benefits { display: flex; flex-direction: column; gap: 14px; margin-bottom: 28px; }
+  .benefit { display: flex; align-items: center; gap: 14px; }
+  .benefit-icon {
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .benefit:nth-child(1) .benefit-icon { background: rgba(255,107,107,0.15); }
+  .benefit:nth-child(2) .benefit-icon { background: rgba(78,205,196,0.15); }
+  .benefit:nth-child(3) .benefit-icon { background: rgba(255,209,102,0.15); }
+  .benefit:nth-child(4) .benefit-icon { background: rgba(129,140,248,0.15); }
+  .benefit h3 { font-size: 14px; font-weight: 700; }
+  .benefit p { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+
+  .comparison {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 20px 22px;
+    margin-bottom: 28px;
+  }
+  .comparison h3 {
+    font-size: 10px; color: rgba(255,255,255,0.45); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 14px;
+  }
+  .comp-row { display: flex; justify-content: space-between; padding: 6px 0; }
+  .comp-row + .comp-row { border-top: 1px solid rgba(255,255,255,0.06); }
+  .comp-name { font-size: 13px; color: rgba(255,255,255,0.4); }
+  .comp-rate { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.4); }
+  .comp-row.hl .comp-name { font-weight: 700; font-size: 15px; color: #fff; }
+  .comp-row.hl .comp-rate {
+    font-weight: 800; font-size: 17px;
+    background: linear-gradient(135deg, #4ecdc4, #44bd9e);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+
+  .steps { margin-bottom: 28px; }
+  .steps h3 {
+    font-size: 10px; color: rgba(255,255,255,0.45); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px;
+  }
+  .step { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .step-num {
+    width: 26px; height: 26px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.4); flex-shrink: 0;
+  }
+  .step-text { font-size: 13px; color: rgba(255,255,255,0.8); }
+
+  .footer { text-align: center; padding-top: 8px; }
+  .footer p { font-size: 11px; color: rgba(255,255,255,0.3); }
+</style>
+</head>
+<body>
+<div class="poster">
+  <div class="logo">LAKOO</div>
+  <div class="tagline">Social Commerce untuk Fashion Lokal Indonesia</div>
+
+  <div class="headline">Gabung LAKOO,<br>Dapat <span>Rp 1 Juta</span></div>
+  <div class="sub">Kita bantu brand kamu ditemukan ribuan customer baru lewat platform discovery fashion terbesar di Indonesia.</div>
+
+  <div class="benefits">
+    <div class="benefit">
+      <div class="benefit-icon">💰</div>
+      <div><h3>Sponsorship Rp 1.000.000</h3><p>Cash langsung transfer ke rekening kamu</p></div>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">🛍️</div>
+      <div><h3>Toko Online Gratis</h3><p>Tim kita yang set up — kamu tinggal approve</p></div>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">📸</div>
+      <div><h3>Migrasi 10 Post IG</h3><p>Konten kamu langsung tampil di LAKOO</p></div>
+    </div>
+    <div class="benefit">
+      <div class="benefit-icon">📊</div>
+      <div><h3>Komisi Cuma 0.5%</h3><p>Paling kecil di Indonesia — simpan 99.5%</p></div>
+    </div>
+  </div>
+
+  <div class="comparison">
+    <h3>Perbandingan Komisi</h3>
+    <div class="comp-row"><span class="comp-name">Shopee</span><span class="comp-rate">5 – 15%</span></div>
+    <div class="comp-row"><span class="comp-name">Tokopedia</span><span class="comp-rate">5 – 10%</span></div>
+    <div class="comp-row"><span class="comp-name">TikTok Shop</span><span class="comp-rate">5 – 8%</span></div>
+    <div class="comp-row"><span class="comp-name">Instagram</span><span class="comp-rate">Tidak bisa checkout</span></div>
+    <div class="comp-row hl"><span class="comp-name">LAKOO</span><span class="comp-rate">0.5%</span></div>
+  </div>
+
+  <div class="steps">
+    <h3>Prosesnya Gampang</h3>
+    <div class="step"><div class="step-num">1</div><div class="step-text">Setuju gabung — kita transfer Rp 1 juta</div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-text">Tim LAKOO set up toko kamu</div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-text">Kamu review & approve — langsung live!</div></div>
+  </div>
+
+  <div class="footer"><p>Kamu nggak perlu ngapa-ngapain — kita yang handle semuanya.</p></div>
+</div>
+</body>
+</html>
