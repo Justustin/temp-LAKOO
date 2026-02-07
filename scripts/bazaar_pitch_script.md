@@ -227,14 +227,16 @@ Sukses terus kak buat [Nama Brand]! 💪
 
 ---
 
-### 10. Ajak Coffee Chat — Ngobrol Santai
+### 10. Ajak Coffee Chat — Ketemu di Bazaar, Mau Lanjut Ngobrol
 
 ```
-Hai kak [Nama]! Ini [Nama kamu] dari LAKOO 😊
+Hai kak [Nama]! Ini [Nama kamu], tadi sempet ngobrol di bazaar [Nama Bazaar] 😊
 
-Aku lagi nyari brand-brand lokal yang seru buat diajak kerja sama, dan [Nama Brand] menarik banget menurutku.
+Makasih ya tadi udah sempet kenalan! Aku dari LAKOO — kita lagi bangun platform khusus fashion lokal Indonesia. Konsepnya kayak Pinterest tapi bisa langsung checkout, jadi customer bisa discover brand-brand kayak [Nama Brand] lewat feed visual, bukan cari harga termurah kayak di marketplace.
 
-Mau ngga kak ngopi bareng? Santai aja, aku mau cerita dikit soal LAKOO dan dengerin juga soal brand kakak. Nggak ada commitment apa-apa kok, murni ngobrol aja.
+Kita juga punya program sponsorship Rp 1 juta buat brand-brand komunitas yang mau gabung, dan komisi kita cuma 0.5% — paling kecil di Indonesia.
 
-Aku flexible waktu dan tempat — kakak enaknya kapan dan di mana kak? ☕
+Tapi daripada aku jelasin panjang lebar di chat, mau ngga kak ngopi bareng? Aku traktir ☕ Santai aja, aku mau dengerin juga soal [Nama Brand] dan gimana kita bisa bantu.
+
+Kakak free-nya kapan dan di mana kak?
 ```
