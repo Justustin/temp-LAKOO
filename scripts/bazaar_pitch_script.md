@@ -85,16 +85,142 @@ Kalau ragu:
 
 ---
 
-## After Bazaar — Follow Up WA
+## WA Templates — Semua Tahapan
 
-Kirim dalam 24 jam:
+Copy-paste, ganti bagian dalam [kurung].
 
-> "Hai kak [Nama]! Ini [Nama kamu] dari LAKOO, tadi ketemu di bazaar [Nama Bazaar]. Makasih udah ngobrol ya!
->
-> Seperti yang aku ceritain, LAKOO kasih:
-> - Rp 1.000.000 sponsorship cash
-> - Set up toko gratis
-> - Migrasi 10 post IG terakhir
-> - Komisi cuma 0.5%
->
-> Kakak tertarik untuk lanjut? Aku bisa jelasin lebih detail atau langsung proses."
+---
+
+### 1. First WA — Follow Up Setelah Bazaar (kirim < 24 jam)
+
+```
+Hai kak [Nama]! Ini [Nama kamu] dari LAKOO, tadi ketemu di bazaar [Nama Bazaar]. Makasih udah ngobrol ya! 🙏
+
+Seperti yang aku ceritain, LAKOO kasih:
+✅ Rp 1.000.000 sponsorship cash
+✅ Set up toko online gratis
+✅ Migrasi 10 post IG terakhir kakak
+✅ Komisi cuma 0.5% (paling kecil di Indonesia)
+
+Kakak nggak perlu ngapa-ngapain, tim kita yang handle semuanya.
+
+Tertarik lanjut kak? Aku bisa jelasin lebih detail atau langsung proses 😊
+```
+
+---
+
+### 2. Cold WA — Belum Ketemu, Dapat Nomor dari IG/Listing
+
+```
+Hai kak [Nama], salam kenal! Aku [Nama kamu] dari LAKOO 🙏
+
+Aku lihat brand kakak di [IG/bazaar listing/event page] dan menurutku [Nama Brand] cocok banget sama platform kita.
+
+LAKOO itu platform fashion lokal Indonesia — kayak Pinterest tapi bisa langsung checkout. Kita lagi cari brand-brand komunitas yang keren kayak kakak.
+
+Kita punya program sponsorship:
+💰 Rp 1 juta cash
+🛍️ Toko online gratis (kita yang bikin)
+📸 Migrasi 10 post IG terakhir
+💸 Komisi cuma 0.5%
+
+Boleh aku jelasin lebih lanjut kak?
+```
+
+---
+
+### 3. Follow Up #1 — Belum Dibales (kirim H+3)
+
+```
+Hai kak [Nama], ini [Nama kamu] dari LAKOO 😊
+
+Cuma mau follow up pesan yang kemarin. Kalau kakak ada waktu, aku bisa jelasin singkat tentang programnya — cuma 5 menit kok.
+
+Atau kalau lebih enak, aku bisa kirim ringkasannya di sini. Mana yang lebih nyaman kak?
+```
+
+---
+
+### 4. Follow Up #2 — Masih Belum Dibales (kirim H+7)
+
+```
+Hai kak [Nama]! Aku [Nama kamu] dari LAKOO 🙏
+
+Aku ngerti pasti sibuk banget. Cuma mau bilang, programnya masih buka — kalau nanti kakak tertarik tinggal kabarin aku aja ya.
+
+Sukses terus kak buat [Nama Brand]! 💪
+```
+
+---
+
+### 5. Sudah Tertarik — Minta Info untuk Onboarding
+
+```
+Makasih kak [Nama]! Seneng banget [Nama Brand] mau gabung 🎉
+
+Buat proses onboarding, aku butuh beberapa info:
+
+1️⃣ Nama brand lengkap
+2️⃣ Akun Instagram brand
+3️⃣ Nomor rekening (untuk transfer sponsorship Rp 1 juta)
+4️⃣ Kategori produk utama (hijab/modest/streetwear/aksesoris/dll)
+5️⃣ Range harga produk
+
+Setelah aku terima, tim kita langsung set up tokonya dalam 48 jam. Nanti kakak tinggal review dan approve aja 👍
+```
+
+---
+
+### 6. Toko Sudah Di-setup — Minta Review
+
+```
+Hai kak [Nama]! Toko [Nama Brand] di LAKOO udah jadi! 🎉
+
+Kita udah migrasi 10 post IG terakhir kakak juga. Coba dicek ya:
+[Link toko / screenshot]
+
+Kalau ada yang mau diubah atau ditambah, kabarin aku aja. Kalau udah oke, kita langsung live-in ya kak! ✅
+```
+
+---
+
+### 7. Toko Live — Konfirmasi & Tips
+
+```
+Kak [Nama], toko [Nama Brand] udah LIVE di LAKOO! 🚀
+
+Beberapa tips biar makin rame:
+📸 Post konten baru di LAKOO (kayak di IG)
+🏷️ Tag produk di setiap post biar bisa langsung dibeli
+📢 Share link toko ke followers kakak
+
+Dan inget, komisi kita cuma 0.5% — kakak simpan 99.5% dari setiap penjualan.
+
+Kalau butuh bantuan apa-apa, langsung chat aku aja ya kak. Sukses! 💪
+```
+
+---
+
+### 8. WA ke Penyelenggara Bazaar — Minta Info Vendor
+
+```
+Selamat [pagi/siang] kak, salam kenal! Aku [Nama kamu] dari LAKOO 🙏
+
+LAKOO itu platform social commerce khusus fashion lokal Indonesia. Kita lagi aktif support brand-brand komunitas lewat program sponsorship.
+
+Aku lihat [Nama Event] dan tertarik banget. Boleh aku minta info list vendor/brand yang ikut kak? Atau mungkin kontak mereka?
+
+Kita juga terbuka kalau mau kerja sama untuk event-event selanjutnya. Makasih kak!
+```
+
+---
+
+### 9. Brand Nolak — Tetap Tinggalin Kesan Baik
+
+```
+Oke kak, nggak apa-apa sama sekali! 🙏
+
+Kalau nanti berubah pikiran atau mau tanya-tanya, WA aku aja ya. Programnya masih buka kok.
+
+Sukses terus kak buat [Nama Brand]! 💪
+```
